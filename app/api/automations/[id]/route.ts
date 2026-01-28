@@ -1,0 +1,113 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth/session";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
+
+// PUT - Update an automation
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { id } = await params;
+        const body = await request.json();
+        const {
+            trigger_keyword,
+            trigger_type,
+            reply_message,
+            require_follow,
+            is_active,
+        } = body;
+
+        const supabase = getSupabaseAdmin();
+
+        // Verify ownership
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existing } = await (supabase as any)
+            .from("automations")
+            .select("id")
+            .eq("id", id)
+            .eq("user_id", session.id)
+            .single();
+
+        if (!existing) {
+            return NextResponse.json(
+                { error: "Automation not found" },
+                { status: 404 }
+            );
+        }
+
+        // Build update object
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updateData: any = {};
+        if (trigger_type !== undefined) updateData.trigger_type = trigger_type;
+        if (trigger_keyword !== undefined) updateData.trigger_keyword = trigger_type === "any" ? null : trigger_keyword;
+        if (reply_message !== undefined) updateData.reply_message = reply_message;
+        if (body.comment_reply !== undefined) updateData.comment_reply = body.comment_reply;
+        if (require_follow !== undefined) updateData.require_follow = require_follow;
+        if (is_active !== undefined) updateData.is_active = is_active;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: automation, error } = await (supabase as any)
+            .from("automations")
+            .update(updateData)
+            .eq("id", id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error updating automation:", error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ automation });
+
+    } catch (error) {
+        console.error("Error in PUT /api/automations/[id]:", error);
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
+    }
+}
+
+// DELETE - Remove an automation
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { id } = await params;
+        const supabase = getSupabaseAdmin();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any)
+            .from("automations")
+            .delete()
+            .eq("id", id)
+            .eq("user_id", session.id);
+
+        if (error) {
+            console.error("Error deleting automation:", error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+
+    } catch (error) {
+        console.error("Error in DELETE /api/automations/[id]:", error);
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
+    }
+}

@@ -1,0 +1,126 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth/session";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
+
+// GET - List all automations for the user
+export async function GET() {
+    try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const supabase = getSupabaseAdmin();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: automations, error } = await (supabase as any)
+            .from("automations")
+            .select("*")
+            .eq("user_id", session.id)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            console.error("Error fetching automations:", error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ automations: automations || [] });
+
+    } catch (error) {
+        console.error("Error in GET /api/automations:", error);
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
+    }
+}
+
+// POST - Create a new automation
+export async function POST(request: NextRequest) {
+    try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const {
+            media_id,
+            media_type,
+            media_url,
+            media_thumbnail_url,
+            media_caption,
+            trigger_keyword,
+            trigger_type,
+            reply_message,
+            require_follow,
+        } = body;
+
+        // Validation
+        if (!media_id) {
+            return NextResponse.json(
+                { error: "Media ID is required" },
+                { status: 400 }
+            );
+        }
+
+        if (!reply_message || reply_message.length < 1) {
+            return NextResponse.json(
+                { error: "Reply message is required" },
+                { status: 400 }
+            );
+        }
+
+        const supabase = getSupabaseAdmin();
+
+        // Check if automation already exists for this media
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existing } = await (supabase as any)
+            .from("automations")
+            .select("id")
+            .eq("user_id", session.id)
+            .eq("media_id", media_id)
+            .single();
+
+        if (existing) {
+            return NextResponse.json(
+                { error: "Automation already exists for this post. Edit it instead." },
+                { status: 409 }
+            );
+        }
+
+        // Create the automation
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: automation, error } = await (supabase as any)
+            .from("automations")
+            .insert({
+                user_id: session.id,
+                media_id,
+                media_type: media_type || "REELS",
+                media_url,
+                media_thumbnail_url,
+                media_caption,
+                trigger_keyword: trigger_type === "any" ? null : trigger_keyword,
+                trigger_type: trigger_type || "keyword",
+                reply_message,
+                comment_reply: body.comment_reply || null,
+                require_follow: require_follow || false,
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error creating automation:", error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ automation }, { status: 201 });
+
+    } catch (error) {
+        console.error("Error in POST /api/automations:", error);
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
+    }
+}
