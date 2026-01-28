@@ -29,11 +29,14 @@ export async function GET(request: NextRequest) {
     console.log("Step 1: Exchanging code for Instagram token...");
     const tokenData = await exchangeCodeForToken(code);
     const accessToken = tokenData.access_token;
-    const instagramUserId = tokenData.user_id.toString();
-
     // Step 2: Get Instagram profile to verify and get username
-    console.log("Step 2: Getting Instagram profile...");
-    const profile = await getInstagramProfile(accessToken, instagramUserId);
+    console.log("Step 2: Getting Instagram profile using /me...");
+    const profile = await getInstagramProfile(accessToken);
+
+    // CRITICAL: The ID from the profile (profile.id) is the IGID used by webhooks.
+    // The ID from the token (tokenData.user_id) might be an ASID.
+    const instagramUserId = profile.id.toString();
+    console.log(`✅ Final Resolved Instagram ID: "${instagramUserId}"`);
 
     // Step 3: Auto-subscribe webhooks (Native Instagram subscription)
     try {
