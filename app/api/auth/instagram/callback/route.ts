@@ -66,36 +66,53 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 4: Create or update user in database
-    console.log(`Step 4: Looking for user in DB with ID: "${instagramUserId}"`);
+    console.log(`Step 4: Managing user in DB (IGID: ${instagramUserId}, ASID: ${profile.id})`);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingUser } = await (supabase as any)
+    let { data: userRecord } = await (supabase as any)
       .from("users")
       .select("*")
-      .eq("instagram_user_id", instagramUserId)
+      .eq("instagram_user_id", instagramUserId) // Try matching by Real IGID first
       .single();
+
+    // FALLBACK: If not found by IGID, try matching by the OLD ASID (profile.id)
+    // This handles users who were created before our ID fix.
+    if (!userRecord) {
+      console.log("ℹ️ User not found by IGID, checking for old ASID match...");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: legacyUser } = await (supabase as any)
+        .from("users")
+        .select("*")
+        .eq("instagram_user_id", profile.id)
+        .single();
+
+      if (legacyUser) {
+        console.log("✅ Found legacy user (ASID match). Migrating to IGID...");
+        userRecord = legacyUser;
+      }
+    }
 
     let user: User;
 
-    if (existingUser) {
-      // Update existing user
+    if (userRecord) {
+      console.log("Updating existing user record...");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: updatedUser, error: updateError } = await (supabase as any)
         .from("users")
         .update({
+          instagram_user_id: instagramUserId, // Migrate to the Real IGID
           instagram_username: profile.username,
           instagram_access_token: accessToken,
-          // For Instagram Login, tokens are long-lived or we can manually refresh.
-          // Setting 60 days default window if not provided.
           instagram_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
         })
-        .eq("id", existingUser.id)
+        .eq("id", userRecord.id)
         .select()
         .single();
 
       if (updateError) throw updateError;
       user = updatedUser as User;
     } else {
+      console.log("Creating new user record...");
       // Create new user with 7-day trial
       const trialExpiresAt = new Date();
       trialExpiresAt.setDate(trialExpiresAt.getDate() + 7);
