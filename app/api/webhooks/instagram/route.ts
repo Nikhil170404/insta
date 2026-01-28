@@ -210,12 +210,12 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             }
         }
 
-        // 6. Send DM
+        // 6. Send DM (Private Reply)
         const dmSent = await sendDirectMessage(
             user.instagram_access_token,
-            instagramUserId,
-            commenterId,
-            automation.reply_message
+            commentId,
+            automation.reply_message,
+            commenterId // Keep for logging
         );
 
         // 6. Log the result and update analytics
@@ -302,37 +302,35 @@ async function checkFollowStatus(
  */
 async function sendDirectMessage(
     accessToken: string,
-    senderId: string,
-    recipientId: string,
-    message: string
+    commentId: string,
+    message: string,
+    recipientIdForLog: string
 ): Promise<boolean> {
     try {
-        console.log(`📤 Sending DM:`);
-        console.log(`- From (Sender ID): "${senderId}"`);
-        console.log(`- To (Recipient ID): "${recipientId}"`);
+        console.log(`📤 Sending Private Reply DM:`);
+        console.log(`- For Comment: "${commentId}"`);
+        console.log(`- To User: "${recipientIdForLog}"`);
         console.log(`- Message: "${message}"`);
 
-        // Send DM via Instagram Graph API
+        // 2025 Standard: Use private_replies to DM a commenter.
+        // This bypasses the "outside of allowed window" restriction.
         const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${accessToken}`,
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/private_replies?access_token=${accessToken}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    recipient: { id: recipientId },
-                    message: { text: message },
-                }),
+                body: JSON.stringify({ message: message }),
             }
         );
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Meta DM Error:", JSON.stringify(errorData, null, 2));
+            console.error("❌ Meta Private Reply Error:", JSON.stringify(errorData, null, 2));
             return false;
         }
 
         const result = await response.json();
-        console.log("✅ DM sent successfully. Meta Response:", JSON.stringify(result));
+        console.log("✅ Private Reply sent successfully. Meta Response:", JSON.stringify(result));
         return true;
     } catch (error) {
         console.error("❌ Exception sending DM:", error);
