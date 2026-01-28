@@ -302,6 +302,11 @@ async function sendDirectMessage(
     message: string
 ): Promise<boolean> {
     try {
+        console.log(`📤 Sending DM:`);
+        console.log(`- From (Sender ID): "${senderId}"`);
+        console.log(`- To (Recipient ID): "${recipientId}"`);
+        console.log(`- Message: "${message}"`);
+
         // Send DM via Instagram Graph API
         const response = await fetch(
             `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${accessToken}`,
@@ -317,15 +322,15 @@ async function sendDirectMessage(
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("Error sending DM:", errorData);
+            console.error("❌ Meta DM Error:", JSON.stringify(errorData, null, 2));
             return false;
         }
 
         const result = await response.json();
-        console.log("DM sent successfully:", result);
+        console.log("✅ DM sent successfully. Meta Response:", JSON.stringify(result));
         return true;
     } catch (error) {
-        console.error("Error sending DM:", error);
+        console.error("❌ Exception sending DM:", error);
         return false;
     }
 }
