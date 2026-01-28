@@ -307,14 +307,12 @@ async function sendDirectMessage(
     recipientIdForLog: string
 ): Promise<boolean> {
     try {
-        console.log(`📤 Sending Private Reply DM:`);
-        console.log(`- For Comment: "${commentId}"`);
-        console.log(`- To User: "${recipientIdForLog}"`);
-        console.log(`- Message: "${message}"`);
+        console.log(`📤 Attempting Private Reply:`);
+        console.log(`- Comment ID: "${commentId}"`);
+        console.log(`- Recipient (for log): "${recipientIdForLog}"`);
 
-        // 2025 Standard: Use private_replies to DM a commenter.
-        // This bypasses the "outside of allowed window" restriction.
-        const response = await fetch(
+        // Attempt 1: Using graph.instagram.com (Native Flow standard)
+        let response = await fetch(
             `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/private_replies?access_token=${accessToken}`,
             {
                 method: "POST",
@@ -325,15 +323,41 @@ async function sendDirectMessage(
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Meta Private Reply Error:", JSON.stringify(errorData, null, 2));
+            console.warn("⚠️ Attempt 1 (graph.instagram.com) failed:", JSON.stringify(errorData));
+
+            // Attempt 2: Fallback to graph.facebook.com (Legacy Graph standard)
+            console.log("🔄 Retrying with graph.facebook.com...");
+            response = await fetch(
+                `https://graph.facebook.com/${GRAPH_API_VERSION}/${commentId}/private_replies?access_token=${accessToken}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: message }),
+                }
+            );
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("❌ Meta Private Reply Error (Both Endpoints):", JSON.stringify(errorData, null, 2));
+
+            // Diagnostic: Check token scopes
+            try {
+                const permRes = await fetch(`https://graph.instagram.com/me/permissions?access_token=${accessToken}`);
+                const perms = await permRes.json();
+                console.log("🔑 Current Token Permissions:", JSON.stringify(perms));
+            } catch (e) {
+                console.log("Could not fetch permissions for diagnostics.");
+            }
+
             return false;
         }
 
         const result = await response.json();
-        console.log("✅ Private Reply sent successfully. Meta Response:", JSON.stringify(result));
+        console.log("✅ Private Reply sent successfully! Response:", JSON.stringify(result));
         return true;
     } catch (error) {
-        console.error("❌ Exception sending DM:", error);
+        console.error("❌ Exception during sendDirectMessage:", error);
         return false;
     }
 }
