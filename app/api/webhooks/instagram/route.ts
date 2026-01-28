@@ -367,7 +367,10 @@ async function replyToComment(
     message: string
 ): Promise<boolean> {
     try {
-        const response = await fetch(
+        console.log(`💬 Attempting Public Reply to Comment: ${commentId}`);
+
+        // Attempt 1: graph.instagram.com
+        let response = await fetch(
             `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${accessToken}`,
             {
                 method: "POST",
@@ -378,13 +381,30 @@ async function replyToComment(
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("Error sending public reply:", errorData);
+            console.warn("⚠️ Public Reply Attempt 1 (instagram) failed:", JSON.stringify(errorData));
+
+            // Attempt 2: Fallback to graph.facebook.com
+            console.log("🔄 Retrying public reply with graph.facebook.com...");
+            response = await fetch(
+                `https://graph.facebook.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${accessToken}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: message }),
+                }
+            );
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("❌ Meta Public Reply Error (Both Endpoints):", JSON.stringify(errorData, null, 2));
             return false;
         }
 
+        console.log("✅ Public reply sent successfully!");
         return true;
     } catch (error) {
-        console.error("Error sending public reply:", error);
+        console.error("❌ Exception sending public reply:", error);
         return false;
     }
 }
