@@ -33,10 +33,12 @@ export async function GET(request: NextRequest) {
     console.log("Step 2: Getting Instagram profile using /me...");
     const profile = await getInstagramProfile(accessToken);
 
-    // CRITICAL: The ID from the profile (profile.id) is the IGID used by webhooks.
-    // The ID from the token (tokenData.user_id) might be an ASID.
-    const instagramUserId = profile.id.toString();
-    console.log(`✅ Final Resolved Instagram ID: "${instagramUserId}"`);
+    // CRITICAL FIX: 'profile.id' is the App-Scoped ID (ASID) like 256...
+    // 'profile.user_id' is the real Instagram ID (IGID) like 1784...
+    // The webhooks use the IGID, so we MUST save the IGID to the database.
+    const instagramUserId = (profile.user_id || profile.id).toString();
+    console.log(`✅ Final Resolved Instagram ID (IGID): "${instagramUserId}"`);
+    if (profile.user_id) console.log(`ℹ️ App-Scoped ID (ASID) was: "${profile.id}"`);
 
     // Step 3: Auto-subscribe webhooks (Native Instagram subscription)
     try {
