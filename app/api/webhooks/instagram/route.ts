@@ -217,8 +217,9 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             commenterId,              // Recipient for logging
             automation.reply_message, // Message text
             automation.id,            // Automation ID for payload
-            automation.button_text,   // Button text (if empty, link is appended)
-            automation.link_url        // Final link
+            automation.button_text,   // Button text
+            automation.link_url,      // Final link
+            automation.media_thumbnail_url // Card image
         );
 
         // 6. Log the result and update analytics
@@ -311,7 +312,8 @@ async function sendDirectMessage(
     message: string,
     automationId?: string,
     buttonText?: string,
-    linkUrl?: string
+    linkUrl?: string,
+    thumbnailUrl?: string
 ): Promise<boolean> {
     try {
         if (!accessToken || accessToken.length < 20) {
@@ -319,53 +321,102 @@ async function sendDirectMessage(
             return false;
         }
 
-        console.log(`📤 Attempting Private Reply:`);
-        console.log(`- Sender ID (IGID): "${senderId}"`);
-        console.log(`- Trigger Comment ID: "${commentId}"`);
-        console.log(`- Target Recipient: "${recipientIdForLog}"`);
+        console.log(`📤 Attempting ManyChat-style Premium Reply:`);
+        console.log(`- Recipient (Log): "${recipientIdForLog}"`);
 
-        let finalMessage = message;
+        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${accessToken}`;
 
-        // If no button is specified but a link exists, send the link directly in the first DM
-        if (!buttonText && linkUrl) {
-            finalMessage = `${message}\n\nHere is your link: ${linkUrl}`;
-            console.log(`🔗 No button found. Appending link directly to greeting.`);
-        }
+        // 1. Send "Mark as Seen"
+        await fetch(baseUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                recipient: { comment_id: commentId },
+                sender_action: "mark_seen"
+            }),
+        });
 
-        const body: any = {
-            recipient: { comment_id: commentId },
-            message: { text: finalMessage }
-        };
+        // 2. Send "Typing..." indicator for 1 second (ManyChat feel)
+        await fetch(baseUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                recipient: { comment_id: commentId },
+                sender_action: "typing_on"
+            }),
+        });
 
-        // If ManyChat-style button is requested
-        if (buttonText && automationId) {
-            body.message.quick_replies = [
-                {
-                    content_type: "text",
-                    title: buttonText.substring(0, 20),
-                    payload: `CLICK_LINK_${automationId}`
+        // Small delay to simulate thinking
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        let body: any;
+
+        // ManyChat uses Generic Templates (Structured Cards) for a premium feel
+        // If we have a link and a thumbnail, we send a Card.
+        if (linkUrl && (buttonText || thumbnailUrl)) {
+            console.log("💎 Sending Structured Template (Card)");
+            body = {
+                recipient: { comment_id: commentId },
+                message: {
+                    attachment: {
+                        type: "template",
+                        payload: {
+                            template_type: "generic",
+                            elements: [
+                                {
+                                    title: buttonText || "Click to View",
+                                    subtitle: message.substring(0, 80),
+                                    image_url: thumbnailUrl || "",
+                                    default_action: {
+                                        type: "web_url",
+                                        url: linkUrl
+                                    },
+                                    buttons: [
+                                        {
+                                            type: "web_url",
+                                            url: linkUrl,
+                                            title: (buttonText || "Open Link").substring(0, 20)
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
                 }
-            ];
-            console.log(`- Included Quick Reply: "${buttonText}" (Payload: CLICK_LINK_${automationId})`);
+            };
+        } else {
+            // Fallback to text if No link or thumbnail
+            console.log("📝 Sending Plain Text Message");
+            body = {
+                recipient: { comment_id: commentId },
+                message: { text: message }
+            };
+
+            // If they just wanted a button click flow (no card)
+            if (buttonText && automationId && !linkUrl) {
+                body.message.quick_replies = [
+                    {
+                        content_type: "text",
+                        title: buttonText.substring(0, 20),
+                        payload: `CLICK_LINK_${automationId}`
+                    }
+                ];
+            }
         }
 
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${accessToken}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            }
-        );
+        const response = await fetch(baseUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Meta Private Reply Error:", JSON.stringify(errorData, null, 2));
+            console.error("❌ Meta API Error:", JSON.stringify(errorData, null, 2));
             return false;
         }
 
-        const result = await response.json();
-        console.log("✅ Private Reply sent successfully! Message ID:", result.message_id);
+        console.log("✅ Premium DM sent successfully!");
         return true;
     } catch (error) {
         console.error("❌ Exception during sendDirectMessage:", error);
