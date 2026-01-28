@@ -148,7 +148,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
-        console.log("Found automation:", automation.id);
+        console.log("Found automation:", JSON.stringify(automation, null, 2));
 
         // 3. Check keyword match
         const shouldTrigger = checkKeywordMatch(
@@ -162,7 +162,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
-        console.log("Trigger matched! Preparing to send DM...");
+        console.log("Trigger matched! Preparing to send DM and Reply...");
 
         // 4. Check follow status if required
         if (automation.require_follow) {
@@ -367,10 +367,17 @@ async function replyToComment(
     message: string
 ): Promise<boolean> {
     try {
+        if (!message || message.trim().length === 0) {
+            console.error("❌ Cannot send empty public reply.");
+            return false;
+        }
+
         console.log(`💬 Attempting Public Reply to Comment: ${commentId}`);
+        console.log(`- Message Content: "${message}"`);
+        console.log(`- Message Length: ${message.length}`);
 
         // Attempt 1: graph.instagram.com
-        let response = await fetch(
+        const response = await fetch(
             `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${accessToken}`,
             {
                 method: "POST",
