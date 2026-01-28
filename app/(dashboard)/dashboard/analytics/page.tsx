@@ -8,9 +8,16 @@ import {
     TrendingUp,
     Calendar,
     Loader2,
-    CheckCircle,
+    CheckCircle2,
     XCircle,
+    Users,
+    Zap,
+    ChevronRight,
+    Search,
+    Filter,
+    Activity
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DmLog {
     id: string;
@@ -59,134 +66,135 @@ export default function AnalyticsPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64 pt-16 lg:pt-0">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <p className="text-slate-400 font-bold text-sm tracking-widest uppercase">Crunching data...</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 pt-16 lg:pt-0">
+        <div className="space-y-10">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-                <p className="text-gray-600">Track your DM automation performance</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
+                <div>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Performance Insight</h1>
+                    <p className="text-slate-400 font-medium">Real-time data from your automation tunnels.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button className="h-12 px-5 rounded-2xl bg-white border border-slate-100 font-bold text-slate-600 text-sm shadow-sm flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Last 7 Days
+                    </button>
+                </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                                <Calendar className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{stats.today}</p>
-                                <p className="text-xs text-gray-500">Today</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Premium Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <Calendar className="h-6 w-6 text-blue-300 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{stats.today}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Today's DMs</p>
+                </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-100 rounded-lg">
-                                <TrendingUp className="h-5 w-5 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{stats.week}</p>
-                                <p className="text-xs text-gray-500">This Week</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <TrendingUp className="h-6 w-6 text-purple-300 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{stats.week}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Weekly Reach</p>
+                </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-100 rounded-lg">
-                                <MessageCircle className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{stats.total}</p>
-                                <p className="text-xs text-gray-500">Total DMs</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <MessageCircle className="h-6 w-6 text-primary/40 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{stats.total}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Lifetime</p>
+                </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-orange-100 rounded-lg">
-                                <BarChart3 className="h-5 w-5 text-orange-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{stats.successRate}%</p>
-                                <p className="text-xs text-gray-500">Success Rate</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <Zap className="h-6 w-6 text-green-300 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{stats.successRate}%</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Success Rate</p>
+                </div>
             </div>
 
             {/* Recent Activity */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Recent DM Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {logs.length === 0 ? (
-                        <div className="text-center py-12">
-                            <BarChart3 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <p className="text-gray-500 text-lg">No activity yet</p>
-                            <p className="text-gray-400 text-sm">
-                                DMs will appear here when your automations start working
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {logs.map((log) => (
-                                <div
-                                    key={log.id}
-                                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
-                                >
-                                    {/* Avatar */}
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                                        {log.instagram_username?.charAt(0).toUpperCase() || "?"}
-                                    </div>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                    <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-primary" />
+                        Live Activity Feed
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
+                            <Filter className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
 
-                                    {/* Details */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-medium">@{log.instagram_username}</p>
-                                        <p className="text-sm text-gray-500 truncate">
-                                            Matched: {log.keyword_matched || "Any"}
-                                        </p>
-                                        <p className="text-xs text-gray-400">
-                                            {new Date(log.created_at).toLocaleString()}
+                {logs.length === 0 ? (
+                    <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] py-32 text-center">
+                        <BarChart3 className="h-20 w-20 text-slate-100 mx-auto mb-6" />
+                        <p className="text-slate-400 text-lg font-bold">No activity recorded</p>
+                        <p className="text-slate-300 text-sm mt-1">Logs will appear here once your triggers start firing.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                        {logs.map((log) => (
+                            <div
+                                key={log.id}
+                                className="flex items-center gap-5 p-5 bg-white rounded-[2rem] border border-slate-50 transition-all duration-300 hover:shadow-lg group"
+                            >
+                                {/* User Profile Simulation */}
+                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 font-black text-lg shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
+                                    {log.instagram_username?.charAt(0).toUpperCase() || "?"}
+                                </div>
+
+                                {/* Details */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <p className="font-bold text-slate-900">@{log.instagram_username}</p>
+                                        <span className="text-[10px] font-bold text-slate-300">• {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg uppercase tracking-widest">
+                                            {log.keyword_matched || "General"}
+                                        </span>
+                                        <p className="text-xs text-slate-400 truncate italic">
+                                            "{log.comment_text}"
                                         </p>
                                     </div>
+                                </div>
 
-                                    {/* Status */}
+                                {/* Status Badge */}
+                                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl">
                                     {log.reply_sent ? (
-                                        <div className="flex items-center gap-1 text-green-600">
-                                            <CheckCircle className="h-5 w-5" />
-                                            <span className="text-sm">Sent</span>
-                                        </div>
+                                        <>
+                                            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Delivered</span>
+                                        </>
                                     ) : (
-                                        <div className="flex items-center gap-1 text-red-500">
-                                            <XCircle className="h-5 w-5" />
-                                            <span className="text-sm">Failed</span>
-                                        </div>
+                                        <>
+                                            <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Failed</span>
+                                        </>
                                     )}
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+
+                                <button className="p-2 text-slate-200 group-hover:text-slate-400 transition-colors">
+                                    <ChevronRight className="h-5 w-5" />
+                                </button>
+                            </div>
+                        ))}
+
+                        <button className="w-full py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-primary transition-colors">
+                            Load historical data
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

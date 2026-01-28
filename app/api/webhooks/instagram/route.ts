@@ -74,17 +74,18 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         console.log("📥 WEBHOOK RECEIVED - COMMENT EVENT");
         console.log("===========================================");
         console.log("Time:", new Date().toISOString());
-        console.log("Instagram User ID:", instagramUserId);
+        console.log("Instagram Account ID (Webhook Entry):", instagramUserId);
         console.log("Event Data:", JSON.stringify(eventData, null, 2));
         console.log("-------------------------------------------");
 
-        const { id: commentId, text: commentText, from, media } = eventData;
+        const { id: commentId, text: commentText, from, media, parent_id } = eventData;
         const commenterId = from?.id;
         const commenterUsername = from?.username;
         const mediaId = media?.id;
 
         console.log("📊 Parsed Event:");
         console.log("- Comment ID:", commentId);
+        console.log("- Parent ID:", parent_id || "None (Top-level)");
         console.log("- Comment Text:", commentText);
         console.log("- Commenter ID:", commenterId);
         console.log("- Commenter Username:", commenterUsername);
@@ -95,14 +96,40 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
-        if (commenterId === instagramUserId) {
-            console.log("⚠️ Self-comment detected (bot's own reply). Skipping to avoid infinite loop. (This happens if you test with the same account as the bot)");
+        // 1. IGNORE REPLIES (Prevent Loops)
+        if (parent_id) {
+            console.log("ℹ️ Comment is a reply (parent_id detected). Ignoring to prevent loops.");
             return;
         }
 
         const supabase = getSupabaseAdmin();
 
-        // 2. Idempotency Check: Don't process the same comment twice (handles Meta retries)
+        // 2. Find the user who owns this Instagram account
+        const targetId = String(instagramUserId).trim();
+        console.log(`Searching database for user with ID: "${targetId}"`);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: user, error: userError } = await (supabase as any)
+            .from("users")
+            .select("id, instagram_access_token, instagram_user_id")
+            .eq("instagram_user_id", targetId)
+            .single();
+
+        if (userError || !user) {
+            console.error(`❌ ERROR: No user found in 'users' table with instagram_user_id: "${targetId}"`);
+            return;
+        }
+
+        console.log("✅ Match found! System User ID:", user.id);
+
+        // 3. IMPROVED SELF-COMMENT DETECTION
+        // Accurate comparison using the recorded account ID from our database
+        if (commenterId === user.instagram_user_id) {
+            console.log("⚠️ Self-comment detected. Skipping to avoid infinite loop.");
+            return;
+        }
+
+        // 4. Idempotency Check: Don't process the same comment twice (handles Meta retries)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: existingLog } = await (supabase as any)
             .from("dm_logs")
@@ -115,29 +142,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
-        // 1. Find the user who owns this Instagram account
-        const targetId = String(instagramUserId).trim();
-        console.log(`Searching database for user with ID: "${targetId}"`);
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: user, error: userError } = await (supabase as any)
-            .from("users")
-            .select("id, instagram_access_token, instagram_user_id")
-            .eq("instagram_user_id", targetId)
-            .single();
-
-        if (userError) {
-            console.log("Database lookup error:", userError.message);
-        }
-
-        if (!user) {
-            console.error(`❌ ERROR: No user found in 'users' table with instagram_user_id: "${targetId}"`);
-            return;
-        }
-
-        console.log("✅ Match found! System User ID:", user.id);
-
-        // 2. Find automation for this media
+        // 5. Find automation for this media
         console.log("Looking for automation with media_id:", mediaId);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: automation } = await (supabase as any)
@@ -148,21 +153,33 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             .eq("is_active", true)
             .single();
 
-        if (!automation) {
-            console.log("ERROR: No active automation for media:", mediaId);
-            return;
-        }
-
         console.log("📊 Automation Found:", {
             id: automation.id,
             trigger_type: automation.trigger_type,
             trigger_keyword: automation.trigger_keyword,
-            has_dm: !!automation.reply_message,
-            has_comment_reply: !!automation.comment_reply,
-            comment_reply_content: automation.comment_reply
+            respond_to_replies: automation.respond_to_replies,
+            ignore_self_comments: automation.ignore_self_comments
         });
 
-        // 3. Check keyword match
+        // Detect if SQL migration is missing
+        if (automation.respond_to_replies === undefined) {
+            console.warn("⚠️ WARNING: 'respond_to_replies' column missing in database. Have you run the SQL migration?");
+        }
+
+        // 6. DYNAMIC FILTERING
+        // Check 1: Reply Filtering
+        if (parent_id && !automation.respond_to_replies) {
+            console.log("ℹ️ Comment is a reply and automation is set to Top-level only (or SQL migration missing). Skipping.");
+            return;
+        }
+
+        // Check 2: Self-Comment Filtering
+        if (commenterId === user.instagram_user_id && automation.ignore_self_comments !== false) {
+            console.log("⚠️ Self-comment detected. Skipping to avoid loops.");
+            return;
+        }
+
+        // 7. Check keyword match
         const shouldTrigger = checkKeywordMatch(
             automation.trigger_type,
             automation.trigger_keyword,
@@ -176,7 +193,25 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
 
         console.log("Trigger matched! Preparing to send DM and Reply...");
 
-        // 4. Check follow status if required
+        // 8. Send Public Reply (High Engagement)
+        // We do this BEFORE the "One DM per user" check so that we always engage 
+        // with the commenter publicly, even if they've received a DM before.
+        if (automation.comment_reply && automation.comment_reply.trim().length > 0) {
+            console.log(`💬 Sending public engagement reply: "${automation.comment_reply}"`);
+            const uniqueReply = getUniqueMessage(automation.comment_reply);
+            const replySent = await replyToComment(
+                user.instagram_access_token,
+                commentId,
+                uniqueReply
+            );
+            if (replySent) {
+                console.log("✅ Public reply sent successfully!");
+            }
+        } else {
+            console.log("ℹ️ Skipping public reply: No reply text configured in this automation.");
+        }
+
+        // 9. Check follow status if required
         if (automation.require_follow) {
             const isFollowing = await checkFollowStatus(
                 user.instagram_access_token,
@@ -191,25 +226,23 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             }
         }
 
-        // 5. Send Public Reply (if configured)
-        if (automation.comment_reply && automation.comment_reply.trim().length > 0) {
-            console.log(`💬 Sending public reply to comment: "${automation.comment_reply}"`);
-            const uniqueReply = getUniqueMessage(automation.comment_reply);
-            const replySent = await replyToComment(
-                user.instagram_access_token,
-                commentId,
-                uniqueReply
-            );
-            if (replySent) {
-                console.log("✅ Public reply sent successfully!");
-            } else {
-                console.log("❌ Failed to send public reply (Check Meta permissions - instagram_manage_comments)");
-            }
-        } else {
-            console.log("ℹ️ No public comment reply configured for this automation.");
+        // 10. ONE DM PER USER CHECK
+        // Check if we've already sent a DM to this user for THIS specific automation keyword
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: userAlreadyDmed } = await (supabase as any)
+            .from("dm_logs")
+            .select("id")
+            .eq("instagram_user_id", commenterId)
+            .eq("keyword_matched", automation.trigger_keyword || "ANY")
+            .eq("user_id", user.id)
+            .single();
+
+        if (userAlreadyDmed) {
+            console.log(`ℹ️ User @${commenterUsername} already received a DM for "${automation.trigger_keyword || "ANY"}". Skipping duplicate DM but engaged publicly.`);
+            return;
         }
 
-        // 6. Send DM (Private Reply)
+        // 11. Send DM (Private Reply)
         const dmSent = await sendDirectMessage(
             user.instagram_access_token,
             instagramUserId,          // Sender
@@ -222,7 +255,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             automation.media_thumbnail_url // Card image
         );
 
-        // 6. Log the result and update analytics
+        // 12. Log the result and update analytics
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any).from("dm_logs").insert({
             user_id: user.id,
@@ -237,10 +270,10 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
 
         if (dmSent) {
             await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-            console.log("DM sent successfully!");
+            console.log("✅ DM sent successfully!");
         } else {
             await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
-            console.log("Failed to send DM");
+            console.log("❌ Failed to send DM");
         }
 
     } catch (error) {
@@ -324,7 +357,8 @@ async function sendDirectMessage(
         console.log(`📤 Attempting ManyChat-style Premium Reply:`);
         console.log(`- Recipient (Log): "${recipientIdForLog}"`);
 
-        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${accessToken}`;
+        const trimmedToken = accessToken.trim();
+        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${trimmedToken}`;
 
         // 1. Send "Mark as Seen"
         await fetch(baseUrl, {
@@ -466,9 +500,10 @@ async function replyToComment(
         console.log(`💬 Attempting Public Reply to Comment: ${commentId}`);
         console.log(`- Content: "${message}"`);
 
-        // Use graph.facebook.com for public replies (Standard Instagram Graph API)
+        const trimmedToken = accessToken.trim();
+        // Use graph.instagram.com for public replies when using Instagram Login (Standard)
         const response = await fetch(
-            `https://graph.facebook.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${accessToken}`,
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${trimmedToken}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -516,8 +551,13 @@ async function handleMessagingEvent(instagramUserId: string, messaging: any) {
                 .eq("id", automationId)
                 .single();
 
-            if (!automation || !automation.link_url) {
-                console.log("No automation or link found for this payload.");
+            if (!automation) {
+                console.log(`❌ Automation with ID "${automationId}" not found in database.`);
+                return;
+            }
+
+            if (!automation.link_url) {
+                console.log(`ℹ️ Automation found but has no "link_url" configured. Skipping delivery.`);
                 return;
             }
 
@@ -529,13 +569,18 @@ async function handleMessagingEvent(instagramUserId: string, messaging: any) {
                 .eq("id", automation.user_id)
                 .single();
 
-            if (!user) return;
+            if (!user) {
+                console.log(`❌ No user found for automation owner: ${automation.user_id}`);
+                return;
+            }
+
+            const trimmedToken = user.instagram_access_token.trim();
 
             // 3. Send the final link
             console.log(`🚀 Sending final link to ${senderIgsid}: ${automation.link_url}`);
 
             const response = await fetch(
-                `https://graph.instagram.com/${GRAPH_API_VERSION}/${instagramUserId}/messages?access_token=${user.instagram_access_token}`,
+                `https://graph.instagram.com/${GRAPH_API_VERSION}/${instagramUserId}/messages?access_token=${trimmedToken}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -563,11 +608,13 @@ async function handleMessagingEvent(instagramUserId: string, messaging: any) {
  * Add random variation to message to bypass Meta's spam filters (Error 1349210)
  */
 function getUniqueMessage(message: string): string {
-    const variations = ["📬", "✨", "✅", "💬", "🚀", "📥", "💌"];
+    const variations = ["📬", "✨", "✅", "💬", "🚀", "📥", "💌", "🌟", "🔥", "💎"];
+    const greetings = ["Done!", "Sent!", "Check it out!", "Ready!", "There you go!"];
     const randomVariation = variations[Math.floor(Math.random() * variations.length)];
+    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
     const randomCode = Math.random().toString(36).substring(7).toUpperCase();
 
     // In Dev mode, Meta often blocks identical replies. 
-    // Adding a small unique suffix helps reliability.
-    return `${message} ${randomVariation} [${randomCode}]`;
+    // Adding a small unique suffix and random greeting helps reliability.
+    return `${randomGreeting} ${message} ${randomVariation} [${randomCode}]`;
 }

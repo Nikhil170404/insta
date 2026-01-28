@@ -11,19 +11,15 @@ import {
     Check,
     X,
     Loader2,
-    Users,
     TrendingUp,
     ChevronDown,
     Zap,
+    LayoutGrid,
+    Search,
+    Filter
 } from "lucide-react";
-
-const REPLY_TEMPLATES = [
-    "Check your DM 📬",
-    "Sent you the link! 💌",
-    "Check your inbox 📥",
-    "Link sent! ✅",
-    "Check message requests 📨"
-];
+import { cn } from "@/lib/utils";
+import AutomationWizard from "./AutomationWizard";
 
 interface Media {
     id: string;
@@ -55,16 +51,7 @@ export default function ReelsGrid() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
-    const [showModal, setShowModal] = useState(false);
-
-    // Form state
-    const [triggerType, setTriggerType] = useState<"keyword" | "any">("any");
-    const [keyword, setKeyword] = useState("");
-    const [replyMessage, setReplyMessage] = useState("");
-    const [commentReply, setCommentReply] = useState("");
-    const [buttonText, setButtonText] = useState("");
-    const [linkUrl, setLinkUrl] = useState("");
-    const [requireFollow, setRequireFollow] = useState(false);
+    const [showWizard, setShowWizard] = useState(false);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -112,57 +99,33 @@ export default function ReelsGrid() {
         return automations.find((a) => a.media_id === mediaId);
     }
 
-    function openCreateModal(item: Media) {
-        setSelectedMedia(item);
-        setTriggerType("any");
-        setKeyword("");
-        setReplyMessage("");
-        setCommentReply("");
-        setButtonText("");
-        setLinkUrl("");
-        setRequireFollow(false);
-        setShowModal(true);
-    }
-
-    async function handleCreateAutomation() {
+    async function handleSaveAutomation(data: any) {
         if (!selectedMedia) return;
-        if (!replyMessage.trim()) {
-            alert("Please enter a reply message");
-            return;
-        }
-
         setSaving(true);
         try {
             const res = await fetch("/api/automations", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    ...data,
                     media_id: selectedMedia.id,
                     media_type: selectedMedia.media_type,
                     media_url: selectedMedia.media_url,
                     media_thumbnail_url: selectedMedia.thumbnail_url || selectedMedia.media_url,
                     media_caption: selectedMedia.caption?.substring(0, 200),
-                    trigger_keyword: triggerType === "keyword" ? keyword : null,
-                    trigger_type: triggerType,
-                    reply_message: replyMessage,
-                    comment_reply: commentReply,
-                    button_text: buttonText,
-                    link_url: linkUrl,
-                    require_follow: requireFollow,
                 }),
             });
 
             if (res.ok) {
-                const data = await res.json();
-                setAutomations([data.automation, ...automations]);
-                setShowModal(false);
+                const result = await res.json();
+                setAutomations([result.automation, ...automations]);
+                setShowWizard(false);
             } else {
                 const error = await res.json();
                 alert(error.error || "Failed to create automation");
             }
         } catch (error) {
             console.error("Error creating automation:", error);
-            alert("Failed to create automation");
         } finally {
             setSaving(false);
         }
@@ -203,317 +166,210 @@ export default function ReelsGrid() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <p className="text-slate-400 font-bold text-sm tracking-widest uppercase">Fetching your content...</p>
             </div>
         );
     }
 
     const totalDMs = automations.reduce((sum, a) => sum + a.dm_sent_count, 0);
-    const activeAutomations = automations.filter((a) => a.is_active).length;
+    const activeAutomationsCount = automations.filter((a) => a.is_active).length;
 
     return (
-        <div className="space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-100 rounded-lg">
-                                <Play className="h-5 w-5 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{media.length}</p>
-                                <p className="text-xs text-gray-500">Total Posts</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+        <div className="space-y-10">
+            {/* Stats Section */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <Play className="h-6 w-6 text-slate-300 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{media.length}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Posts</p>
+                </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-100 rounded-lg">
-                                <MessageCircle className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{activeAutomations}</p>
-                                <p className="text-xs text-gray-500">Active Automations</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <Zap className="h-6 w-6 text-green-300 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{activeAutomationsCount}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Active Flows</p>
+                </div>
 
-                <Card className="col-span-2 md:col-span-1">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                                <TrendingUp className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{totalDMs}</p>
-                                <p className="text-xs text-gray-500">DMs Sent</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group col-span-2 lg:col-span-2">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-110 transition-transform" />
+                    <TrendingUp className="h-6 w-6 text-primary/40 mb-4" />
+                    <div className="flex items-baseline gap-2">
+                        <p className="text-4xl font-black text-slate-900 tracking-tighter">{totalDMs}</p>
+                        <span className="text-xs font-black text-primary bg-primary/10 rounded-lg px-2 py-1 uppercase animate-pulse">Live</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total DMs Delivered</p>
+                </div>
             </div>
 
             {/* Reels Grid */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Play className="h-5 w-5" />
-                        Your Reels - Click to Set Up Auto-Reply
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {media.length === 0 ? (
-                        <div className="text-center py-12">
-                            <Play className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <p className="text-gray-500 text-lg">No reels found</p>
-                            <p className="text-gray-400 text-sm">
-                                Post some reels on Instagram to set up automations
-                            </p>
+            <div className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        <LayoutGrid className="h-7 w-7 text-primary" />
+                        Automate your content
+                    </h2>
+
+                    <div className="flex items-center gap-2">
+                        <div className="relative group flex-1 md:w-64">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
+                            <input
+                                type="text"
+                                placeholder="Search posts..."
+                                className="w-full h-11 pl-11 pr-4 bg-white border border-slate-100 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary transition-all shadow-sm"
+                            />
                         </div>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {media.map((item) => {
-                                    const automation = getAutomationForMedia(item.id);
-                                    const hasAutomation = !!automation;
+                        <Button variant="outline" className="h-11 px-4 rounded-2xl bg-white border-slate-100 font-bold text-slate-600 gap-2 shadow-sm">
+                            <Filter className="h-4 w-4" />
+                            Filters
+                        </Button>
+                    </div>
+                </div>
 
-                                    return (
-                                        <div
-                                            key={item.id}
-                                            className="relative group cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all"
-                                            onClick={() => !hasAutomation && openCreateModal(item)}
-                                        >
-                                            <div className="aspect-[9/16] bg-gray-100 relative">
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img
-                                                    src={item.thumbnail_url || item.media_url || "/placeholder-reel.jpg"}
-                                                    alt={item.caption || "Reel"}
-                                                    className="w-full h-full object-cover"
-                                                />
+                {media.length === 0 ? (
+                    <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] py-24 text-center">
+                        <Play className="h-20 w-20 text-slate-100 mx-auto mb-6" />
+                        <p className="text-slate-400 text-lg font-bold">No Instagram posts found</p>
+                        <p className="text-slate-300 text-sm mt-1">Make sure you've posted some Reels or Photos</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {media.map((item) => {
+                                const automation = getAutomationForMedia(item.id);
+                                const hasAutomation = !!automation;
 
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    {!hasAutomation && (
-                                                        <div className="text-center text-white">
-                                                            <Plus className="h-8 w-8 mx-auto mb-2" />
-                                                            <p className="text-sm font-medium">Set Up Auto-Reply</p>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className={cn(
+                                            "relative group rounded-[2.5rem] overflow-hidden bg-white border-2 transition-all duration-300",
+                                            hasAutomation ? "border-primary ring-4 ring-primary/5 shadow-xl" : "border-transparent hover:border-primary/40 shadow-sm"
+                                        )}
+                                    >
+                                        <div className="aspect-[3/4] overflow-hidden relative group-hover:scale-[1.02] transition-transform duration-500">
+                                            <img
+                                                src={item.thumbnail_url || item.media_url || "/placeholder-reel.jpg"}
+                                                alt={item.caption || "Reel"}
+                                                className="w-full h-full object-cover"
+                                            />
 
-                                                <div className="absolute top-2 left-2">
-                                                    <Badge variant="secondary" className="text-xs bg-black/50 text-white">
-                                                        {item.media_type === "REELS" ? "🎬 Reel" : item.media_type}
-                                                    </Badge>
-                                                </div>
+                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
 
+                                            {/* Top Badges */}
+                                            <div className="absolute top-4 left-4 z-10 flex gap-1.5">
+                                                <Badge className="bg-white/20 backdrop-blur-md text-white border-white/30 font-bold text-[10px] px-2 py-0.5">
+                                                    {item.media_type === "REELS" ? "🎬 REEL" : "📸 PHOTO"}
+                                                </Badge>
                                                 {hasAutomation && (
-                                                    <div className="absolute top-2 right-2">
-                                                        <Badge variant={automation?.is_active ? "success" : "secondary"} className="text-xs">
-                                                            {automation?.is_active ? "✓ Active" : "Paused"}
-                                                        </Badge>
-                                                    </div>
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-400 mt-1 shadow-[0_0_10px_#4ade80] animate-pulse" />
                                                 )}
                                             </div>
 
-                                            <div className="p-2 bg-white">
-                                                <p className="text-xs text-gray-600 truncate">
-                                                    {item.caption?.substring(0, 50) || "No caption"}
-                                                </p>
-
-                                                {hasAutomation && (
-                                                    <div className="mt-2 flex items-center justify-between">
-                                                        <span className="text-xs text-gray-500">
-                                                            {automation?.dm_sent_count || 0} DMs sent
-                                                        </span>
-                                                        <div className="flex gap-1">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    toggleAutomation(automation!.id, automation!.is_active);
-                                                                }}
-                                                                className="p-1 hover:bg-gray-100 rounded"
-                                                            >
-                                                                {automation?.is_active ? (
-                                                                    <Check className="h-4 w-4 text-green-600" />
-                                                                ) : (
-                                                                    <Play className="h-4 w-4 text-gray-400" />
-                                                                )}
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    deleteAutomation(automation!.id);
-                                                                }}
-                                                                className="p-1 hover:bg-red-50 rounded"
-                                                            >
-                                                                <X className="h-4 w-4 text-red-500" />
-                                                            </button>
-                                                        </div>
+                                            {/* Hover Actions */}
+                                            {!hasAutomation && (
+                                                <button
+                                                    onClick={() => { setSelectedMedia(item); setShowWizard(true); }}
+                                                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20"
+                                                >
+                                                    <div className="w-14 h-14 bg-primary text-white rounded-full shadow-2xl shadow-primary/40 flex items-center justify-center transform scale-90 group-hover:scale-100 transition-transform duration-300">
+                                                        <Plus className="h-7 w-7" />
                                                     </div>
-                                                )}
+                                                    <span className="text-white text-xs font-black tracking-widest uppercase py-1 px-3 bg-black/30 rounded-full backdrop-blur-sm">Automate</span>
+                                                </button>
+                                            )}
+
+                                            {/* Footer Content */}
+                                            <div className="absolute bottom-4 left-4 right-4 z-10">
+                                                <p className="text-[11px] text-white/80 line-clamp-2 font-medium">
+                                                    {item.caption || "View on Instagram"}
+                                                </p>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
 
-                            {/* Show More Button */}
-                            {nextCursor && (
-                                <div className="mt-6 text-center">
-                                    <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="px-8">
-                                        {loadingMore ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                Loading...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ChevronDown className="h-4 w-4 mr-2" />
-                                                Show More Posts
-                                            </>
+                                        {hasAutomation && (
+                                            <div className="p-5 flex flex-col gap-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex flex-col">
+                                                        <p className="text-[13px] font-black text-slate-900">
+                                                            {automation.trigger_type === "any" ? "ANY COMMENT" : `"${automation.trigger_keyword}"`}
+                                                        </p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Trigger</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-xl font-black text-primary tracking-tighter">{automation.dm_sent_count}</p>
+                                                        <p className="text-[9px] font-black text-slate-400">DMs</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => toggleAutomation(automation.id, automation.is_active)}
+                                                        className={cn(
+                                                            "flex-1 h-10 rounded-2xl flex items-center justify-center gap-2 text-[11px] font-bold transition-all active:scale-95",
+                                                            automation.is_active ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary text-white shadow-lg shadow-primary/20"
+                                                        )}
+                                                    >
+                                                        {automation.is_active ? (
+                                                            <>
+                                                                <X className="h-3 w-3" />
+                                                                PAUSE FLOW
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Play className="h-3 w-3 fill-current" />
+                                                                RESUME
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteAutomation(automation.id)}
+                                                        className="w-10 h-10 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-2xl flex items-center justify-center transition-all"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         )}
-                                    </Button>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Create Automation Modal */}
-            {showModal && selectedMedia && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 space-y-6">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <h2 className="text-xl font-bold">Set Up Auto-Reply</h2>
-                                    <p className="text-sm text-gray-500">Automatically DM users who comment on this reel</p>
-                                </div>
-                                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
-
-                            <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={selectedMedia.thumbnail_url || selectedMedia.media_url || ""} alt="Reel" className="w-20 h-32 object-cover rounded" />
-                                <div className="flex-1 min-w-0">
-                                    <Badge className="mb-2">{selectedMedia.media_type}</Badge>
-                                    <p className="text-sm text-gray-600 line-clamp-3">{selectedMedia.caption || "No caption"}</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-2">When should we send a DM?</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setTriggerType("any")}
-                                        className={`p-4 border-2 rounded-lg text-left transition-all ${triggerType === "any" ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}
-                                    >
-                                        <p className="font-medium">Any Comment</p>
-                                        <p className="text-xs text-gray-500">Reply to all comments</p>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setTriggerType("keyword")}
-                                        className={`p-4 border-2 rounded-lg text-left transition-all ${triggerType === "keyword" ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}
-                                    >
-                                        <p className="font-medium">Specific Keyword</p>
-                                        <p className="text-xs text-gray-500">Only when keyword matches</p>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {triggerType === "keyword" && (
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">Trigger Keyword</label>
-                                    <input
-                                        type="text"
-                                        value={keyword}
-                                        onChange={(e) => setKeyword(e.target.value)}
-                                        placeholder="e.g., LINK, INFO, PRICE"
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">User must comment this exact word</p>
-                                </div>
-                            )}
-
-                            <div>
-                                <label className="block text-sm font-medium mb-2">DM Message to Send</label>
-                                <textarea
-                                    value={replyMessage}
-                                    onChange={(e) => setReplyMessage(e.target.value)}
-                                    placeholder="Hey! Thanks for your interest. Here's the link you requested: https://..."
-                                    rows={4}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Public Reply to Comment (Optional)</label>
-                                <textarea
-                                    value={commentReply}
-                                    onChange={(e) => setCommentReply(e.target.value)}
-                                    placeholder="Check your DM 📬"
-                                    rows={2}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none mb-3"
-                                />
-                                <div className="flex flex-wrap gap-2">
-                                    {REPLY_TEMPLATES.map((template) => (
-                                        <button
-                                            key={template}
-                                            onClick={() => setCommentReply(template)}
-                                            className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-700 transition-colors"
-                                        >
-                                            {template}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <Users className="h-5 w-5 text-gray-400" />
-                                    <div>
-                                        <p className="font-medium">Require Follow First</p>
-                                        <p className="text-xs text-gray-500">Only send DM if user follows you</p>
                                     </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setRequireFollow(!requireFollow)}
-                                    className={`w-12 h-6 rounded-full transition-colors ${requireFollow ? "bg-primary" : "bg-gray-300"}`}
-                                >
-                                    <div className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${requireFollow ? "translate-x-6" : "translate-x-0.5"}`} />
-                                </button>
-                            </div>
+                                );
+                            })}
+                        </div>
 
-                            <div className="flex gap-3">
-                                <Button variant="outline" className="flex-1" onClick={() => setShowModal(false)}>
-                                    Cancel
-                                </Button>
-                                <Button className="flex-1" onClick={handleCreateAutomation} disabled={saving}>
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                            Saving...
-                                        </>
+                        {/* Pagination */}
+                        {nextCursor && (
+                            <div className="pt-10 flex justify-center">
+                                <Button
+                                    onClick={loadMore}
+                                    disabled={loadingMore}
+                                    className="h-14 px-10 rounded-3xl bg-white border border-slate-100 text-slate-900 font-bold hover:bg-slate-50 shadow-sm gap-3 group"
+                                >
+                                    {loadingMore ? (
+                                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                     ) : (
-                                        "Create Automation"
+                                        <>
+                                            Explore More Posts
+                                            <ChevronDown className="h-5 w-5 text-slate-400 group-hover:translate-y-0.5 transition-transform" />
+                                        </>
                                     )}
                                 </Button>
                             </div>
-                        </div>
-                    </div>
-                </div>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {/* Automation Wizard */}
+            {showWizard && (
+                <AutomationWizard
+                    selectedMedia={selectedMedia}
+                    onClose={() => setShowWizard(false)}
+                    onSave={handleSaveAutomation}
+                    saving={saving}
+                />
             )}
         </div>
     );

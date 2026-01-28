@@ -14,16 +14,18 @@ import {
     Loader2,
     X,
     Users,
+    TrendingUp,
+    MoreVertical,
+    CheckCircle2,
+    AlertCircle,
+    Plus,
+    LayoutGrid,
+    Search,
+    ChevronRight,
+    ArrowRight
 } from "lucide-react";
-
-const REPLY_TEMPLATES = [
-    "Check your DM 📬",
-    "Sent you the link! 💌",
-    "Check your inbox 📥",
-    "Link sent! ✅",
-    "Check message requests 📨"
-];
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface Automation {
     id: string;
@@ -50,7 +52,7 @@ export default function AutomationsPage() {
     const [automations, setAutomations] = useState<Automation[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Edit modal state
+    // Edit state
     const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
     const [editTriggerType, setEditTriggerType] = useState<"keyword" | "any">("any");
     const [editKeyword, setEditKeyword] = useState("");
@@ -59,6 +61,8 @@ export default function AutomationsPage() {
     const [editButtonText, setEditButtonText] = useState("");
     const [editLinkUrl, setEditLinkUrl] = useState("");
     const [editRequireFollow, setEditRequireFollow] = useState(false);
+    const [editRespondToReplies, setEditRespondToReplies] = useState(false);
+    const [editIgnoreSelfComments, setEditIgnoreSelfComments] = useState(true);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -88,19 +92,12 @@ export default function AutomationsPage() {
         setEditButtonText(automation.button_text || "");
         setEditLinkUrl(automation.link_url || "");
         setEditRequireFollow(automation.require_follow);
+        setEditRespondToReplies((automation as any).respond_to_replies ?? false);
+        setEditIgnoreSelfComments((automation as any).ignore_self_comments ?? true);
     }
 
     async function handleSaveEdit() {
         if (!editingAutomation) return;
-        if (!editReplyMessage.trim()) {
-            alert("Please enter a reply message");
-            return;
-        }
-        if (editTriggerType === "keyword" && !editKeyword.trim()) {
-            alert("Please enter a keyword");
-            return;
-        }
-
         setSaving(true);
         try {
             const res = await fetch(`/api/automations/${editingAutomation.id}`, {
@@ -114,11 +111,12 @@ export default function AutomationsPage() {
                     button_text: editButtonText,
                     link_url: editLinkUrl,
                     require_follow: editRequireFollow,
+                    respond_to_replies: editRespondToReplies,
+                    ignore_self_comments: editIgnoreSelfComments,
                 }),
             });
 
             if (res.ok) {
-                // Update local state
                 setAutomations(
                     automations.map((a) =>
                         a.id === editingAutomation.id
@@ -131,17 +129,16 @@ export default function AutomationsPage() {
                                 button_text: editButtonText,
                                 link_url: editLinkUrl,
                                 require_follow: editRequireFollow,
+                                respond_to_replies: editRespondToReplies,
+                                ignore_self_comments: editIgnoreSelfComments,
                             }
                             : a
                     )
                 );
                 setEditingAutomation(null);
-            } else {
-                alert("Failed to update automation");
             }
         } catch (error) {
             console.error("Error updating automation:", error);
-            alert("Failed to update automation");
         } finally {
             setSaving(false);
         }
@@ -169,7 +166,6 @@ export default function AutomationsPage() {
 
     async function deleteAutomation(id: string) {
         if (!confirm("Delete this automation?")) return;
-
         try {
             const res = await fetch(`/api/automations/${id}`, { method: "DELETE" });
             if (res.ok) {
@@ -182,8 +178,9 @@ export default function AutomationsPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64 pt-16 lg:pt-0">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <p className="text-slate-400 font-bold text-sm tracking-widest uppercase tracking-widest">Loading flows...</p>
             </div>
         );
     }
@@ -192,390 +189,306 @@ export default function AutomationsPage() {
     const totalDMs = automations.reduce((sum, a) => sum + a.dm_sent_count, 0);
 
     return (
-        <div className="space-y-6 pt-16 lg:pt-0">
+        <div className="space-y-10">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">My Automations</h1>
-                    <p className="text-gray-600">
-                        Manage all your comment-to-DM automations
-                    </p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Active Flows</h1>
+                    <p className="text-slate-400 font-medium">Manage and optimize your conversion tunnels.</p>
                 </div>
-                <Link href="/dashboard">
-                    <Button>
-                        <Zap className="h-4 w-4 mr-2" />
-                        Create New
+                <Link href="/dashboard" className="w-full md:w-auto">
+                    <Button className="w-full md:w-auto h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold shadow-xl shadow-primary/20 gap-3 group">
+                        <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
+                        Create New Automation
                     </Button>
                 </Link>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-100 rounded-lg">
-                                <Zap className="h-5 w-5 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{automations.length}</p>
-                                <p className="text-xs text-gray-500">Total Automations</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Premium Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <Zap className="h-6 w-6 text-slate-300 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{automations.length}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Flows</p>
+                </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-100 rounded-lg">
-                                <Play className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{activeCount}</p>
-                                <p className="text-xs text-gray-500">Active</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
+                    <CheckCircle2 className="h-6 w-6 text-green-300 mb-4" />
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">{activeCount}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Currently Active</p>
+                </div>
 
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                                <MessageCircle className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold">{totalDMs}</p>
-                                <p className="text-xs text-gray-500">DMs Sent</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden group col-span-2">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-110 transition-transform" />
+                    <TrendingUp className="h-6 w-6 text-primary/40 mb-4" />
+                    <div className="flex items-baseline gap-2">
+                        <p className="text-4xl font-black text-slate-900 tracking-tighter">{totalDMs}</p>
+                        <span className="text-xs font-black text-primary bg-primary/10 rounded-lg px-2 py-1 uppercase tracking-widest">Global Reach</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Responses Sent</p>
+                </div>
             </div>
 
-            {/* Automations List */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>All Automations</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {automations.length === 0 ? (
-                        <div className="text-center py-12">
-                            <Zap className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <p className="text-gray-500 text-lg mb-2">No automations yet</p>
-                            <p className="text-gray-400 text-sm mb-4">
-                                Click on a reel in Dashboard to create your first automation
-                            </p>
-                            <Link href="/dashboard">
-                                <Button>Go to Dashboard</Button>
-                            </Link>
+            {/* Flows List */}
+            <div className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                    <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <LayoutGrid className="h-5 w-5 text-primary" />
+                        Flow Portfolio
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        <div className="relative group hidden md:block">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <input type="text" placeholder="Search flows..." className="h-10 pl-11 pr-4 bg-slate-100/50 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary w-48" />
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {automations.map((automation) => (
-                                <div
-                                    key={automation.id}
-                                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border"
-                                >
-                                    {/* Thumbnail */}
-                                    <div className="w-16 h-24 bg-gray-200 rounded overflow-hidden flex-shrink-0">
-                                        {automation.media_thumbnail_url ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img
-                                                src={automation.media_thumbnail_url}
-                                                alt="Reel"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <Play className="h-6 w-6 text-gray-400" />
-                                            </div>
-                                        )}
-                                    </div>
+                    </div>
+                </div>
 
-                                    {/* Details */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Badge variant={automation.is_active ? "success" : "secondary"}>
-                                                {automation.is_active ? "Active" : "Paused"}
-                                            </Badge>
-                                            <Badge variant="outline">
-                                                {automation.trigger_type === "any"
-                                                    ? "Any Comment"
-                                                    : `Keyword: ${automation.trigger_keyword}`}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-sm text-gray-600 truncate mb-1">
-                                            {automation.media_caption || "No caption"}
-                                        </p>
-                                        <p className="text-xs text-gray-400 truncate">
-                                            Reply: {automation.reply_message.substring(0, 50)}...
-                                        </p>
-                                    </div>
-
-                                    {/* Stats */}
-                                    <div className="text-center px-4">
-                                        <p className="text-lg font-bold text-blue-600">
-                                            {automation.dm_sent_count}
-                                        </p>
-                                        <p className="text-xs text-gray-500">DMs Sent</p>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => openEditModal(automation)}
-                                        >
-                                            <Edit2 className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                toggleAutomation(automation.id, automation.is_active)
-                                            }
-                                        >
-                                            {automation.is_active ? (
-                                                <Pause className="h-4 w-4" />
-                                            ) : (
-                                                <Play className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-red-500 hover:text-red-600"
-                                            onClick={() => deleteAutomation(automation.id)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                {automations.length === 0 ? (
+                    <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] py-32 text-center group">
+                        <Zap className="h-20 w-20 text-slate-100 mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
+                        <p className="text-slate-400 text-lg font-bold">Your tunnel is empty</p>
+                        <p className="text-slate-300 text-sm mt-1 max-w-sm mx-auto">Create an automation to start turning your comments into revenue automatically.</p>
+                        <Link href="/dashboard" className="mt-8 inline-block">
+                            <Button className="h-12 px-8 rounded-2xl bg-slate-900 text-white font-bold text-sm">Automate a Post</Button>
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                        {automations.map((automation) => (
+                            <div
+                                key={automation.id}
+                                className={cn(
+                                    "flex flex-col md:flex-row md:items-center gap-6 p-6 md:p-8 bg-white rounded-[2.5rem] border transition-all duration-300 hover:shadow-xl group relative overflow-hidden",
+                                    automation.is_active ? "border-slate-50" : "border-slate-100 opacity-60"
+                                )}
+                            >
+                                {/* Media Thumbnail */}
+                                <div className="w-20 h-28 bg-slate-100 rounded-3xl overflow-hidden shadow-sm flex-shrink-0 relative group/thumb transition-transform group-hover:scale-105">
+                                    {automation.media_thumbnail_url ? (
+                                        <img src={automation.media_thumbnail_url} alt="Reel" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center"><Play className="h-6 w-6 text-slate-300" /></div>
+                                    )}
+                                    <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                                        <ArrowRight className="h-6 w-6 text-white" />
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
 
-            {/* Edit Modal */}
+                                {/* Flow Details */}
+                                <div className="flex-1 min-w-0 space-y-3">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <Badge className={cn("px-3 py-1 rounded-full font-bold text-[10px] uppercase border-none tracking-widest", automation.is_active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500")}>
+                                            {automation.is_active ? "✓ Active" : "⏸ Paused"}
+                                        </Badge>
+                                        <Badge variant="outline" className="px-3 py-1 rounded-full font-bold text-[10px] border-slate-100 text-slate-400 tracking-widest uppercase">
+                                            {automation.trigger_type === "any" ? "Any Comment" : `Keyword: ${automation.trigger_keyword}`}
+                                        </Badge>
+                                        <span className="text-[11px] font-bold text-slate-300 uppercase tracking-tighter">Created {new Date(automation.created_at).toLocaleDateString()}</span>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <h3 className="text-sm font-bold text-slate-900 truncate pr-10">
+                                            {automation.media_caption || "Untitled Automation Flow"}
+                                        </h3>
+                                        <p className="text-xs font-medium text-slate-400 line-clamp-1 italic">
+                                            "{automation.reply_message}"
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-6 pt-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-wider">{automation.dm_sent_count} Delivered</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                                            <span className="text-[11px] font-black text-slate-300 uppercase tracking-wider">0 Errors</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-3 self-end md:self-center z-10">
+                                    <button
+                                        onClick={() => openEditModal(automation)}
+                                        className="h-12 w-12 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-primary rounded-2xl flex items-center justify-center transition-all active:scale-95"
+                                        title="Configure Flow"
+                                    >
+                                        <Edit2 className="h-5 w-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => toggleAutomation(automation.id, automation.is_active)}
+                                        className={cn(
+                                            "h-12 px-6 rounded-2xl font-bold text-xs uppercase transition-all active:scale-95 flex items-center gap-2",
+                                            automation.is_active ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary text-white shadow-lg shadow-primary/20"
+                                        )}
+                                    >
+                                        {automation.is_active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+                                        {automation.is_active ? "Pause" : "Resume"}
+                                    </button>
+                                    <button
+                                        onClick={() => deleteAutomation(automation.id)}
+                                        className="h-12 w-12 bg-rose-50 hover:bg-rose-100 text-rose-400 hover:text-rose-500 rounded-2xl flex items-center justify-center transition-all active:scale-95"
+                                        title="Remove Flow"
+                                    >
+                                        <Trash2 className="h-5 w-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Edit Modal (ManyChat Wizard Style) */}
             {editingAutomation && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 space-y-6">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <h2 className="text-xl font-bold">Edit Automation</h2>
-                                    <p className="text-sm text-gray-500">
-                                        Update your automation settings
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 lg:p-10">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setEditingAutomation(null)} />
+                    <div className="relative w-full h-full md:h-auto md:max-w-xl bg-white md:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-50">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Configure Flow</h2>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 flex items-center gap-1.5 italic">
+                                    Update your automation settings
+                                </p>
+                            </div>
+                            <button onClick={() => setEditingAutomation(null)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-slate-600 transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+                            {/* Mini Preview */}
+                            <div className="bg-slate-50/50 p-4 rounded-3xl flex gap-4 border border-slate-100">
+                                <img src={editingAutomation.media_thumbnail_url} className="w-16 h-24 object-cover rounded-xl shadow-sm" alt="" />
+                                <div className="flex-1 py-1">
+                                    <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black uppercase mb-1.5 tracking-wider">{editingAutomation.media_type}</Badge>
+                                    <p className="text-xs font-bold text-slate-600 line-clamp-3 leading-relaxed tracking-tight underline italic opacity-60">
+                                        {editingAutomation.media_caption || "No caption provided"}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setEditingAutomation(null)}
-                                    className="p-2 hover:bg-gray-100 rounded-full"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
                             </div>
 
-                            {/* Preview */}
-                            <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                                {editingAutomation.media_thumbnail_url ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                        src={editingAutomation.media_thumbnail_url}
-                                        alt="Reel"
-                                        className="w-20 h-32 object-cover rounded"
-                                    />
-                                ) : (
-                                    <div className="w-20 h-32 bg-gray-200 rounded flex items-center justify-center">
-                                        <Play className="h-8 w-8 text-gray-400" />
+                            {/* Inputs */}
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-3 block px-1">Flow Trigger</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => setEditTriggerType("any")}
+                                            className={cn("p-4 rounded-2xl border-2 text-left transition-all", editTriggerType === "any" ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 opacity-60")}
+                                        >
+                                            <p className="font-bold text-sm">Any Comment</p>
+                                            <p className="text-[10px] font-medium text-slate-400">All users get DM</p>
+                                        </button>
+                                        <button
+                                            onClick={() => setEditTriggerType("keyword")}
+                                            className={cn("p-4 rounded-2xl border-2 text-left transition-all", editTriggerType === "keyword" ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 opacity-60")}
+                                        >
+                                            <p className="font-bold text-sm">Keyword Only</p>
+                                            <p className="text-[10px] font-medium text-slate-400">Requires specific word</p>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {editTriggerType === "keyword" && (
+                                    <div className="animate-in slide-in-from-top-2 duration-300">
+                                        <input
+                                            type="text"
+                                            value={editKeyword}
+                                            onChange={(e) => setEditKeyword(e.target.value)}
+                                            placeholder="KEYWORDS (COMMA SEPARATED)"
+                                            className="w-full h-14 px-6 rounded-2xl bg-slate-50 border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-primary text-sm font-bold uppercase tracking-widest placeholder:text-slate-300"
+                                        />
                                     </div>
                                 )}
-                                <div className="flex-1 min-w-0">
-                                    <Badge className="mb-2">{editingAutomation.media_type}</Badge>
-                                    <p className="text-sm text-gray-600 line-clamp-3">
-                                        {editingAutomation.media_caption || "No caption"}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Trigger Type */}
-                            <div>
-                                <label className="block text-sm font-medium mb-2">
-                                    When should we send a DM?
-                                </label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setEditTriggerType("any")}
-                                        className={`p-4 border-2 rounded-lg text-left transition-all ${editTriggerType === "any"
-                                            ? "border-primary bg-primary/5"
-                                            : "border-gray-200 hover:border-gray-300"
-                                            }`}
-                                    >
-                                        <p className="font-medium">Any Comment</p>
-                                        <p className="text-xs text-gray-500">Reply to all comments</p>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setEditTriggerType("keyword")}
-                                        className={`p-4 border-2 rounded-lg text-left transition-all ${editTriggerType === "keyword"
-                                            ? "border-primary bg-primary/5"
-                                            : "border-gray-200 hover:border-gray-300"
-                                            }`}
-                                    >
-                                        <p className="font-medium">Specific Keyword</p>
-                                        <p className="text-xs text-gray-500">Only when keyword matches</p>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Keyword Input */}
-                            {editTriggerType === "keyword" && (
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Trigger Keyword
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editKeyword}
-                                        onChange={(e) => setEditKeyword(e.target.value)}
-                                        placeholder="e.g., LINK, INFO, PRICE"
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        User must comment this exact word
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Reply Message */}
-                            <div>
-                                <label className="block text-sm font-medium mb-2">
-                                    DM Message to Send
-                                </label>
-                                <textarea
-                                    value={editReplyMessage}
-                                    onChange={(e) => setEditReplyMessage(e.target.value)}
-                                    placeholder="Hey! Thanks for your interest..."
-                                    rows={4}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none"
-                                />
-                            </div>
-
-                            {/* ManyChat Flow: Button & Link */}
-                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg space-y-4">
-                                <div className="flex items-center gap-2 text-blue-800 font-semibold mb-2">
-                                    <Zap className="h-4 w-4" />
-                                    <span>ManyChat-Style "Button & Link" Flow</span>
-                                </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-blue-800 mb-1">
-                                        Button Text (e.g., "Get Link 🔗")
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editButtonText}
-                                        onChange={(e) => setEditButtonText(e.target.value)}
-                                        placeholder="Optional: Enter text to show on a button"
-                                        className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-primary bg-white"
+                                    <label className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-3 block px-1">Greeting Message</label>
+                                    <textarea
+                                        value={editReplyMessage}
+                                        onChange={(e) => setEditReplyMessage(e.target.value)}
+                                        rows={4}
+                                        className="w-full p-6 bg-slate-50 rounded-3xl border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-primary text-sm font-medium leading-relaxed resize-none"
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-blue-800 mb-1">
-                                        Final Link URL
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={editLinkUrl}
-                                        onChange={(e) => setEditLinkUrl(e.target.value)}
-                                        placeholder="https://your-link.com/page"
-                                        className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-primary bg-white"
-                                    />
-                                    <p className="text-[10px] text-blue-600 mt-1">
-                                        The link will be sent automatically after user clicks the button.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Public Reply */}
-                            <div>
-                                <label className="block text-sm font-medium mb-2">
-                                    Public Reply to Comment (Optional)
-                                </label>
-                                <textarea
-                                    value={editCommentReply}
-                                    onChange={(e) => setEditCommentReply(e.target.value)}
-                                    placeholder="Check your DM 📬"
-                                    rows={2}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none mb-3"
-                                />
-                                <div className="flex flex-wrap gap-2">
-                                    {REPLY_TEMPLATES.map((template) => (
-                                        <button
-                                            key={template}
-                                            onClick={() => setEditCommentReply(template)}
-                                            className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-700 transition-colors"
-                                        >
-                                            {template}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Require Follow */}
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <Users className="h-5 w-5 text-gray-400" />
-                                    <div>
-                                        <p className="font-medium">Require Follow First</p>
-                                        <p className="text-xs text-gray-500">
-                                            Only send DM if user follows you
-                                        </p>
+                                <div className="p-6 bg-slate-900 rounded-[2rem] space-y-5 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -mr-12 -mt-12" />
+                                    <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-[0.25em]">
+                                        <Zap className="h-3 w-3 fill-current" />
+                                        Interactive Action
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5 px-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Button CTA</p>
+                                            <input
+                                                type="text"
+                                                value={editButtonText}
+                                                onChange={(e) => setEditButtonText(e.target.value)}
+                                                className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-bold focus:border-primary focus:ring-1 focus:ring-primary transition-all text-center"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Reward Link</p>
+                                            <input
+                                                type="url"
+                                                value={editLinkUrl}
+                                                onChange={(e) => setEditLinkUrl(e.target.value)}
+                                                className="w-full h-12 px-5 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-bold focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setEditRequireFollow(!editRequireFollow)}
-                                    className={`w-12 h-6 rounded-full transition-colors ${editRequireFollow ? "bg-primary" : "bg-gray-300"
-                                        }`}
-                                >
-                                    <div
-                                        className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${editRequireFollow ? "translate-x-6" : "translate-x-0.5"
-                                            }`}
-                                    />
-                                </button>
-                            </div>
 
-                            {/* Actions */}
-                            <div className="flex gap-3">
-                                <Button
-                                    variant="outline"
-                                    className="flex-1"
-                                    onClick={() => setEditingAutomation(null)}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    className="flex-1"
-                                    onClick={handleSaveEdit}
-                                    disabled={saving}
-                                >
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        "Save Changes"
-                                    )}
-                                </Button>
+                                <div className="space-y-4 pt-2">
+                                    <div className="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl border border-slate-100 group transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-white rounded-lg shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+                                                <MessageCircle className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold">Reply to replies</p>
+                                                <p className="text-[10px] text-slate-400 font-medium italic">Auto-respond to sub-comments</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setEditRespondToReplies(!editRespondToReplies)}
+                                            className={cn("w-10 h-5.5 rounded-full transition-all flex items-center px-1", editRespondToReplies ? "bg-primary" : "bg-slate-200")}
+                                        >
+                                            <div className={cn("w-[14px] h-[14px] bg-white rounded-full shadow transition-all", editRespondToReplies ? "translate-x-[18px]" : "translate-x-0")} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl border border-slate-100 group transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-white rounded-lg shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+                                                <Users className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold">Ignore self comments</p>
+                                                <p className="text-[10px] text-slate-400 font-medium italic">Prevents own trigger cycles</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setEditIgnoreSelfComments(!editIgnoreSelfComments)}
+                                            className={cn("w-10 h-5.5 rounded-full transition-all flex items-center px-1", editIgnoreSelfComments ? "bg-primary" : "bg-slate-200")}
+                                        >
+                                            <div className={cn("w-[14px] h-[14px] bg-white rounded-full shadow transition-all", editIgnoreSelfComments ? "translate-x-[18px]" : "translate-x-0")} />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+
+                        <div className="p-8 border-t border-slate-50 bg-slate-50/20 flex gap-4">
+                            <Button variant="outline" className="flex-1 h-14 rounded-2xl border-slate-100 font-bold" onClick={() => setEditingAutomation(null)}>Cancel</Button>
+                            <Button className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold shadow-xl shadow-primary/20" onClick={handleSaveEdit} disabled={saving}>
+                                {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Changes"}
+                            </Button>
                         </div>
                     </div>
                 </div>
