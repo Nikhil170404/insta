@@ -14,11 +14,20 @@ export const INSTAGRAM_CONFIG = {
 export function getInstagramAuthUrl(state: string): string {
   // 2025 Standard: Instagram Business Login
   // This allows connecting IG accounts WITHOUT a Facebook Page.
+  // We remove 'content_publish' for now to avoid 'API Access Blocked' errors
+  const testScopes = [
+    "instagram_business_basic",
+    "instagram_business_manage_messages",
+    "instagram_business_manage_comments",
+  ].join(",");
+
   return (
     `https://www.instagram.com/oauth/authorize?` +
-    `client_id=${INSTAGRAM_CONFIG.appId}` +
+    `enable_fb_login=0` +         // Forces Instagram-only (Native flow)
+    `&force_authentication=1` +
+    `&client_id=${INSTAGRAM_CONFIG.appId}` +
     `&redirect_uri=${encodeURIComponent(INSTAGRAM_CONFIG.redirectUri)}` +
-    `&scope=${INSTAGRAM_CONFIG.scopes}` +
+    `&scope=${testScopes}` +
     `&response_type=code` +
     `&state=${state}`
   );
