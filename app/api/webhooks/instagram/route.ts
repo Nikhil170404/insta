@@ -195,27 +195,13 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             }
         }
 
-        // 5. Send Public Reply (if configured)
-        if (automation.comment_reply) {
-            console.log("Sending public reply to comment...");
-            const replySent = await replyToComment(
-                user.instagram_access_token,
-                commentId,
-                automation.comment_reply
-            );
-            if (replySent) {
-                console.log("Public reply sent successfully!");
-            } else {
-                console.log("Failed to send public reply");
-            }
-        }
-
         // 6. Send DM (Private Reply)
+        // CRITICAL: We need the Instagram User ID (Sender) and the Comment ID (Recipient Trigger)
         const dmSent = await sendDirectMessage(
             user.instagram_access_token,
-            commentId,
-            automation.reply_message,
-            commenterId // Keep for logging
+            instagramUserId, // This is the Sender (the Business Account)
+            commentId,       // This is the Trigger (the Comment)
+            commenterId      // For logging
         );
 
         // 6. Log the result and update analytics
