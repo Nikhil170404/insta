@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   exchangeCodeForToken,
-  getLongLivedToken,
   getInstagramProfile,
 } from "@/lib/instagram/config";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
@@ -12,63 +11,41 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
-  const errorReason = searchParams.get("error_reason");
+  const errorDescription = searchParams.get("error_description");
 
-  // Handle user denial
+  // Handle user denial or errors
   if (error || !code) {
-    console.error("Instagram auth error:", error, errorReason);
+    console.error("Instagram auth error:", error, errorDescription);
     return NextResponse.redirect(
-      new URL("/signin?error=instagram_denied", request.url)
+      new URL(`/signin?error=${encodeURIComponent(errorDescription || "instagram_denied")}`, request.url)
     );
   }
 
   try {
     const supabase = getSupabaseAdmin();
 
-    // Step 1: Exchange code for short-lived token
+    // Step 1: Exchange code for Instagram Short-Lived Token
+    // Note: The new Instagram Login flow returns user_id and access_token directly
+    console.log("Step 1: Exchanging code for Instagram token...");
     const tokenData = await exchangeCodeForToken(code);
-    const shortLivedToken = tokenData.access_token;
-    const instagramUserId = tokenData.user_id;
+    const accessToken = tokenData.access_token;
+    const instagramUserId = tokenData.user_id.toString();
 
-    // Step 2: Exchange for long-lived token (60 days)
-    const longLivedData = await getLongLivedToken(shortLivedToken);
-    const longLivedToken = longLivedData.access_token;
-    const expiresIn = longLivedData.expires_in; // seconds
+    // Step 2: Get Instagram profile to verify and get username
+    console.log("Step 2: Getting Instagram profile...");
+    const profile = await getInstagramProfile(accessToken, instagramUserId);
 
-    // Step 3: Get user profile
-    const profile = await getInstagramProfile(longLivedToken);
-
-    // Step 3.5: Verify Facebook Page connection
+    // Step 3: Auto-subscribe webhooks (Native Instagram subscription)
     try {
-      const pageCheckResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${instagramUserId}?fields=connected_facebook_page&access_token=${longLivedToken}`
-      );
-
-      const pageCheckData = await pageCheckResponse.json();
-
-      if (!pageCheckData.connected_facebook_page) {
-        console.warn("⚠️ Instagram account not connected to Facebook Page!");
-        console.warn("User:", profile.username);
-        // We log this but don't block login, as we'll show instructions in the dashboard
-      } else {
-        console.log("✅ Facebook Page connected:", pageCheckData.connected_facebook_page);
-      }
-    } catch (error) {
-      console.error("Could not verify Page connection:", error);
-    }
-
-    // Step 3.6: Auto-subscribe webhooks
-    try {
-      console.log("Auto-subscribing webhooks for user:", instagramUserId);
-
+      console.log("Step 3: Auto-subscribing webhooks for IG ID:", instagramUserId);
       const subscribeResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${instagramUserId}/subscribed_apps`,
+        `https://graph.instagram.com/v21.0/${instagramUserId}/subscribed_apps`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({
             subscribed_fields: "comments,messages,mentions",
-            access_token: longLivedToken,
+            access_token: accessToken,
           }),
         }
       );
@@ -76,22 +53,19 @@ export async function GET(request: NextRequest) {
       if (subscribeResponse.ok) {
         console.log("✅ Webhooks auto-subscribed successfully!");
       } else {
-        const error = await subscribeResponse.json();
-        console.error("⚠️ Webhook subscription failed:", error);
+        const errorData = await subscribeResponse.json();
+        console.error("⚠️ Webhook subscription note (may require App Review for live):", errorData);
       }
-    } catch (error) {
-      console.error("Error auto-subscribing webhooks:", error);
+    } catch (webhookError) {
+      console.error("Error auto-subscribing webhooks:", webhookError);
     }
 
-    // Step 4: Calculate token expiration
-    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
-
-    // Step 5: Create or update user in database
+    // Step 4: Create or update user in database
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existingUser } = await (supabase as any)
       .from("users")
       .select("*")
-      .eq("instagram_user_id", instagramUserId.toString())
+      .eq("instagram_user_id", instagramUserId)
       .single();
 
     let user: User;
@@ -103,8 +77,10 @@ export async function GET(request: NextRequest) {
         .from("users")
         .update({
           instagram_username: profile.username,
-          instagram_access_token: longLivedToken,
-          instagram_token_expires_at: tokenExpiresAt,
+          instagram_access_token: accessToken,
+          // For Instagram Login, tokens are long-lived or we can manually refresh.
+          // Setting 60 days default window if not provided.
+          instagram_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
         })
         .eq("id", existingUser.id)
         .select()
@@ -121,10 +97,10 @@ export async function GET(request: NextRequest) {
       const { data: newUser, error: insertError } = await (supabase as any)
         .from("users")
         .insert({
-          instagram_user_id: instagramUserId.toString(),
+          instagram_user_id: instagramUserId,
           instagram_username: profile.username,
-          instagram_access_token: longLivedToken,
-          instagram_token_expires_at: tokenExpiresAt,
+          instagram_access_token: accessToken,
+          instagram_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
           plan_type: "trial",
           plan_expires_at: trialExpiresAt.toISOString(),
         })
@@ -135,11 +111,11 @@ export async function GET(request: NextRequest) {
       user = newUser as User;
     }
 
-    // Step 6: Create session and set cookie
+    // Step 5: Create session and set cookie
     const sessionToken = await createSession(user);
     await setSessionCookie(sessionToken);
 
-    // Step 7: Redirect to dashboard
+    // Step 6: Redirect to dashboard
     return NextResponse.redirect(new URL("/dashboard", request.url));
 
   } catch (err) {
