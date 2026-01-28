@@ -17,9 +17,10 @@ export default async function DashboardPage() {
           Comment → DM Automation
         </h1>
         <p className="text-gray-600">
-          Welcome back, @{session.instagram_username} • Select a reel to set up
-          auto-reply
+          Welcome back, @{session.instagram_username}
+          <span className="ml-2 text-xs text-gray-400">(ID: {session.instagram_user_id})</span>
         </p>
+        <p className="text-sm text-gray-500">Select a reel to set up auto-reply</p>
       </div>
 
       {/* Plan Status */}
