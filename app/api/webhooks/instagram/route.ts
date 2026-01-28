@@ -92,12 +92,31 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
 
         if (!mediaId || !commenterId) {
             console.error("❌ MISSING REQUIRED DATA");
-            console.error("- Missing mediaId:", !mediaId);
-            console.error("- Missing commenterId:", !commenterId);
+            return;
+        }
+
+        // --- NEW: STOP INFINITE LOOPS ---
+        // 1. Ignore comments made by the bot itself (e.g. public replies)
+        if (commenterId === instagramUserId) {
+            console.log("⚠️ Self-comment detected (bot's own reply). Skipping to avoid infinite loop.");
             return;
         }
 
         const supabase = getSupabaseAdmin();
+
+        // 2. Idempotency Check: Don't process the same comment twice (handles Meta retries)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existingLog } = await (supabase as any)
+            .from("dm_logs")
+            .select("id")
+            .eq("instagram_comment_id", commentId)
+            .single();
+
+        if (existingLog) {
+            console.log(`⚠️ Comment ${commentId} already processed. Skipping duplicate event.`);
+            return;
+        }
+        // --------------------------------
 
         // 1. Find the user who owns this Instagram account
         const targetId = String(instagramUserId).trim();
