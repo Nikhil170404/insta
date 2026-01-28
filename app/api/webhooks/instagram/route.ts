@@ -109,6 +109,11 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
 
         if (!user) {
             console.error(`❌ ERROR: No user found in 'users' table with instagram_user_id: "${targetId}"`);
+
+            // DIAGNOSTIC: Log what we actually have in the DB
+            const { data: allUsers } = await (supabase as any).from("users").select("instagram_user_id, instagram_username");
+            console.log("Current Users in DB:", allUsers?.map((u: any) => `${u.instagram_username} (${u.instagram_user_id})`));
+
             console.log("Suggestion: Ensure the user has logged into the dashboard with this exact account.");
             return;
         }
