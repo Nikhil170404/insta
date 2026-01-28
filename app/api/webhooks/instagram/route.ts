@@ -196,12 +196,12 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         }
 
         // 6. Send DM (Private Reply)
-        // CRITICAL: We need the Instagram User ID (Sender) and the Comment ID (Recipient Trigger)
         const dmSent = await sendDirectMessage(
             user.instagram_access_token,
-            instagramUserId, // This is the Sender (the Business Account)
-            commentId,       // This is the Trigger (the Comment)
-            commenterId      // For logging
+            instagramUserId,          // Sender
+            commentId,                // Trigger
+            commenterId,              // Recipient for logging
+            automation.reply_message  // Message text
         );
 
         // 6. Log the result and update analytics
@@ -288,65 +288,44 @@ async function checkFollowStatus(
  */
 async function sendDirectMessage(
     accessToken: string | null | undefined,
+    senderId: string,
     commentId: string,
-    message: string,
-    recipientIdForLog: string
+    recipientIdForLog: string,
+    message: string
 ): Promise<boolean> {
     try {
         if (!accessToken || accessToken.length < 20) {
-            console.error("❌ CRITICAL: Invalid or missing access token in webhook database lookup.");
-            console.log("Token received length:", accessToken?.length || 0);
+            console.error("❌ CRITICAL: Invalid or missing access token.");
             return false;
         }
 
         console.log(`📤 Attempting Private Reply:`);
-        console.log(`- Comment ID: "${commentId}"`);
-        console.log(`- Token Diagnostic: Length=${accessToken.length}, StartsWith=${accessToken.substring(0, 10)}...`);
+        console.log(`- Sender ID (IGID): "${senderId}"`);
+        console.log(`- Trigger Comment ID: "${commentId}"`);
+        console.log(`- Target Recipient: "${recipientIdForLog}"`);
 
-        // Attempt 1: Using graph.instagram.com (Native Flow standard)
-        let response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/private_replies?access_token=${accessToken}`,
+        // 2025 Native Flow: Send private reply via /{ig-user-id}/messages
+        // with recipient: { comment_id: "..." }
+        const response = await fetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${accessToken}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: message }),
+                body: JSON.stringify({
+                    recipient: { comment_id: commentId },
+                    message: { text: message }
+                }),
             }
         );
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.warn("⚠️ Attempt 1 (graph.instagram.com) failed:", JSON.stringify(errorData));
-
-            // Attempt 2: Fallback to graph.facebook.com (Legacy Graph standard)
-            console.log("🔄 Retrying with graph.facebook.com...");
-            response = await fetch(
-                `https://graph.facebook.com/${GRAPH_API_VERSION}/${commentId}/private_replies?access_token=${accessToken}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: message }),
-                }
-            );
-        }
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("❌ Meta Private Reply Error (Both Endpoints):", JSON.stringify(errorData, null, 2));
-
-            // Diagnostic: Check token scopes
-            try {
-                const permRes = await fetch(`https://graph.instagram.com/me/permissions?access_token=${accessToken}`);
-                const perms = await permRes.json();
-                console.log("🔑 Current Token Permissions:", JSON.stringify(perms));
-            } catch (e) {
-                console.log("Could not fetch permissions for diagnostics.");
-            }
-
+            console.error("❌ Meta Private Reply Error:", JSON.stringify(errorData, null, 2));
             return false;
         }
 
         const result = await response.json();
-        console.log("✅ Private Reply sent successfully! Response:", JSON.stringify(result));
+        console.log("✅ Private Reply sent successfully! Message ID:", result.message_id);
         return true;
     } catch (error) {
         console.error("❌ Exception during sendDirectMessage:", error);
