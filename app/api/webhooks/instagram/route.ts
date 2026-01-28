@@ -93,24 +93,27 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         const supabase = getSupabaseAdmin();
 
         // 1. Find the user who owns this Instagram account
-        console.log("Looking for user with instagram_user_id:", instagramUserId);
+        const targetId = String(instagramUserId).trim();
+        console.log(`Searching database for user with ID: "${targetId}"`);
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: user, error: userError } = await (supabase as any)
             .from("users")
             .select("id, instagram_access_token, instagram_user_id")
-            .eq("instagram_user_id", instagramUserId)
+            .eq("instagram_user_id", targetId)
             .single();
 
         if (userError) {
-            console.log("User query error:", userError);
+            console.log("Database lookup error:", userError.message);
         }
 
         if (!user) {
-            console.log("ERROR: No user found for Instagram ID:", instagramUserId);
+            console.error(`❌ ERROR: No user found in 'users' table with instagram_user_id: "${targetId}"`);
+            console.log("Suggestion: Ensure the user has logged into the dashboard with this exact account.");
             return;
         }
 
-        console.log("Found user:", user.id);
+        console.log("✅ Match found! System User ID:", user.id);
 
         // 2. Find automation for this media
         console.log("Looking for automation with media_id:", mediaId);

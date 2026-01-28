@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 4: Create or update user in database
+    console.log(`Step 4: Looking for user in DB with ID: "${instagramUserId}"`);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existingUser } = await (supabase as any)
       .from("users")
