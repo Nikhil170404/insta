@@ -62,6 +62,8 @@ export default function ReelsGrid() {
     const [keyword, setKeyword] = useState("");
     const [replyMessage, setReplyMessage] = useState("");
     const [commentReply, setCommentReply] = useState("");
+    const [buttonText, setButtonText] = useState("");
+    const [linkUrl, setLinkUrl] = useState("");
     const [requireFollow, setRequireFollow] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -116,6 +118,8 @@ export default function ReelsGrid() {
         setKeyword("");
         setReplyMessage("");
         setCommentReply("");
+        setButtonText("");
+        setLinkUrl("");
         setRequireFollow(false);
         setShowModal(true);
     }
@@ -142,6 +146,8 @@ export default function ReelsGrid() {
                     trigger_type: triggerType,
                     reply_message: replyMessage,
                     comment_reply: commentReply,
+                    button_text: buttonText,
+                    link_url: linkUrl,
                     require_follow: requireFollow,
                 }),
             });

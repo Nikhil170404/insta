@@ -88,6 +88,9 @@ export type Database = {
           trigger_keyword: string | null;
           trigger_type: "keyword" | "any";
           reply_message: string;
+          comment_reply: string | null;
+          button_text: string | null;
+          link_url: string | null;
           require_follow: boolean;
           is_active: boolean;
           comment_count: number;
@@ -107,6 +110,9 @@ export type Database = {
           trigger_keyword?: string | null;
           trigger_type?: "keyword" | "any";
           reply_message: string;
+          comment_reply?: string | null;
+          button_text?: string | null;
+          link_url?: string | null;
           require_follow?: boolean;
           is_active?: boolean;
           comment_count?: number;
@@ -126,6 +132,9 @@ export type Database = {
           trigger_keyword?: string | null;
           trigger_type?: "keyword" | "any";
           reply_message?: string;
+          comment_reply?: string | null;
+          button_text?: string | null;
+          link_url?: string | null;
           require_follow?: boolean;
           is_active?: boolean;
           comment_count?: number;

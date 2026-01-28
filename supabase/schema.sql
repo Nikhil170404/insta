@@ -76,6 +76,9 @@ CREATE TABLE public.automations (
 
   -- Response settings
   reply_message TEXT NOT NULL,
+  comment_reply TEXT,
+  button_text VARCHAR(255),
+  link_url TEXT,
   require_follow BOOLEAN DEFAULT false,
 
   -- Status
@@ -273,7 +276,9 @@ CREATE POLICY "Service role full access" ON public.rate_limits FOR ALL USING (tr
 CREATE POLICY "Service role full access" ON public.webhook_queue FOR ALL USING (true);
 
 -- ============================================
--- MIGRATION: Add comment_reply support
+-- MIGRATION: 2025-01-28 - Add multi-step support
 -- ============================================
 -- ALTER TABLE public.automations ADD COLUMN comment_reply TEXT;
+-- ALTER TABLE public.automations ADD COLUMN button_text VARCHAR(255);
+-- ALTER TABLE public.automations ADD COLUMN link_url TEXT;
 -- ALTER TABLE public.automations ADD CONSTRAINT check_comment_reply CHECK (LENGTH(comment_reply) <= 1000);

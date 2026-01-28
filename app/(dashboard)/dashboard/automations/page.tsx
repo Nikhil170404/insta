@@ -36,6 +36,8 @@ interface Automation {
     trigger_type: "keyword" | "any";
     reply_message: string;
     comment_reply?: string;
+    button_text?: string;
+    link_url?: string;
     require_follow: boolean;
     is_active: boolean;
     comment_count: number;
@@ -54,6 +56,8 @@ export default function AutomationsPage() {
     const [editKeyword, setEditKeyword] = useState("");
     const [editReplyMessage, setEditReplyMessage] = useState("");
     const [editCommentReply, setEditCommentReply] = useState("");
+    const [editButtonText, setEditButtonText] = useState("");
+    const [editLinkUrl, setEditLinkUrl] = useState("");
     const [editRequireFollow, setEditRequireFollow] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -81,6 +85,8 @@ export default function AutomationsPage() {
         setEditKeyword(automation.trigger_keyword || "");
         setEditReplyMessage(automation.reply_message);
         setEditCommentReply(automation.comment_reply || "");
+        setEditButtonText(automation.button_text || "");
+        setEditLinkUrl(automation.link_url || "");
         setEditRequireFollow(automation.require_follow);
     }
 
@@ -105,6 +111,8 @@ export default function AutomationsPage() {
                     trigger_keyword: editTriggerType === "keyword" ? editKeyword : null,
                     reply_message: editReplyMessage,
                     comment_reply: editCommentReply,
+                    button_text: editButtonText,
+                    link_url: editLinkUrl,
                     require_follow: editRequireFollow,
                 }),
             });
@@ -120,6 +128,8 @@ export default function AutomationsPage() {
                                 trigger_keyword: editTriggerType === "keyword" ? editKeyword : undefined,
                                 reply_message: editReplyMessage,
                                 comment_reply: editCommentReply,
+                                button_text: editButtonText,
+                                link_url: editLinkUrl,
                                 require_follow: editRequireFollow,
                             }
                             : a
@@ -454,6 +464,43 @@ export default function AutomationsPage() {
                                     rows={4}
                                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                                 />
+                            </div>
+
+                            {/* ManyChat Flow: Button & Link */}
+                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg space-y-4">
+                                <div className="flex items-center gap-2 text-blue-800 font-semibold mb-2">
+                                    <Zap className="h-4 w-4" />
+                                    <span>ManyChat-Style "Button & Link" Flow</span>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-800 mb-1">
+                                        Button Text (e.g., "Get Link 🔗")
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editButtonText}
+                                        onChange={(e) => setEditButtonText(e.target.value)}
+                                        placeholder="Optional: Enter text to show on a button"
+                                        className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-primary bg-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-800 mb-1">
+                                        Final Link URL
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={editLinkUrl}
+                                        onChange={(e) => setEditLinkUrl(e.target.value)}
+                                        placeholder="https://your-link.com/page"
+                                        className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-primary bg-white"
+                                    />
+                                    <p className="text-[10px] text-blue-600 mt-1">
+                                        The link will be sent automatically after user clicks the button.
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Public Reply */}

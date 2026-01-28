@@ -53,6 +53,9 @@ export async function POST(request: NextRequest) {
             trigger_keyword,
             trigger_type,
             reply_message,
+            comment_reply,
+            button_text,
+            link_url,
             require_follow,
         } = body;
 
@@ -104,6 +107,8 @@ export async function POST(request: NextRequest) {
                 trigger_type: trigger_type || "keyword",
                 reply_message,
                 comment_reply: body.comment_reply || null,
+                button_text: body.button_text || null,
+                link_url: body.link_url || null,
                 require_follow: require_follow || false,
             })
             .select()

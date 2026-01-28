@@ -19,6 +19,9 @@ export async function PUT(
             trigger_keyword,
             trigger_type,
             reply_message,
+            comment_reply,
+            button_text,
+            link_url,
             require_follow,
             is_active,
         } = body;
@@ -47,7 +50,9 @@ export async function PUT(
         if (trigger_type !== undefined) updateData.trigger_type = trigger_type;
         if (trigger_keyword !== undefined) updateData.trigger_keyword = trigger_type === "any" ? null : trigger_keyword;
         if (reply_message !== undefined) updateData.reply_message = reply_message;
-        if (body.comment_reply !== undefined) updateData.comment_reply = body.comment_reply;
+        if (comment_reply !== undefined) updateData.comment_reply = comment_reply;
+        if (button_text !== undefined) updateData.button_text = button_text;
+        if (link_url !== undefined) updateData.link_url = link_url;
         if (require_follow !== undefined) updateData.require_follow = require_follow;
         if (is_active !== undefined) updateData.is_active = is_active;
 
