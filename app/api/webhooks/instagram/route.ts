@@ -95,10 +95,8 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
-        // --- NEW: STOP INFINITE LOOPS ---
-        // 1. Ignore comments made by the bot itself (e.g. public replies)
         if (commenterId === instagramUserId) {
-            console.log("⚠️ Self-comment detected (bot's own reply). Skipping to avoid infinite loop.");
+            console.log("⚠️ Self-comment detected (bot's own reply). Skipping to avoid infinite loop. (This happens if you test with the same account as the bot)");
             return;
         }
 
@@ -116,7 +114,6 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             console.log(`⚠️ Comment ${commentId} already processed. Skipping duplicate event.`);
             return;
         }
-        // --------------------------------
 
         // 1. Find the user who owns this Instagram account
         const targetId = String(instagramUserId).trim();
@@ -135,12 +132,6 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
 
         if (!user) {
             console.error(`❌ ERROR: No user found in 'users' table with instagram_user_id: "${targetId}"`);
-
-            // DIAGNOSTIC: Log what we actually have in the DB
-            const { data: allUsers } = await (supabase as any).from("users").select("instagram_user_id, instagram_username");
-            console.log("Current Users in DB:", allUsers?.map((u: any) => `${u.instagram_username} (${u.instagram_user_id})`));
-
-            console.log("Suggestion: Ensure the user has logged into the dashboard with this exact account.");
             return;
         }
 
@@ -149,7 +140,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         // 2. Find automation for this media
         console.log("Looking for automation with media_id:", mediaId);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: automation, error: autoError } = await (supabase as any)
+        const { data: automation } = await (supabase as any)
             .from("automations")
             .select("*")
             .eq("user_id", user.id)
@@ -157,24 +148,19 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             .eq("is_active", true)
             .single();
 
-        if (autoError) {
-            console.log("Automation query error:", autoError);
-        }
-
         if (!automation) {
             console.log("ERROR: No active automation for media:", mediaId);
-
-            // List all automations for debugging
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: allAutos } = await (supabase as any)
-                .from("automations")
-                .select("media_id, is_active")
-                .eq("user_id", user.id);
-            console.log("All user automations:", allAutos);
             return;
         }
 
-        console.log("Found automation:", JSON.stringify(automation, null, 2));
+        console.log("📊 Automation Found:", {
+            id: automation.id,
+            trigger_type: automation.trigger_type,
+            trigger_keyword: automation.trigger_keyword,
+            has_dm: !!automation.reply_message,
+            has_comment_reply: !!automation.comment_reply,
+            comment_reply_content: automation.comment_reply
+        });
 
         // 3. Check keyword match
         const shouldTrigger = checkKeywordMatch(
@@ -200,15 +186,14 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
 
             if (!isFollowing) {
                 console.log("User is not following, skipping DM");
-                // Update analytics
                 await incrementAutomationCount(supabase, automation.id, "comment_count");
                 return;
             }
         }
 
         // 5. Send Public Reply (if configured)
-        if (automation.comment_reply) {
-            console.log("Sending public reply to comment...");
+        if (automation.comment_reply && automation.comment_reply.trim().length > 0) {
+            console.log(`💬 Sending public reply to comment: "${automation.comment_reply}"`);
             const uniqueReply = getUniqueMessage(automation.comment_reply);
             const replySent = await replyToComment(
                 user.instagram_access_token,
@@ -216,10 +201,12 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
                 uniqueReply
             );
             if (replySent) {
-                console.log("Public reply sent successfully!");
+                console.log("✅ Public reply sent successfully!");
             } else {
-                console.log("Failed to send public reply");
+                console.log("❌ Failed to send public reply (Check Meta permissions - instagram_manage_comments)");
             }
+        } else {
+            console.log("ℹ️ No public comment reply configured for this automation.");
         }
 
         // 6. Send DM (Private Reply)
@@ -426,12 +413,11 @@ async function replyToComment(
         }
 
         console.log(`💬 Attempting Public Reply to Comment: ${commentId}`);
-        console.log(`- Message Content: "${message}"`);
-        console.log(`- Message Length: ${message.length}`);
+        console.log(`- Content: "${message}"`);
 
-        // Attempt 1: graph.instagram.com
+        // Use graph.facebook.com for public replies (Standard Instagram Graph API)
         const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${accessToken}`,
+            `https://graph.facebook.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${accessToken}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -441,11 +427,11 @@ async function replyToComment(
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Meta Public Reply Error:", JSON.stringify(errorData, null, 2));
+            console.error("❌ Meta Public Reply API Error:", JSON.stringify(errorData, null, 2));
             return false;
         }
 
-        console.log("✅ Public reply sent successfully!");
+        console.log("✅ Public reply sent successfully via graph.facebook.com!");
         return true;
     } catch (error) {
         console.error("❌ Exception sending public reply:", error);
