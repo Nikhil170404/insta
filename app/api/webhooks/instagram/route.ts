@@ -63,16 +63,20 @@ export async function POST(request: NextRequest) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleCommentEvent(instagramUserId: string, eventData: any) {
     try {
-        console.log("=== COMMENT EVENT RECEIVED ===");
+        console.log("===========================================");
+        console.log("📥 WEBHOOK RECEIVED - COMMENT EVENT");
+        console.log("===========================================");
+        console.log("Time:", new Date().toISOString());
         console.log("Instagram User ID:", instagramUserId);
         console.log("Event Data:", JSON.stringify(eventData, null, 2));
+        console.log("-------------------------------------------");
 
         const { id: commentId, text: commentText, from, media } = eventData;
         const commenterId = from?.id;
         const commenterUsername = from?.username;
         const mediaId = media?.id;
 
-        console.log("Parsed data:");
+        console.log("📊 Parsed Event:");
         console.log("- Comment ID:", commentId);
         console.log("- Comment Text:", commentText);
         console.log("- Commenter ID:", commenterId);
@@ -80,7 +84,9 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         console.log("- Media ID:", mediaId);
 
         if (!mediaId || !commenterId) {
-            console.log("ERROR: Missing mediaId or commenterId, skipping");
+            console.error("❌ MISSING REQUIRED DATA");
+            console.error("- Missing mediaId:", !mediaId);
+            console.error("- Missing commenterId:", !commenterId);
             return;
         }
 

@@ -2,11 +2,13 @@ export const INSTAGRAM_CONFIG = {
   appId: process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID!,
   appSecret: process.env.INSTAGRAM_APP_SECRET!,
   redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/instagram/callback`,
-  // Instagram Login for Business scopes (no Facebook Page required!)
+  // Instagram Login for Business scopes
   scopes: [
     "instagram_business_basic",
     "instagram_business_manage_messages",
     "instagram_business_manage_comments",
+    "pages_manage_metadata",
+    "pages_show_list",
   ].join(","),
 };
 

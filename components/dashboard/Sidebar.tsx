@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   CreditCard,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -19,6 +20,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Setup Guide", href: "/dashboard/setup-guide", icon: BookOpen },
   { name: "Automations", href: "/dashboard/automations", icon: Zap },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },

@@ -38,6 +38,51 @@ export async function GET(request: NextRequest) {
     // Step 3: Get user profile
     const profile = await getInstagramProfile(longLivedToken);
 
+    // Step 3.5: Verify Facebook Page connection
+    try {
+      const pageCheckResponse = await fetch(
+        `https://graph.facebook.com/v21.0/${instagramUserId}?fields=connected_facebook_page&access_token=${longLivedToken}`
+      );
+
+      const pageCheckData = await pageCheckResponse.json();
+
+      if (!pageCheckData.connected_facebook_page) {
+        console.warn("⚠️ Instagram account not connected to Facebook Page!");
+        console.warn("User:", profile.username);
+        // We log this but don't block login, as we'll show instructions in the dashboard
+      } else {
+        console.log("✅ Facebook Page connected:", pageCheckData.connected_facebook_page);
+      }
+    } catch (error) {
+      console.error("Could not verify Page connection:", error);
+    }
+
+    // Step 3.6: Auto-subscribe webhooks
+    try {
+      console.log("Auto-subscribing webhooks for user:", instagramUserId);
+
+      const subscribeResponse = await fetch(
+        `https://graph.facebook.com/v21.0/${instagramUserId}/subscribed_apps`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            subscribed_fields: "comments,messages,mentions",
+            access_token: longLivedToken,
+          }),
+        }
+      );
+
+      if (subscribeResponse.ok) {
+        console.log("✅ Webhooks auto-subscribed successfully!");
+      } else {
+        const error = await subscribeResponse.json();
+        console.error("⚠️ Webhook subscription failed:", error);
+      }
+    } catch (error) {
+      console.error("Error auto-subscribing webhooks:", error);
+    }
+
     // Step 4: Calculate token expiration
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
