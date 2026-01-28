@@ -66,9 +66,10 @@ export async function exchangeCodeForToken(code: string) {
  */
 export async function getInstagramProfile(accessToken: string) {
   // 2025 Standard: Use /me to get the correct Graph ID for the current token.
-  // This ensures we get the IGID (used by webhooks) even if the login flow returns an ASID.
+  // CRITICAL: 'id' is the App-Scoped ID (ASID), 'user_id' is the Real Instagram ID (IGID).
+  // We need IGID for webhook matching.
   const response = await fetch(
-    `https://graph.instagram.com/v21.0/me?fields=id,username,profile_picture_url&access_token=${accessToken}`
+    `https://graph.instagram.com/v21.0/me?fields=user_id,id,username,profile_picture_url&access_token=${accessToken}`
   );
 
   if (!response.ok) {
