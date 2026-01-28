@@ -381,23 +381,7 @@ async function replyToComment(
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.warn("⚠️ Public Reply Attempt 1 (instagram) failed:", JSON.stringify(errorData));
-
-            // Attempt 2: Fallback to graph.facebook.com
-            console.log("🔄 Retrying public reply with graph.facebook.com...");
-            response = await fetch(
-                `https://graph.facebook.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${accessToken}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: message }),
-                }
-            );
-        }
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("❌ Meta Public Reply Error (Both Endpoints):", JSON.stringify(errorData, null, 2));
+            console.error("❌ Meta Public Reply Error:", JSON.stringify(errorData, null, 2));
             return false;
         }
 
