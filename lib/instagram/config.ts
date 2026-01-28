@@ -34,8 +34,7 @@ export function getInstagramAuthUrl(state: string): string {
 }
 
 export async function exchangeCodeForToken(code: string) {
-  // Exchange code for Instagram Access Token
-  // For Instagram Business Login, we useapi.instagram.com or the graph endpoint
+  // Exchange code for Instagram Access Token (Short-Lived)
   const response = await fetch(
     `https://api.instagram.com/oauth/access_token`,
     {
@@ -58,6 +57,29 @@ export async function exchangeCodeForToken(code: string) {
   }
 
   return response.json();
+}
+
+/**
+ * Exchange Short-Lived Token for Long-Lived Token (60 days)
+ * CRITICAL for background automation/webhooks.
+ */
+export async function exchangeShortLivedForLongLived(shortLivedToken: string) {
+  // 2025 Standard: Native Instagram token exchange
+  const response = await fetch(
+    `https://graph.instagram.com/access_token?` +
+    `grant_type=ig_exchange_token` +
+    `&client_secret=${INSTAGRAM_CONFIG.appSecret}` +
+    `&access_token=${shortLivedToken}`
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("Long-lived exchange error:", errorData);
+    return null; // Fallback to short-lived if exchange fails
+  }
+
+  const data = await response.json();
+  return data.access_token;
 }
 
 /**

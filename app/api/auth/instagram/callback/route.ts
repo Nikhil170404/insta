@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   exchangeCodeForToken,
   getInstagramProfile,
+  exchangeShortLivedForLongLived,
 } from "@/lib/instagram/config";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
@@ -25,10 +26,22 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     // Step 1: Exchange code for Instagram Short-Lived Token
-    // Note: The new Instagram Login flow returns user_id and access_token directly
     console.log("Step 1: Exchanging code for Instagram token...");
     const tokenData = await exchangeCodeForToken(code);
-    const accessToken = tokenData.access_token;
+    let accessToken = tokenData.access_token;
+
+    // MANDATORY: Exchange for Long-Lived Token (60 days)
+    console.log("🔄 Exchanging for Long-Lived Token...");
+    const longLivedToken = await exchangeShortLivedForLongLived(accessToken);
+    if (longLivedToken) {
+      console.log("✅ Long-Lived Token acquired.");
+      accessToken = longLivedToken;
+    } else {
+      console.warn("⚠️ Long-Lived exchange failed, using short-lived placeholder.");
+    }
+
+    console.log(`📊 Token Diagnostic: Length=${accessToken.length}, StartsWith=${accessToken.substring(0, 10)}...`);
+
     // Step 2: Get Instagram profile to verify and get username
     console.log("Step 2: Getting Instagram profile using /me...");
     const profile = await getInstagramProfile(accessToken);

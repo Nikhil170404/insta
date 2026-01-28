@@ -301,15 +301,21 @@ async function checkFollowStatus(
  * Send a direct message via Instagram API
  */
 async function sendDirectMessage(
-    accessToken: string,
+    accessToken: string | null | undefined,
     commentId: string,
     message: string,
     recipientIdForLog: string
 ): Promise<boolean> {
     try {
+        if (!accessToken || accessToken.length < 20) {
+            console.error("❌ CRITICAL: Invalid or missing access token in webhook database lookup.");
+            console.log("Token received length:", accessToken?.length || 0);
+            return false;
+        }
+
         console.log(`📤 Attempting Private Reply:`);
         console.log(`- Comment ID: "${commentId}"`);
-        console.log(`- Recipient (for log): "${recipientIdForLog}"`);
+        console.log(`- Token Diagnostic: Length=${accessToken.length}, StartsWith=${accessToken.substring(0, 10)}...`);
 
         // Attempt 1: Using graph.instagram.com (Native Flow standard)
         let response = await fetch(
