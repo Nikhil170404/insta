@@ -48,7 +48,7 @@ export async function PUT(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateData: any = {};
         if (trigger_type !== undefined) updateData.trigger_type = trigger_type;
-        if (trigger_keyword !== undefined) updateData.trigger_keyword = trigger_type === "any" ? null : trigger_keyword;
+        if (trigger_keyword !== undefined) updateData.trigger_keyword = (trigger_type === "any" || trigger_type === "story_reply") ? null : trigger_keyword;
         if (reply_message !== undefined) updateData.reply_message = reply_message;
         if (comment_reply !== undefined) updateData.comment_reply = comment_reply;
         if (button_text !== undefined) updateData.button_text = button_text;

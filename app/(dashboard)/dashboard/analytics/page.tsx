@@ -152,40 +152,46 @@ export default function AnalyticsPage() {
                                     {log.instagram_username?.charAt(0).toUpperCase() || "?"}
                                 </div>
 
-                                {/* Details */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-0.5">
-                                        <p className="font-bold text-slate-900">@{log.instagram_username}</p>
-                                        <span className="text-[10px] font-bold text-slate-300">• {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                {/* Details & Status Container */}
+                                <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <p className="font-bold text-slate-900 truncate">@{log.instagram_username}</p>
+                                            <span className="text-[10px] font-bold text-slate-300 shrink-0">• {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded-md uppercase tracking-[0.15em] shrink-0 border border-primary/10">
+                                                {log.keyword_matched || "ANY"}
+                                            </span>
+                                            <p className="text-[11px] text-slate-400 truncate italic">
+                                                "{log.comment_text}"
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[11px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg uppercase tracking-widest">
-                                            {log.keyword_matched || "General"}
-                                        </span>
-                                        <p className="text-xs text-slate-400 truncate italic">
-                                            "{log.comment_text}"
-                                        </p>
+
+                                    <div className="flex items-center gap-4 shrink-0">
+                                        {/* Status Badge */}
+                                        <div className={cn(
+                                            "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all",
+                                            log.reply_sent ? "bg-green-50/50 border-green-100/50" : "bg-red-50/50 border-red-100/50"
+                                        )}>
+                                            <div className={cn(
+                                                "w-1.5 h-1.5 rounded-full",
+                                                log.reply_sent ? "bg-green-500 shadow-[0_0_8px_#22c55e]" : "bg-red-500 shadow-[0_0_8px_#ef4444]"
+                                            )} />
+                                            <span className={cn(
+                                                "text-[9px] font-black uppercase tracking-[0.1em]",
+                                                log.reply_sent ? "text-green-600" : "text-red-600"
+                                            )}>
+                                                {log.reply_sent ? "Delivered" : "Failed"}
+                                            </span>
+                                        </div>
+
+                                        <button className="p-2 text-slate-200 group-hover:text-slate-400 transition-colors hidden md:block">
+                                            <ChevronRight className="h-5 w-5" />
+                                        </button>
                                     </div>
                                 </div>
-
-                                {/* Status Badge */}
-                                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl">
-                                    {log.reply_sent ? (
-                                        <>
-                                            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Delivered</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Failed</span>
-                                        </>
-                                    )}
-                                </div>
-
-                                <button className="p-2 text-slate-200 group-hover:text-slate-400 transition-colors">
-                                    <ChevronRight className="h-5 w-5" />
-                                </button>
                             </div>
                         ))}
 

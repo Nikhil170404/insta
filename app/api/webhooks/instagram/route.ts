@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import {
+    sendInstagramDM,
+    replyToComment,
+    checkFollowStatus,
+    getUniqueMessage,
+    incrementAutomationCount
+} from "@/lib/instagram/service";
+import { smartRateLimit, queueDM, RATE_LIMITS } from "@/lib/smart-rate-limiter";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
-const GRAPH_API_VERSION = "v21.0";
 
 /**
  * GET Handler - Used by Meta to verify the webhook URL.
@@ -242,8 +249,50 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
+        // 10. SMART RATE LIMITING (ManyChat Style)
+        const rateLimitResult = await smartRateLimit(user.id, {
+            hourlyLimit: RATE_LIMITS.INITIAL.hourly, // Use Safe limits for App Review
+            dailyLimit: RATE_LIMITS.INITIAL.daily,
+            spreadDelay: true,
+        });
+
+        if (!rateLimitResult.allowed) {
+            console.log(`⏸️ Rate limit reached. Queueing for next slot: ${rateLimitResult.estimatedSendTime}`);
+            await queueDM(user.id, {
+                commentId,
+                commenterId,
+                message: automation.reply_message,
+                automation_id: automation.id,
+            }, rateLimitResult.estimatedSendTime!);
+
+            // Log as queued
+            await (supabase as any).from("dm_logs").insert({
+                user_id: user.id,
+                instagram_comment_id: commentId,
+                instagram_user_id: commenterId,
+                instagram_username: commenterUsername,
+                keyword_matched: automation.trigger_keyword || "ANY",
+                comment_text: commentText,
+                reply_sent: false,
+                error_message: "Queued: Rate limit reached",
+            });
+            return;
+        }
+
+        // If time spreading requires a delay
+        if (rateLimitResult.estimatedSendTime && rateLimitResult.estimatedSendTime > new Date()) {
+            console.log(`⏳ Spreading load. Queueing for: ${rateLimitResult.estimatedSendTime}`);
+            await queueDM(user.id, {
+                commentId,
+                commenterId,
+                message: automation.reply_message,
+                automation_id: automation.id,
+            }, rateLimitResult.estimatedSendTime);
+            return;
+        }
+
         // 11. Send DM (Private Reply)
-        const dmSent = await sendDirectMessage(
+        const dmSent = await sendInstagramDM(
             user.instagram_access_token,
             instagramUserId,          // Sender
             commentId,                // Trigger
@@ -256,7 +305,6 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         );
 
         // 12. Log the result and update analytics
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any).from("dm_logs").insert({
             user_id: user.id,
             instagram_comment_id: commentId,
@@ -304,236 +352,80 @@ function checkKeywordMatch(
 }
 
 /**
- * Check if commenter follows the account
- */
-async function checkFollowStatus(
-    accessToken: string,
-    accountId: string,
-    commenterId: string
-): Promise<boolean> {
-    try {
-        // Note: This endpoint requires instagram_manage_messages permission
-        // and may not be available for all account types
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${accountId}?` +
-            `fields=followers&access_token=${accessToken}`
-        );
-
-        if (!response.ok) {
-            console.log("Could not check follow status, assuming not following");
-            return false;
-        }
-
-        // For now, we'll allow DMs regardless of follow status
-        // since checking follow status requires additional permissions
-        // TODO: Implement proper follow check when permissions are available
-        return true;
-    } catch (error) {
-        console.error("Error checking follow status:", error);
-        return true; // Allow DM on error to not block functionality
-    }
-}
-
-/**
- * Send a direct message via Instagram API
- */
-async function sendDirectMessage(
-    accessToken: string | null | undefined,
-    senderId: string,
-    commentId: string,
-    recipientIdForLog: string,
-    message: string,
-    automationId?: string,
-    buttonText?: string,
-    linkUrl?: string,
-    thumbnailUrl?: string
-): Promise<boolean> {
-    try {
-        if (!accessToken || accessToken.length < 20) {
-            console.error("❌ CRITICAL: Invalid or missing access token.");
-            return false;
-        }
-
-        console.log(`📤 Attempting ManyChat-style Premium Reply:`);
-        console.log(`- Recipient (Log): "${recipientIdForLog}"`);
-
-        const trimmedToken = accessToken.trim();
-        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${trimmedToken}`;
-
-        // 1. Send "Mark as Seen"
-        await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                recipient: { comment_id: commentId },
-                sender_action: "mark_seen"
-            }),
-        });
-
-        // 2. Send "Typing..." indicator for 1 second (ManyChat feel)
-        await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                recipient: { comment_id: commentId },
-                sender_action: "typing_on"
-            }),
-        });
-
-        // Small delay to simulate thinking
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        let body: any;
-
-        // ManyChat uses Generic Templates (Structured Cards) for a premium feel
-        // If we have a link and a thumbnail, we send a Card.
-        if (linkUrl && (buttonText || thumbnailUrl)) {
-            console.log("💎 Sending Structured Template (Card)");
-            body = {
-                recipient: { comment_id: commentId },
-                message: {
-                    attachment: {
-                        type: "template",
-                        payload: {
-                            template_type: "generic",
-                            elements: [
-                                {
-                                    title: buttonText || "Click to View",
-                                    subtitle: message.substring(0, 80),
-                                    image_url: thumbnailUrl || "",
-                                    default_action: {
-                                        type: "web_url",
-                                        url: linkUrl
-                                    },
-                                    buttons: [
-                                        {
-                                            type: "web_url",
-                                            url: linkUrl,
-                                            title: (buttonText || "Open Link").substring(0, 20)
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                }
-            };
-        } else {
-            // Fallback to text if No link or thumbnail
-            console.log("📝 Sending Plain Text Message");
-            body = {
-                recipient: { comment_id: commentId },
-                message: { text: message }
-            };
-
-            // If they just wanted a button click flow (no card)
-            if (buttonText && automationId && !linkUrl) {
-                body.message.quick_replies = [
-                    {
-                        content_type: "text",
-                        title: buttonText.substring(0, 20),
-                        payload: `CLICK_LINK_${automationId}`
-                    }
-                ];
-            }
-        }
-
-        const response = await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("❌ Meta API Error:", JSON.stringify(errorData, null, 2));
-            return false;
-        }
-
-        console.log("✅ Premium DM sent successfully!");
-        return true;
-    } catch (error) {
-        console.error("❌ Exception during sendDirectMessage:", error);
-        return false;
-    }
-}
-
-/**
- * Increment automation analytics counters
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function incrementAutomationCount(supabase: any, automationId: string, field: string) {
-    try {
-        // Get current count
-        const { data } = await supabase
-            .from("automations")
-            .select(field)
-            .eq("id", automationId)
-            .single();
-
-        if (data) {
-            const newCount = (data[field] || 0) + 1;
-            await supabase
-                .from("automations")
-                .update({ [field]: newCount })
-                .eq("id", automationId);
-        }
-    } catch (error) {
-        console.error("Error incrementing count:", error);
-    }
-}
-
-/**
- * Reply to a comment publicly via Instagram API
- */
-async function replyToComment(
-    accessToken: string,
-    commentId: string,
-    message: string
-): Promise<boolean> {
-    try {
-        if (!message || message.trim().length === 0) {
-            console.error("❌ Cannot send empty public reply.");
-            return false;
-        }
-
-        console.log(`💬 Attempting Public Reply to Comment: ${commentId}`);
-        console.log(`- Content: "${message}"`);
-
-        const trimmedToken = accessToken.trim();
-        // Use graph.instagram.com for public replies when using Instagram Login (Standard)
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${trimmedToken}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: message }),
-            }
-        );
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("❌ Meta Public Reply API Error:", JSON.stringify(errorData, null, 2));
-            return false;
-        }
-
-        console.log("✅ Public reply sent successfully via graph.facebook.com!");
-        return true;
-    } catch (error) {
-        console.error("❌ Exception sending public reply:", error);
-        return false;
-    }
-}
-
-/**
  * Handle messaging events (Quick Reply clicks)
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleMessagingEvent(instagramUserId: string, messaging: any) {
     try {
         const senderIgsid = messaging.sender?.id;
-        const quickReply = messaging.message?.quick_reply;
+        const message = messaging.message;
 
+        // 1. STORY REPLY DETECTION
+        // Check if this message is a reply to any story
+        if (message?.reply_to?.story_id) {
+            console.log("📸 STORY REPLY DETECTED from User:", senderIgsid);
+            const text = message.text || "";
+            const supabase = getSupabaseAdmin();
+
+            // Fetch the system user who owns this IG account
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: user } = await (supabase as any)
+                .from("users")
+                .select("*")
+                .eq("instagram_user_id", instagramUserId)
+                .single();
+
+            if (!user) {
+                console.log(`❌ No system user found for IG account ${instagramUserId}`);
+                return;
+            }
+
+            // Find an active automation of type 'story_reply'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: automation } = await (supabase as any)
+                .from("automations")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("trigger_type", "story_reply")
+                .eq("is_active", true)
+                .maybeSingle();
+
+            if (automation) {
+                console.log("✅ Story Reply Automation Found! Triggering DM...");
+
+                await sendInstagramDM(
+                    user.instagram_access_token,
+                    instagramUserId,
+                    null, // No comment ID for stories
+                    senderIgsid,
+                    automation.reply_message,
+                    automation.id,
+                    automation.button_text,
+                    automation.link_url,
+                    undefined // No thumbnail
+                );
+
+                // Update analytics
+                await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+
+                // Log DM for history
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                await (supabase as any).from("dm_logs").insert({
+                    user_id: user.id,
+                    instagram_user_id: senderIgsid,
+                    keyword_matched: "STORY_REPLY",
+                    comment_text: text,
+                    reply_sent: true,
+                    reply_sent_at: new Date().toISOString(),
+                });
+            } else {
+                console.log("ℹ️ No active 'story_reply' automation found for this user.");
+            }
+            return;
+        }
+
+        // 2. QUICK REPLY / POSTBACK LOGIC
+        const quickReply = message?.quick_reply;
         if (!quickReply || !quickReply.payload) return;
 
         const payload = quickReply.payload;
@@ -579,42 +471,22 @@ async function handleMessagingEvent(instagramUserId: string, messaging: any) {
             // 3. Send the final link
             console.log(`🚀 Sending final link to ${senderIgsid}: ${automation.link_url}`);
 
-            const response = await fetch(
-                `https://graph.instagram.com/${GRAPH_API_VERSION}/${instagramUserId}/messages?access_token=${trimmedToken}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        recipient: { id: senderIgsid },
-                        message: { text: `Here is your link: ${automation.link_url}` }
-                    }),
-                }
+            const dmSent = await sendInstagramDM(
+                user.instagram_access_token,
+                instagramUserId,
+                null,
+                senderIgsid,
+                `Here is your link: ${automation.link_url}`
             );
 
-            if (response.ok) {
+            if (dmSent) {
                 console.log("✅ Final link delivered successfully!");
                 await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
             } else {
-                const error = await response.json();
-                console.error("❌ Failed to deliver link:", JSON.stringify(error, null, 2));
+                console.error("❌ Failed to deliver link");
             }
         }
     } catch (error) {
         console.error("❌ Error in handleMessagingEvent:", error);
     }
-}
-
-/**
- * Add random variation to message to bypass Meta's spam filters (Error 1349210)
- */
-function getUniqueMessage(message: string): string {
-    const variations = ["📬", "✨", "✅", "💬", "🚀", "📥", "💌", "🌟", "🔥", "💎"];
-    const greetings = ["Done!", "Sent!", "Check it out!", "Ready!", "There you go!"];
-    const randomVariation = variations[Math.floor(Math.random() * variations.length)];
-    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
-    const randomCode = Math.random().toString(36).substring(7).toUpperCase();
-
-    // In Dev mode, Meta often blocks identical replies. 
-    // Adding a small unique suffix and random greeting helps reliability.
-    return `${randomGreeting} ${message} ${randomVariation} [${randomCode}]`;
 }

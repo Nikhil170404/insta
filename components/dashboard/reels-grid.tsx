@@ -16,7 +16,9 @@ import {
     Zap,
     LayoutGrid,
     Search,
-    Filter
+    Filter,
+    Edit3,
+    Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AutomationWizard from "./AutomationWizard";
@@ -51,8 +53,13 @@ export default function ReelsGrid() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
+    const [editingAutomation, setEditingAutomation] = useState<any | null>(null);
     const [showWizard, setShowWizard] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Search & Filter State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterType, setFilterType] = useState<"all" | "active" | "inactive" | "reels" | "photos">("all");
 
     useEffect(() => {
         fetchData();
@@ -98,6 +105,20 @@ export default function ReelsGrid() {
     function getAutomationForMedia(mediaId: string) {
         return automations.find((a) => a.media_id === mediaId);
     }
+
+    // Filter Logic
+    const filteredMedia = media.filter(item => {
+        const matchesSearch = (item.caption || "").toLowerCase().includes(searchQuery.toLowerCase());
+        const automation = getAutomationForMedia(item.id);
+        const hasAutomation = !!automation;
+        const isActive = automation?.is_active;
+
+        if (filterType === "active") return matchesSearch && isActive;
+        if (filterType === "inactive") return matchesSearch && hasAutomation && !isActive;
+        if (filterType === "reels") return matchesSearch && item.media_type === "REELS";
+        if (filterType === "photos") return matchesSearch && item.media_type === "IMAGE";
+        return matchesSearch;
+    });
 
     async function handleSaveAutomation(data: any) {
         if (!selectedMedia) return;
@@ -179,53 +200,65 @@ export default function ReelsGrid() {
     return (
         <div className="space-y-10">
             {/* Stats Section */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
-                    <Play className="h-6 w-6 text-slate-300 mb-4" />
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">{media.length}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Posts</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
+                <div className="bg-white p-3.5 md:p-4 rounded-2xl md:rounded-3xl border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full -mr-6 -mt-6 blur-xl group-hover:scale-110 transition-transform" />
+                    <Play className="h-3.5 w-3.5 text-slate-300 mb-1.5 md:mb-2" />
+                    <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">{media.length}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Total Posts</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
-                    <Zap className="h-6 w-6 text-green-300 mb-4" />
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">{activeAutomationsCount}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Active Flows</p>
+                <div className="bg-white p-3.5 md:p-4 rounded-2xl md:rounded-3xl border border-slate-50 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/5 rounded-full -mr-6 -mt-6 blur-xl group-hover:scale-110 transition-transform" />
+                    <Zap className="h-3.5 w-3.5 text-green-300 mb-1.5 md:mb-2" />
+                    <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">{activeAutomationsCount}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Active Flows</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm relative overflow-hidden group col-span-2 lg:col-span-2">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-110 transition-transform" />
-                    <TrendingUp className="h-6 w-6 text-primary/40 mb-4" />
+                <div className="bg-white p-3.5 md:p-4 rounded-2xl md:rounded-3xl border border-slate-50 shadow-sm relative overflow-hidden group col-span-2 lg:col-span-2">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-12 -mt-12 blur-xl group-hover:scale-110 transition-transform" />
+                    <TrendingUp className="h-3.5 w-3.5 text-primary/40 mb-1.5 md:mb-2" />
                     <div className="flex items-baseline gap-2">
-                        <p className="text-4xl font-black text-slate-900 tracking-tighter">{totalDMs}</p>
-                        <span className="text-xs font-black text-primary bg-primary/10 rounded-lg px-2 py-1 uppercase animate-pulse">Live</span>
+                        <p className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">{totalDMs}</p>
+                        <Badge className="bg-primary/10 text-primary border-none text-[7px] md:text-[8px] px-1.5 py-0 rounded-md animate-pulse uppercase font-black">LIVE</Badge>
                     </div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total DMs Delivered</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">DMs Delivered</p>
                 </div>
             </div>
 
-            {/* Reels Grid */}
-            <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                        <LayoutGrid className="h-7 w-7 text-primary" />
-                        Automate your content
+            {/* Controls */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+                    <h2 className="text-base md:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <LayoutGrid className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                        Automate Content
                     </h2>
 
                     <div className="flex items-center gap-2">
-                        <div className="relative group flex-1 md:w-64">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
+                        <div className="relative group flex-1 md:w-56">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 group-hover:text-primary transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search posts..."
-                                className="w-full h-11 pl-11 pr-4 bg-white border border-slate-100 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary transition-all shadow-sm"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full h-8 md:h-9 pl-8 md:pl-9 pr-3 bg-white border border-slate-100 rounded-xl text-[10px] md:text-xs font-semibold focus:ring-2 focus:ring-primary transition-all shadow-sm"
                             />
                         </div>
-                        <Button variant="outline" className="h-11 px-4 rounded-2xl bg-white border-slate-100 font-bold text-slate-600 gap-2 shadow-sm">
-                            <Filter className="h-4 w-4" />
-                            Filters
-                        </Button>
+                        <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
+                            <button
+                                onClick={() => setFilterType("all")}
+                                className={cn("px-2.5 md:px-3 py-1 text-[9px] md:text-[10px] font-black rounded-lg transition-all", filterType === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                            >
+                                ALL
+                            </button>
+                            <button
+                                onClick={() => setFilterType("active")}
+                                className={cn("px-2.5 md:px-3 py-1 text-[9px] md:text-[10px] font-black rounded-lg transition-all", filterType === "active" ? "bg-white text-green-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                            >
+                                ACTIVE
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -237,8 +270,8 @@ export default function ReelsGrid() {
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {media.map((item) => {
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {filteredMedia.map((item) => {
                                 const automation = getAutomationForMedia(item.id);
                                 const hasAutomation = !!automation;
 
@@ -246,8 +279,8 @@ export default function ReelsGrid() {
                                     <div
                                         key={item.id}
                                         className={cn(
-                                            "relative group rounded-[2.5rem] overflow-hidden bg-white border-2 transition-all duration-300",
-                                            hasAutomation ? "border-primary ring-4 ring-primary/5 shadow-xl" : "border-transparent hover:border-primary/40 shadow-sm"
+                                            "relative group rounded-[1.5rem] overflow-hidden bg-white border-2 transition-all duration-300",
+                                            hasAutomation ? "border-primary ring-4 ring-primary/5 shadow-lg" : "border-transparent hover:border-primary/40 shadow-sm"
                                         )}
                                     >
                                         <div className="aspect-[3/4] overflow-hidden relative group-hover:scale-[1.02] transition-transform duration-500">
@@ -257,89 +290,100 @@ export default function ReelsGrid() {
                                                 className="w-full h-full object-cover"
                                             />
 
-                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
 
-                                            {/* Top Badges */}
-                                            <div className="absolute top-4 left-4 z-10 flex gap-1.5">
-                                                <Badge className="bg-white/20 backdrop-blur-md text-white border-white/30 font-bold text-[10px] px-2 py-0.5">
+                                            <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
+                                                <Badge className="bg-white/10 backdrop-blur-md text-white border-white/20 font-black text-[6px] md:text-[7px] px-1.5 py-0 uppercase tracking-widest leading-relaxed">
                                                     {item.media_type === "REELS" ? "🎬 REEL" : "📸 PHOTO"}
                                                 </Badge>
                                                 {hasAutomation && (
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-400 mt-1 shadow-[0_0_10px_#4ade80] animate-pulse" />
+                                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-500/10 backdrop-blur-md rounded-md border border-green-500/20">
+                                                        <div className={cn(
+                                                            "w-0.5 h-0.5 md:w-1 md:h-1 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80]",
+                                                            automation.is_active && "animate-pulse"
+                                                        )} />
+                                                        <span className="text-[6px] md:text-[7px] font-black text-green-400 uppercase tracking-widest">Live</span>
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            {/* Hover Actions */}
-                                            {!hasAutomation && (
-                                                <button
-                                                    onClick={() => { setSelectedMedia(item); setShowWizard(true); }}
-                                                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20"
-                                                >
-                                                    <div className="w-14 h-14 bg-primary text-white rounded-full shadow-2xl shadow-primary/40 flex items-center justify-center transform scale-90 group-hover:scale-100 transition-transform duration-300">
-                                                        <Plus className="h-7 w-7" />
-                                                    </div>
-                                                    <span className="text-white text-xs font-black tracking-widest uppercase py-1 px-3 bg-black/30 rounded-full backdrop-blur-sm">Automate</span>
-                                                </button>
-                                            )}
+                                            {/* Unified Hover Panel */}
+                                            <div className="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-2.5 md:p-4 text-center">
+                                                <div className="bg-white/10 backdrop-blur-2xl rounded-xl md:rounded-2xl border border-white/20 p-3 md:p-4 shadow-2xl translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                                                    {!hasAutomation ? (
+                                                        <button
+                                                            onClick={() => { setSelectedMedia(item); setShowWizard(true); }}
+                                                            className="w-full flex flex-col items-center justify-center gap-2 md:gap-3 py-3 md:py-4 group/btn"
+                                                        >
+                                                            <div className="w-10 h-10 md:w-12 md:h-12 bg-primary text-white rounded-xl md:rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transform group-hover/btn:scale-110 transition-transform duration-500 group-hover/btn:rotate-90">
+                                                                <Plus className="h-5 w-5 md:h-6 md:w-6" />
+                                                            </div>
+                                                            <span className="text-white text-[9px] md:text-[10px] font-black tracking-[0.2em] uppercase">Initialize Tunnel</span>
+                                                        </button>
+                                                    ) : (
+                                                        <div className="space-y-3 md:space-y-4">
+                                                            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 md:pb-3 text-left">
+                                                                <div className="flex flex-col">
+                                                                    <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-widest mb-0.5">Frequency Trigger</p>
+                                                                    <p className="text-[10px] md:text-[11px] font-black text-white leading-tight truncate max-w-[80px] md:max-w-[110px]">
+                                                                        {automation.trigger_type === "any" ? "ANY_SIGNAL" : `"${automation.trigger_keyword}"`}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-widest mb-0.5">Relayed</p>
+                                                                    <p className="text-sm md:text-base font-black text-primary leading-tight">{automation.dm_sent_count}</p>
+                                                                </div>
+                                                            </div>
 
-                                            {/* Footer Content */}
-                                            <div className="absolute bottom-4 left-4 right-4 z-10">
-                                                <p className="text-[11px] text-white/80 line-clamp-2 font-medium">
-                                                    {item.caption || "View on Instagram"}
+                                                            <div className="grid grid-cols-4 gap-1.5 md:gap-2">
+                                                                <button
+                                                                    onClick={() => { setEditingAutomation(automation); setShowWizard(true); }}
+                                                                    className="h-8 md:h-10 rounded-lg md:rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center transition-all group/edit"
+                                                                    title="Edit Logic"
+                                                                >
+                                                                    <Edit3 className="h-3.5 w-3.5 md:h-4 md:w-4 transition-transform group-hover/edit:scale-110" />
+                                                                </button>
+
+                                                                <button
+                                                                    onClick={() => toggleAutomation(automation.id, automation.is_active)}
+                                                                    className={cn(
+                                                                        "col-span-2 h-8 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center gap-1.5 md:gap-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 border border-white/10 shadow-lg shadow-black/20",
+                                                                        automation.is_active
+                                                                            ? "bg-white/10 text-white hover:bg-white/20"
+                                                                            : "bg-primary text-white shadow-primary/20 hover:shadow-primary/40"
+                                                                    )}
+                                                                >
+                                                                    {automation.is_active ? (
+                                                                        <><X className="h-3 w-3 md:h-3.5 md:w-3.5" /> Stop</>
+                                                                    ) : (
+                                                                        <><Zap className="h-3 w-3 md:h-3.5 md:w-3.5 fill-current" /> Ignite</>
+                                                                    )}
+                                                                </button>
+
+                                                                <button
+                                                                    onClick={() => deleteAutomation(automation.id)}
+                                                                    className="h-8 md:h-10 rounded-lg md:rounded-xl bg-rose-500/20 hover:bg-rose-500 border border-rose-500/20 text-rose-400 hover:text-white flex items-center justify-center transition-all group/del"
+                                                                    title="Erase Node"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4 transition-transform group-hover/del:rotate-12" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="absolute bottom-4 left-4 right-4 z-10 transition-transform duration-500 group-hover:-translate-y-1">
+                                                <p className="text-[11px] text-white/90 font-bold leading-relaxed line-clamp-1 italic">
+                                                    {item.caption || "Untitled Content Node"}
                                                 </p>
                                             </div>
                                         </div>
-
-                                        {hasAutomation && (
-                                            <div className="p-5 flex flex-col gap-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex flex-col">
-                                                        <p className="text-[13px] font-black text-slate-900">
-                                                            {automation.trigger_type === "any" ? "ANY COMMENT" : `"${automation.trigger_keyword}"`}
-                                                        </p>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Trigger</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-xl font-black text-primary tracking-tighter">{automation.dm_sent_count}</p>
-                                                        <p className="text-[9px] font-black text-slate-400">DMs</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => toggleAutomation(automation.id, automation.is_active)}
-                                                        className={cn(
-                                                            "flex-1 h-10 rounded-2xl flex items-center justify-center gap-2 text-[11px] font-bold transition-all active:scale-95",
-                                                            automation.is_active ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-primary text-white shadow-lg shadow-primary/20"
-                                                        )}
-                                                    >
-                                                        {automation.is_active ? (
-                                                            <>
-                                                                <X className="h-3 w-3" />
-                                                                PAUSE FLOW
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Play className="h-3 w-3 fill-current" />
-                                                                RESUME
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteAutomation(automation.id)}
-                                                        className="w-10 h-10 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-2xl flex items-center justify-center transition-all"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })}
                         </div>
 
-                        {/* Pagination */}
                         {nextCursor && (
                             <div className="pt-10 flex justify-center">
                                 <Button
@@ -362,15 +406,17 @@ export default function ReelsGrid() {
                 )}
             </div>
 
-            {/* Automation Wizard */}
-            {showWizard && (
-                <AutomationWizard
-                    selectedMedia={selectedMedia}
-                    onClose={() => setShowWizard(false)}
-                    onSave={handleSaveAutomation}
-                    saving={saving}
-                />
-            )}
-        </div>
+            {
+                showWizard && (
+                    <AutomationWizard
+                        selectedMedia={selectedMedia}
+                        initialData={editingAutomation}
+                        onClose={() => { setShowWizard(false); setEditingAutomation(null); }}
+                        onSave={handleSaveAutomation}
+                        saving={saving}
+                    />
+                )
+            }
+        </div >
     );
 }

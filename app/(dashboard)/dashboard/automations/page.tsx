@@ -35,7 +35,7 @@ interface Automation {
     media_thumbnail_url?: string;
     media_caption?: string;
     trigger_keyword?: string;
-    trigger_type: "keyword" | "any";
+    trigger_type: "keyword" | "any" | "story_reply";
     reply_message: string;
     comment_reply?: string;
     button_text?: string;
@@ -54,7 +54,7 @@ export default function AutomationsPage() {
 
     // Edit state
     const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
-    const [editTriggerType, setEditTriggerType] = useState<"keyword" | "any">("any");
+    const [editTriggerType, setEditTriggerType] = useState<"keyword" | "any" | "story_reply">("any");
     const [editKeyword, setEditKeyword] = useState("");
     const [editReplyMessage, setEditReplyMessage] = useState("");
     const [editCommentReply, setEditCommentReply] = useState("");
@@ -284,7 +284,7 @@ export default function AutomationsPage() {
                                             {automation.is_active ? "✓ Active" : "⏸ Paused"}
                                         </Badge>
                                         <Badge variant="outline" className="px-3 py-1 rounded-full font-bold text-[10px] border-slate-100 text-slate-400 tracking-widest uppercase">
-                                            {automation.trigger_type === "any" ? "Any Comment" : `Keyword: ${automation.trigger_keyword}`}
+                                            {automation.trigger_type === "any" ? "Any Comment" : automation.trigger_type === "story_reply" ? "Story Reply" : `Keyword: ${automation.trigger_keyword}`}
                                         </Badge>
                                         <span className="text-[11px] font-bold text-slate-300 uppercase tracking-tighter">Created {new Date(automation.created_at).toLocaleDateString()}</span>
                                     </div>
@@ -376,20 +376,27 @@ export default function AutomationsPage() {
                             <div className="space-y-6">
                                 <div>
                                     <label className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-3 block px-1">Flow Trigger</label>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
                                         <button
                                             onClick={() => setEditTriggerType("any")}
                                             className={cn("p-4 rounded-2xl border-2 text-left transition-all", editTriggerType === "any" ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 opacity-60")}
                                         >
-                                            <p className="font-bold text-sm">Any Comment</p>
-                                            <p className="text-[10px] font-medium text-slate-400">All users get DM</p>
+                                            <p className="font-bold text-[10px] uppercase">Comment</p>
+                                            <p className="text-[9px] font-medium text-slate-400">All users</p>
                                         </button>
                                         <button
                                             onClick={() => setEditTriggerType("keyword")}
                                             className={cn("p-4 rounded-2xl border-2 text-left transition-all", editTriggerType === "keyword" ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 opacity-60")}
                                         >
-                                            <p className="font-bold text-sm">Keyword Only</p>
-                                            <p className="text-[10px] font-medium text-slate-400">Requires specific word</p>
+                                            <p className="font-bold text-[10px] uppercase">Keyword</p>
+                                            <p className="text-[9px] font-medium text-slate-400">Word match</p>
+                                        </button>
+                                        <button
+                                            onClick={() => setEditTriggerType("story_reply")}
+                                            className={cn("p-4 rounded-2xl border-2 text-left transition-all", editTriggerType === "story_reply" ? "border-primary bg-primary/5 shadow-sm" : "border-slate-100 opacity-60")}
+                                        >
+                                            <p className="font-bold text-[10px] uppercase text-indigo-600">Story</p>
+                                            <p className="text-[9px] font-medium text-slate-400">Story reply</p>
                                         </button>
                                     </div>
                                 </div>
