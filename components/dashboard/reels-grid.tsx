@@ -46,7 +46,11 @@ interface Automation {
     dm_sent_count: number;
 }
 
-export default function ReelsGrid() {
+interface ReelsGridProps {
+    planType?: string;
+}
+
+export default function ReelsGrid({ planType }: ReelsGridProps) {
     const [media, setMedia] = useState<Media[]>([]);
     const [automations, setAutomations] = useState<Automation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -414,6 +418,7 @@ export default function ReelsGrid() {
                         onClose={() => { setShowWizard(false); setEditingAutomation(null); }}
                         onSave={handleSaveAutomation}
                         saving={saving}
+                        planType={planType}
                     />
                 )
             }

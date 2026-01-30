@@ -32,9 +32,10 @@ interface AutomationWizardProps {
     onClose: () => void;
     onSave: (data: any) => Promise<void>;
     saving: boolean;
+    planType?: string;
 }
 
-export default function AutomationWizard({ selectedMedia, initialData, onClose, onSave, saving }: AutomationWizardProps) {
+export default function AutomationWizard({ selectedMedia, initialData, onClose, onSave, saving, planType }: AutomationWizardProps) {
     const [step, setStep] = useState(1);
 
     // State for different steps
@@ -139,7 +140,9 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                         <div className="flex-1">
                                             <p className="text-sm font-bold text-slate-900">Any post or reel</p>
                                         </div>
-                                        <Badge className="bg-primary text-white border-none font-bold text-[10px] py-0.5">PRO</Badge>
+                                        <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-primary text-white")}>
+                                            {planType === "trial" ? "TRIAL" : "PRO"}
+                                        </Badge>
                                     </button>
 
                                     <button
@@ -155,7 +158,9 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                         <div className="flex-1">
                                             <p className="text-sm font-bold text-slate-900">Next post or reel</p>
                                         </div>
-                                        <Badge className="bg-primary text-white border-none font-bold text-[10px] py-0.5">PRO</Badge>
+                                        <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-primary text-white")}>
+                                            {planType === "trial" ? "TRIAL" : "PRO"}
+                                        </Badge>
                                     </button>
 
                                     <button
@@ -172,7 +177,9 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                             <p className="text-sm font-bold text-slate-900">Customer replies to my story</p>
                                             <p className="text-[11px] text-slate-400 font-medium">Auto-respond to all story engagements</p>
                                         </div>
-                                        <Badge className="bg-indigo-600 text-white border-none font-bold text-[10px] py-0.5">REVENUE-BOOST</Badge>
+                                        <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-indigo-600 text-white")}>
+                                            {planType === "trial" ? "TRIAL" : "REVENUE-BOOST"}
+                                        </Badge>
                                     </button>
                                 </div>
                             </div>
@@ -338,9 +345,14 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                             <span className="text-sm font-bold">Ask to follow first</span>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <Badge className="bg-primary text-white border-none font-bold text-[10px] py-0.5">PRO</Badge>
-                                            <button className="w-12 h-6.5 rounded-full bg-slate-100 flex items-center px-1 cursor-not-allowed">
-                                                <div className="w-[18px] h-[18px] bg-white rounded-full shadow" />
+                                            <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-primary text-white")}>
+                                                {planType === "trial" ? "TRIAL" : "PRO"}
+                                            </Badge>
+                                            <button
+                                                onClick={() => setRequireFollow(!requireFollow)}
+                                                className={cn("w-12 h-6.5 rounded-full transition-all flex items-center px-1", requireFollow ? "bg-primary" : "bg-slate-200")}
+                                            >
+                                                <div className={cn("w-[18px] h-[18px] bg-white rounded-full shadow transition-all", requireFollow ? "translate-x-[20px]" : "translate-x-0")} />
                                             </button>
                                         </div>
                                     </div>
@@ -410,7 +422,9 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                             </div>
                                             <span className="text-sm font-bold italic text-slate-400">Follow up DM after 24h</span>
                                         </div>
-                                        <Badge className="bg-primary text-white border-none font-bold text-[10px] py-0.5">PRO</Badge>
+                                        <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-primary text-white")}>
+                                            {planType === "trial" ? "TRIAL" : "PRO"}
+                                        </Badge>
                                     </div>
                                 </div>
                             </div>

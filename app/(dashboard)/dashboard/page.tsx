@@ -82,7 +82,7 @@ export default async function DashboardPage() {
             </h2>
           </div>
         </div>
-        <ReelsGrid />
+        <ReelsGrid planType={session.plan_type} />
       </div>
     </div>
   );
