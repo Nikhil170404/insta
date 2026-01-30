@@ -10,7 +10,7 @@ Meta recently released **Instagram Login** for professional accounts, which allo
 3. Click **"Set Up"**.
 4. In the Instagram sidebar, go to **"Settings"**.
 5. Find **"Valid OAuth Redirect URIs"** and add:
-   - `https://replykaro.vercel.app/api/auth/instagram/callback`
+   - `https://replykaro.com/api/auth/instagram/callback`
    - `http://localhost:3000/api/auth/instagram/callback`
 6. Click **"Save Changes"**.
 
@@ -24,7 +24,7 @@ When you log in, the app will request these permissions. Make sure they are avai
 ### Step 3: Configure Webhooks
 1. Dashboard → **Webhooks**.
 2. Select **"Instagram"** from the dropdown.
-3. Verify your webhook endpoint `https://replykaro.vercel.app/api/webhooks/instagram` is set up.
+3. Verify your webhook endpoint `https://replykaro.com/api/webhooks/instagram` is set up.
 4. Subscribe to `comments`, `messages`, and `mentions`.
 
 ---

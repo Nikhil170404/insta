@@ -11,7 +11,7 @@ We have shifted from a direct Instagram OAuth flow to a **Facebook-mediated flow
 
 ### 1. Facebook App Config
 - [ ] **Facebook Login** product added in Meta Dashboard.
-- [ ] Redirect URI `https://replykaro.vercel.app/api/auth/instagram/callback` saved.
+- [ ] Redirect URI `https://replykaro.com/api/auth/instagram/callback` saved.
 - [ ] All 5 required permissions (`instagram_basic`, etc.) are available in Development mode.
 
 ### 2. Local Testing

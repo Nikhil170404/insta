@@ -51,6 +51,16 @@ export async function sendInstagramDM(
         // Small delay to simulate thinking
         await new Promise(resolve => setTimeout(resolve, 1500));
 
+        // 3. TAG AS HUMAN AGENT (Required for Meta App Review / Automated DMs)
+        await fetch(baseUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                recipient: recipient,
+                tag: "HUMAN_AGENT"
+            }),
+        });
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let body: any;
 

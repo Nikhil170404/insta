@@ -196,25 +196,74 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">12. Contact Us</h2>
+            <h2 className="text-2xl font-semibold mb-4">14. Business Information</h2>
+            <p className="text-gray-600 mb-4">
+              ReplyKaro is a registered Micro, Small & Medium Enterprise (MSME) in India under the Udyam Registration scheme:
+            </p>
+            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <div className="space-y-3">
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">Business Name:</span>
+                  <span className="text-gray-600">ReplyKaro</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">Udyam Registration:</span>
+                  <span className="text-gray-900 font-mono">UDYAM-MH-18-0517632</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">Enterprise Type:</span>
+                  <span className="text-gray-600">Micro Enterprise (Proprietorship)</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">Registration Authority:</span>
+                  <span className="text-gray-600">Ministry of MSME, Government of India</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">Business Category:</span>
+                  <span className="text-gray-600">Information Technology Services</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">NIC Code:</span>
+                  <span className="text-gray-600">62099 (Other IT Service Activities)</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">State:</span>
+                  <span className="text-gray-600">Maharashtra</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">District:</span>
+                  <span className="text-gray-600">Mumbai Suburban</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold text-gray-700 w-48">Registration Date:</span>
+                  <span className="text-gray-600">January 29, 2025</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200">
+                This information is provided for transparency and compliance with business registration requirements.
+                You can verify our Udyam registration at:
+                <a href="https://udyamregistration.gov.in/Print_Application.aspx" className="text-primary underline ml-1" target="_blank" rel="noopener noreferrer">
+                  udyamregistration.gov.in
+                </a>
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-4">15. Contact Us</h2>
             <p className="text-gray-600 mb-3">
               If you have questions, concerns, or requests regarding this Privacy Policy or
               your personal data, please contact us:
             </p>
             <div className="bg-gray-50 p-6 rounded-lg">
-              <p className="text-gray-700"><strong>Email:</strong> privacy@replykaro.com</p>
+              <p className="text-gray-700"><strong>Business Name:</strong> ReplyKaro</p>
+              <p className="text-gray-700 mt-2"><strong>Udyam Registration:</strong> UDYAM-MH-18-0517632</p>
+              <p className="text-gray-700 mt-2"><strong>Email:</strong> privacy@replykaro.com</p>
               <p className="text-gray-700 mt-2"><strong>Support:</strong> support@replykaro.com</p>
-              <p className="text-gray-700 mt-2"><strong>Address:</strong> Mumbai, Maharashtra, India</p>
+              <p className="text-gray-700 mt-2"><strong>Location:</strong> Mumbai, Maharashtra, India</p>
+              <p className="text-gray-700 mt-2"><strong>Domain:</strong> replykaro.com</p>
               <p className="text-gray-700 mt-2"><strong>Response Time:</strong> Within 48 hours</p>
             </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-4">13. Data Protection Officer</h2>
-            <p className="text-gray-600">
-              For data protection inquiries specific to GDPR or other privacy regulations,
-              you may contact our Data Protection Officer at: <strong>dpo@replykaro.com</strong>
-            </p>
           </section>
 
         </div>
@@ -225,7 +274,7 @@ export default function PrivacyPolicyPage() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-sm">
-              &copy; {new Date().getFullYear()} ReplyKaro. All rights reserved.
+              &copy; {new Date().getFullYear()} ReplyKaro (UDYAM-MH-18-0517632). All rights reserved. Registered at replykaro.com.
             </p>
             <div className="flex gap-6">
               <a href="/terms" className="text-sm text-gray-500 hover:text-gray-900">

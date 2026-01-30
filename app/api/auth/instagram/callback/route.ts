@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     // Step 1: Exchange code for Instagram Short-Lived Token
     console.log("Step 1: Exchanging code for Instagram token...");
-    const tokenData = await exchangeCodeForToken(code);
+    const tokenData = await exchangeCodeForToken(code, request.url);
     let accessToken = tokenData.access_token;
 
     // MANDATORY: Exchange for Long-Lived Token (60 days)

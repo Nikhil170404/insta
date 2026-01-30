@@ -249,11 +249,10 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
-        // 10. SMART RATE LIMITING (ManyChat Style)
         const rateLimitResult = await smartRateLimit(user.id, {
             hourlyLimit: RATE_LIMITS.INITIAL.hourly, // Use Safe limits for App Review
             dailyLimit: RATE_LIMITS.INITIAL.daily,
-            spreadDelay: true,
+            spreadDelay: false, // Set to false for Hobby accounts (no minute cron)
         });
 
         if (!rateLimitResult.allowed) {
@@ -279,7 +278,8 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             return;
         }
 
-        // If time spreading requires a delay
+        /* 
+        // If time spreading requires a delay (Disabled for Hobby accounts without minute-level crons)
         if (rateLimitResult.estimatedSendTime && rateLimitResult.estimatedSendTime > new Date()) {
             console.log(`⏳ Spreading load. Queueing for: ${rateLimitResult.estimatedSendTime}`);
             await queueDM(user.id, {
@@ -290,6 +290,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             }, rateLimitResult.estimatedSendTime);
             return;
         }
+        */
 
         // 11. Send DM (Private Reply)
         const dmSent = await sendInstagramDM(
