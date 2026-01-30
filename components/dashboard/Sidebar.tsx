@@ -43,8 +43,8 @@ export function DashboardSidebar({ user }: SidebarProps) {
           {/* Logo Section */}
           <div className="flex items-center h-20 px-8">
             <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-                <Zap className="h-5 w-5 fill-current" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+                <img src="/logo.png" alt="ReplyKaro Logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
                 ReplyKaro
@@ -132,8 +132,8 @@ export function DashboardSidebar({ user }: SidebarProps) {
       {/* --- MOBILE HEADER & MENU --- */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-white border-b border-slate-100 px-4 h-16 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
-            <Zap className="h-4 w-4 fill-current" />
+          <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-white shadow-sm">
+            <img src="/logo.png" alt="ReplyKaro Logo" className="w-full h-full object-cover" />
           </div>
           <span className="text-lg font-bold text-slate-900 tracking-tight">ReplyKaro</span>
         </Link>

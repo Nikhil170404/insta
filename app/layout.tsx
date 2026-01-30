@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   },
   description:
     "Reply Karo, Sales Badao! Automate your Instagram DMs with keyword-based responses.",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/logo.png",
+  },
   keywords: [
     "Instagram automation",
     "DM automation",

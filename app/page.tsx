@@ -7,7 +7,12 @@ export default function HomePage() {
       {/* Navigation */}
       <nav className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-primary">ReplyKaro</div>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md">
+              <img src="/logo.png" alt="ReplyKaro Logo" className="w-full h-full object-cover" />
+            </div>
+            <div className="text-2xl font-bold text-primary">ReplyKaro</div>
+          </div>
           <div className="flex items-center gap-4">
             <Link
               href="/pricing"
