@@ -347,7 +347,7 @@ export default function AutomationsPage() {
             {editingAutomation && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 lg:p-10">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setEditingAutomation(null)} />
-                    <div className="relative w-full h-full md:h-auto md:max-w-xl bg-white md:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="relative w-full h-[100dvh] md:h-auto md:max-h-[90vh] md:max-w-xl bg-white md:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-50">
                             <div>
                                 <h2 className="text-xl font-black text-slate-900 tracking-tight">Configure Flow</h2>
@@ -360,7 +360,7 @@ export default function AutomationsPage() {
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+                        <div className="flex-1 overflow-y-auto p-8 space-y-8">
                             {/* Mini Preview */}
                             <div className="bg-slate-50/50 p-4 rounded-3xl flex gap-4 border border-slate-100">
                                 <img src={editingAutomation.media_thumbnail_url} className="w-16 h-24 object-cover rounded-xl shadow-sm" alt="" />

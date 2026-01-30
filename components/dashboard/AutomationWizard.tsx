@@ -81,7 +81,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/40 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div className="flex min-h-full items-center justify-center p-0 md:p-6 lg:p-12">
                 {/* Wizard Container */}
-                <div className="relative w-full h-[100dvh] md:h-auto md:max-w-xl bg-white md:rounded-[2.5rem] shadow-[0_20px_100px_-20px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+                <div className="relative w-full h-[100dvh] md:h-auto md:max-h-[90vh] md:max-w-xl bg-white md:rounded-[2.5rem] shadow-[0_20px_100px_-20px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-300">
 
                     {/* Header */}
                     <div className="flex items-center justify-between px-8 py-6 border-b border-slate-50">
@@ -99,7 +99,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scrollbar-hide">
+                    <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
 
                         {/* STEP 1: TRIGGER TYPE */}
                         {step === 1 && (
