@@ -38,7 +38,7 @@ export async function sendInstagramDM(
             }),
         });
 
-        // 2. Send "Typing..." indicator for 1.5 seconds (ManyChat feel)
+        // 2. Send "Typing..." indicator for 1.5 seconds (Premium feel)
         await fetch(baseUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -64,7 +64,7 @@ export async function sendInstagramDM(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let body: any;
 
-        // ManyChat uses Generic Templates (Structured Cards) for a premium feel
+        // Use Generic Templates (Structured Cards) for a premium feel
         if (linkUrl && (buttonText || thumbnailUrl)) {
             console.log("💎 Sending Structured Template (Card)");
             body = {

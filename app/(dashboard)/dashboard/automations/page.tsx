@@ -343,7 +343,7 @@ export default function AutomationsPage() {
                 )}
             </div>
 
-            {/* Edit Modal (ManyChat Wizard Style) */}
+            {/* Edit Modal (Configuration Panel) */}
             {editingAutomation && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 lg:p-10">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setEditingAutomation(null)} />

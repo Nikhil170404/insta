@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "./supabase/client";
  * - 200 API calls per hour per user
  * - 4,800 API calls per day per user
  * 
- * Our Smart Limits (Competitive with ManyChat):
+ * Our Smart Limits (Optimized for Production):
  */
 export const RATE_LIMITS = {
     // FOR APP REVIEW (show restraint)
@@ -16,7 +16,7 @@ export const RATE_LIMITS = {
 
     // AFTER APPROVAL (ramp up gradually)
     PRODUCTION: {
-        hourly: 180,  // Close to ManyChat
+        hourly: 180,  // Standard Production Limit
         daily: 1500,  // 3x initial
     }
 };

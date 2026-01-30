@@ -1,6 +1,6 @@
 # 🔧 Meta App Setup Guide (2025 Pageless Method)
 
-Meta recently released **Instagram Login** for professional accounts, which allows you to connect Instagram for automation **Without a Facebook Page**. This is the method ManyChat uses.
+Meta recently released **Instagram Login** for professional accounts, which allows you to connect Instagram for automation **Without a Facebook Page**. This is the standard modern method.
 
 ## 📋 Step-by-Step Setup
 

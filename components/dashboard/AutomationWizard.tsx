@@ -324,7 +324,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                             </div>
 
                                             <div className="space-y-2">
-                                                <p className="text-[11px] text-slate-400 font-bold px-1 uppercase tracking-widest">Button Text (ManyChat Style)</p>
+                                                <p className="text-[11px] text-slate-400 font-bold px-1 uppercase tracking-widest">Button Text</p>
                                                 <input
                                                     type="text"
                                                     value={buttonText}
