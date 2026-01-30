@@ -293,6 +293,8 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         */
 
         // 11. Send DM (Private Reply)
+        // ManyChat style: If there's a button and a link, the first DM is a postback (Quick Reply).
+        // Clicking that button will trigger handleMessagingEvent which sends the final card.
         const dmSent = await sendInstagramDM(
             user.instagram_access_token,
             instagramUserId,          // Sender
@@ -301,7 +303,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
             automation.reply_message, // Message text
             automation.id,            // Automation ID for payload
             automation.button_text,   // Button text
-            automation.link_url,      // Final link
+            undefined,                // Force postback flow by not sending link yet
             automation.media_thumbnail_url // Card image
         );
 
@@ -469,7 +471,7 @@ async function handleMessagingEvent(instagramUserId: string, messaging: any) {
 
             const trimmedToken = user.instagram_access_token.trim();
 
-            // 3. Send the final link
+            // 3. Send the final link as a premium Card (ManyChat way)
             console.log(`🚀 Sending final link to ${senderIgsid}: ${automation.link_url}`);
 
             const dmSent = await sendInstagramDM(
@@ -477,7 +479,11 @@ async function handleMessagingEvent(instagramUserId: string, messaging: any) {
                 instagramUserId,
                 null,
                 senderIgsid,
-                `Here is your link: ${automation.link_url}`
+                `Here is the link you requested! ✨`,
+                automation.id,
+                automation.button_text || "Open Link",
+                automation.link_url,
+                automation.media_thumbnail_url
             );
 
             if (dmSent) {

@@ -180,12 +180,10 @@ export async function replyToComment(
  */
 export function getUniqueMessage(message: string): string {
     const variations = ["📬", "✨", "✅", "💬", "🚀", "📥", "💌", "🌟", "🔥", "💎"];
-    const greetings = ["Done!", "Sent!", "Check it out!", "Ready!", "There you go!"];
     const randomVariation = variations[Math.floor(Math.random() * variations.length)];
-    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
-    const randomCode = Math.random().toString(36).substring(7).toUpperCase();
 
-    return `${randomGreeting} ${message} ${randomVariation} [${randomCode}]`;
+    // Clean, simple reply with a single random emoji to satisfy Meta's uniqueness filter
+    return `${message} ${randomVariation}`;
 }
 
 /**
