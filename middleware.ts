@@ -12,7 +12,8 @@ const COOKIE_NAME = "replykaro_session";
 const protectedRoutes = ["/dashboard", "/keywords", "/analytics", "/settings"];
 
 // Routes that should redirect to dashboard if authenticated
-const authRoutes = ["/signin", "/signup"];
+const authRoutes = ["/signin", "/signup", "/pricing", "/about", "/faq", "/contact"];
+const isRootPath = (pathname: string) => pathname === "/";
 
 async function getSessionFromRequest(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value;
@@ -52,8 +53,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect authenticated users from auth routes
-  if (isAuthRoute && session) {
+  // Redirect authenticated users from auth routes or landing page
+  if (session && (isAuthRoute || isRootPath(pathname))) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
