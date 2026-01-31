@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
                 <StatCard
                     icon={<Activity className="h-5 w-5 text-blue-500" />}
                     value={stats.today}
-                    label="Today's DMs"
+                    label="Today's Connections"
                     color="blue"
                 />
                 <StatCard
@@ -134,7 +134,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Engagement Velocity</h3>
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">DMs Sent over last 7 days</p>
+                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Connections made over last 7 days</p>
                     </div>
                 </div>
 
@@ -174,7 +174,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-center justify-between px-1">
                     <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 italic uppercase">
                         <Activity className="h-5 w-5 text-primary" />
-                        Live Delivery Feed
+                        Live Engagement Feed
                     </h2>
                     <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2" />

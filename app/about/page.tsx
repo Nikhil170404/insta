@@ -31,10 +31,10 @@ export default function AboutPage() {
                     </div>
                     <h1 className="text-6xl md:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.85] mb-8">
                         Democratizing <br />
-                        <span className="text-primary italic">Premium Automation.</span>
+                        <span className="text-primary italic">Creator Connections.</span>
                     </h1>
                     <p className="text-slate-500 text-xl font-medium leading-relaxed max-w-2xl mx-auto">
-                        ReplyKaro was built to solve one problem: Why should Indian creators pay $50/mo for complex tools they only use 10% of?
+                        ReplyKaro was built to solve one problem: Why should Indian creators pay $50/mo when all they need is simple, instant engagement?
                     </p>
                 </div>
 
@@ -44,13 +44,13 @@ export default function AboutPage() {
                         <div className="p-10 bg-slate-50 rounded-[3rem] border border-slate-100">
                             <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">India First Architecture</h2>
                             <p className="text-slate-500 font-medium leading-relaxed">
-                                We've optimized every line of code for the Indian ecosystem. From supporting localized slang in keyword matching to pricing that matches the Indian creator economy reality.
+                                We've optimized every line of code for the Indian ecosystem. From supporting localized slang in keyword matching to building for Indian creators who value authentic connections.
                             </p>
                         </div>
                         <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/10">
                             <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-4">Speed is our DNA</h2>
                             <p className="text-slate-500 font-medium leading-relaxed">
-                                Our engine ensures your customers get a reply before they even leave the Instagram app. Instant gratification equals higher sales.
+                                Our engine ensures your audience gets a reply before they even leave the Instagram app. Instant replies build trust and loyalty.
                             </p>
                         </div>
                     </div>
@@ -94,7 +94,7 @@ export default function AboutPage() {
 
                 {/* Final CTA */}
                 <div className="mt-32 text-center pb-20">
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-8">Ready to join the revolution?</h2>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-8">Ready to build your community?</h2>
                     <Link href="/signin">
                         <Button className="h-16 px-12 rounded-[2rem] bg-primary text-white font-black text-[15px] uppercase tracking-widest gap-4 shadow-2xl transition-all hover:scale-105 active:scale-95">
                             Start your engine

@@ -42,12 +42,12 @@ export default function HomePage() {
 
           <h1 className="text-7xl md:text-8xl lg:text-9xl font-[900] text-[#1e293b] tracking-tighter leading-[0.8] mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             Reply Karo, <br />
-            <span className="text-primary italic">Sales Badao!</span>
+            <span className="text-primary italic">Reach Badao!</span>
           </h1>
 
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 font-bold leading-relaxed mb-12 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-200">
-            Turn every Instagram comment into a high-converting lead. <br className="hidden md:block" />
-            Automate DMs, collect data, and scale your revenue <span className="text-slate-900 border-b-2 border-slate-900 pb-0.5">automatically</span>.
+            Turn every Instagram comment into a meaningful connection. <br className="hidden md:block" />
+            Automate DMs, engage your audience, and grow your community <span className="text-slate-900 border-b-2 border-slate-900 pb-0.5">effortlessly</span>.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-16 duration-700 delay-300">
@@ -92,7 +92,7 @@ export default function HomePage() {
                     </div>
                     <div>
                       <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Delivery</p>
-                      <p className="text-xs md:text-sm font-black text-slate-900">+1 Lead from Comment</p>
+                      <p className="text-xs md:text-sm font-black text-slate-900">+1 Meaningful Connection</p>
                     </div>
                   </div>
                   <div className="bg-slate-900 px-6 py-4 rounded-2xl shadow-2xl hidden md:flex items-center gap-4 translate-y-4">
@@ -100,8 +100,8 @@ export default function HomePage() {
                       <TrendingUp className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revenue Impact</p>
-                      <p className="text-sm font-black text-white">₹42,500 Generated today</p>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Growth Impact</p>
+                      <p className="text-sm font-black text-white">847 connections made today</p>
                     </div>
                   </div>
                 </div>
@@ -117,11 +117,11 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-24">
             <Badge className="bg-slate-900/5 text-slate-900 border-none px-4 py-1.5 rounded-full mb-6 uppercase tracking-[0.2em] text-[10px] font-black">
-              Engineered for Conversion
+              Engineered for Engagement
             </Badge>
             <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter mb-6">
               Everything you need <br />
-              to own the <span className="text-primary italic">Instagram Feed.</span>
+              to build your <span className="text-primary italic">Instagram Community.</span>
             </h2>
           </div>
 
@@ -136,19 +136,19 @@ export default function HomePage() {
               {
                 icon: <Zap className="h-7 w-7" />,
                 title: "Instant DM Relay",
-                desc: "No delays. Comment post hua nahi ki DM gaya—lightning fast processing ensures 0 lead leakage.",
+                desc: "No delays. Comment post hua nahi ki DM gaya—connect with your audience instantly.",
                 color: "text-primary bg-primary/5"
               },
               {
                 icon: <Clock className="h-7 w-7" />,
-                title: "Story Automation",
+                title: "Story Engagement",
                 desc: "Replies on stories are pure gold. Auto-respond to story engagements and build deep trust.",
                 color: "text-indigo-600 bg-indigo-50"
               },
               {
                 icon: <TrendingUp className="h-7 w-7" />,
-                title: "Impact Analytics",
-                desc: "Track every click, every conversion. Real-time metrics dikhate hain aapka business kitna grow ho raha hai.",
+                title: "Engagement Analytics",
+                desc: "Track every click, every conversation. Real-time metrics dikhate hain aapka community kitna grow ho raha hai.",
                 color: "text-emerald-600 bg-emerald-50"
               },
               {
@@ -163,15 +163,16 @@ export default function HomePage() {
                 desc: "No complex tech stuff. Just select your Reel, set your word, and you're live in 30 seconds.",
                 color: "text-rose-600 bg-rose-50"
               }
-            ].map((feat, i) => (
-              <div key={i} className="group p-10 bg-white rounded-[3rem] border border-slate-100 hover:border-primary/20 transition-all duration-500 hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)]">
-                <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 group-hover:rotate-3", feat.color)}>
-                  {feat.icon}
+            ]
+              .map((feat, i) => (
+                <div key={i} className="group p-10 bg-white rounded-[3rem] border border-slate-100 hover:border-primary/20 transition-all duration-500 hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)]">
+                  <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 group-hover:rotate-3", feat.color)}>
+                    {feat.icon}
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-4">{feat.title}</h3>
+                  <p className="text-slate-500 font-medium leading-relaxed">{feat.desc}</p>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-4">{feat.title}</h3>
-                <p className="text-slate-500 font-medium leading-relaxed">{feat.desc}</p>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       </section>
@@ -188,11 +189,11 @@ export default function HomePage() {
               Launch Your Engine
             </Badge>
             <h2 className="text-4xl md:text-7xl font-black text-slate-100 tracking-tighter mb-8 leading-[1.1] md:leading-tight">
-              Bahut hua manual kaam. <br />
-              Ab karo <span className="text-primary italic">Smart Automation.</span>
+              Bahut hua manual replies. <br />
+              Ab karo <span className="text-primary italic">Smart Engagement.</span>
             </h2>
             <p className="text-slate-400 text-lg md:text-xl font-bold mb-12 max-w-2xl mx-auto leading-relaxed">
-              Join 5,000+ creators and brands scaling their Instagram business without the ManyChat tax.
+              Join 5,000+ creators building authentic communities with instant, personal responses.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">

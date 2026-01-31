@@ -36,8 +36,8 @@ export default function PricingPage() {
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">Honest India Pricing <span className="text-[7px] align-top">IN</span></span>
                     </div>
                     <h1 className="text-6xl md:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.85]">
-                        Scale your <br />
-                        <span className="text-primary italic">Sales Faster.</span>
+                        Grow your <br />
+                        <span className="text-primary italic">Reach Faster.</span>
                     </h1>
                     <p className="text-slate-400 text-lg md:text-xl font-bold leading-relaxed max-w-2xl mx-auto italic">
                         Sabki pahunch mein automation. Simple plans for every creator.
@@ -139,7 +139,7 @@ export default function PricingPage() {
                         <Rocket className="h-7 w-7 text-indigo-600" /> Fast Integration
                     </div>
                     <div className="flex items-center gap-3 font-black text-slate-900 italic tracking-tighter text-xl">
-                        <Sparkles className="h-7 w-7 text-primary" /> 100% India-Owned
+                        <Sparkles className="h-7 w-7 text-primary" /> Community Focused
                     </div>
                 </div>
 

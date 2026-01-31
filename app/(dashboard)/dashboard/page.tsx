@@ -23,7 +23,7 @@ export default async function DashboardPage() {
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter leading-[0.85]">
             Automated <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-indigo-600">Revenue Engine.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-indigo-600">Engagement Engine.</span>
           </h1>
         </div>
 
@@ -32,8 +32,8 @@ export default async function DashboardPage() {
             <TrendingUp className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Impact Velocity</p>
-            <p className="text-lg font-black text-slate-900 tracking-tight">Live Analytics</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Community Velocity</p>
+            <p className="text-lg font-black text-slate-900 tracking-tight">Live Engagement</p>
           </div>
         </div>
       </div>
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
               <Zap className="h-5 w-5 fill-current" />
             </div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Active Content Tunnels
+              Active Engagement Flows
             </h2>
           </div>
         </div>

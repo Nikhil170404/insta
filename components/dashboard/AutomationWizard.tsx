@@ -48,8 +48,8 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
     const [keywords, setKeywords] = useState(initialData?.trigger_keyword || "");
     const [replyToComments, setReplyToComments] = useState(!!initialData?.comment_reply);
 
-    const [openingDM, setOpeningDM] = useState(initialData?.reply_message || "Hey there! I'm so happy you're here, thanks so much for your interest 😊\n\nClick below and I'll send you the link in just a sec ✨");
-    const [buttonText, setButtonText] = useState(initialData?.button_text || "Send me the link");
+    const [openingDM, setOpeningDM] = useState(initialData?.reply_message || "Hey! Thanks for being part of my community 😊\n\nClick below and I'll send you the details in just a sec ✨");
+    const [buttonText, setButtonText] = useState(initialData?.button_text || "Show me more");
     const [showOpeningDM, setShowOpeningDM] = useState(true);
 
     const [finalDM, setFinalDM] = useState("Here is the link you requested!");
@@ -178,7 +178,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                             <p className="text-[11px] text-slate-400 font-medium">Auto-respond to all story engagements</p>
                                         </div>
                                         <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-indigo-600 text-white")}>
-                                            {planType === "trial" ? "TRIAL" : "REVENUE-BOOST"}
+                                            {planType === "trial" ? "TRIAL" : "ENGAGEMENT-BOOST"}
                                         </Badge>
                                     </button>
                                 </div>

@@ -41,7 +41,7 @@ const FAQS = [
             },
             {
                 q: "Do you store my DMs?",
-                a: "No. We only process the triggers to send replies. Your private conversations remain private. Hum lead capture filters ke liye sirf comment data process karte hain."
+                a: "No. We only process the triggers to send replies. Your private conversations remain private. We only process trigger data to ensure your engagement flows smoothly."
             }
         ]
     },

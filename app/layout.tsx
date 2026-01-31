@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: "%s | ReplyKaro",
   },
   description:
-    "Reply Karo, Sales Badao! Automate your Instagram DMs with keyword-based responses.",
+    "Reply Karo, Reach Badao! Automate Instagram DMs and build authentic connections with your audience.",
   icons: {
     icon: "/favicon.png",
     apple: "/logo.png",
@@ -32,12 +32,12 @@ export const metadata: Metadata = {
     url: "https://replykaro.com",
     siteName: "ReplyKaro",
     title: "ReplyKaro - Instagram DM Automation",
-    description: "Reply Karo, Sales Badao! Automate your Instagram DMs.",
+    description: "Reply Karo, Reach Badao! Automate your Instagram DMs and build community.",
   },
   twitter: {
     card: "summary_large_image",
     title: "ReplyKaro - Instagram DM Automation",
-    description: "Reply Karo, Sales Badao! Automate your Instagram DMs.",
+    description: "Reply Karo, Reach Badao! Automate your Instagram DMs and build authentic connections.",
   },
   robots: {
     index: true,

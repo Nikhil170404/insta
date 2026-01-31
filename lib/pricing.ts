@@ -5,7 +5,7 @@ export const PRICING_PLANS = {
         upfront: "899",
         duration: "3 Months",
         description: "Perfect for budding creators",
-        hindiDesc: "Chhote creators ke liye perfect",
+        hindiDesc: "Naye creators ke liye perfect",
         features: [
             "1 Instagram Account",
             "10 Active Automations",
@@ -30,21 +30,21 @@ export const PRICING_PLANS = {
             "25 Active Automations",
             "1,000 DMs per day",
             "⚡ Real-time processing",
-            "Story Automation",
+            "Story Engagement",
             "Priority Support (12h)",
         ],
         cta: "Get Growth Pack",
         popular: true,
         savings: "Save ₹300+",
-        badge: "Best Seller"
+        badge: "Most Popular"
     },
     PRO: {
-        name: "Pro Pack",
+        name: "Creator Pro",
         price: "1,299",
         upfront: "3,499",
         duration: "3 Months",
-        description: "Established creators & agencies",
-        hindiDesc: "Agencies aur Pro creators ke liye",
+        description: "Established creators & teams",
+        hindiDesc: "Teams aur Pro creators ke liye",
         features: [
             "3 Instagram Accounts",
             "Unlimited Automations",
@@ -56,7 +56,7 @@ export const PRICING_PLANS = {
         cta: "Go Pro Unlimited",
         popular: false,
         savings: "Save ₹600+",
-        badge: "Agency Choice"
+        badge: "Creator Choice"
     }
 };
 
