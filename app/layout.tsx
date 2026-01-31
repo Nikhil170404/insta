@@ -10,20 +10,20 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "ReplyKaro - Instagram DM Automation",
+    default: "ReplyKaro - Instagram Engagement Automation",
     template: "%s | ReplyKaro",
   },
   description:
-    "Reply Karo, Reach Badao! Automate Instagram DMs and build authentic connections with your audience.",
+    "Reply Karo, Reach Badao! Automate your Instagram DMs and engage your audience instantly.",
   icons: {
     icon: "/favicon.png",
     apple: "/logo.png",
   },
   keywords: [
-    "Instagram automation",
+    "Instagram engagement",
     "DM automation",
-    "Instagram marketing",
-    "social media automation",
+    "creator tools",
+    "social media reach",
   ],
   authors: [{ name: "ReplyKaro" }],
   openGraph: {
@@ -31,12 +31,12 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: "https://replykaro.com",
     siteName: "ReplyKaro",
-    title: "ReplyKaro - Instagram DM Automation",
+    title: "ReplyKaro - Instagram Engagement Automation",
     description: "Reply Karo, Reach Badao! Automate your Instagram DMs and build community.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ReplyKaro - Instagram DM Automation",
+    title: "ReplyKaro - Instagram Engagement Automation",
     description: "Reply Karo, Reach Badao! Automate your Instagram DMs and build authentic connections.",
   },
   robots: {

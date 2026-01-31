@@ -40,7 +40,7 @@ export default function PricingPage() {
                         <span className="text-primary italic">Reach Faster.</span>
                     </h1>
                     <p className="text-slate-400 text-lg md:text-xl font-bold leading-relaxed max-w-2xl mx-auto italic">
-                        Sabki pahunch mein automation. Simple plans for every creator.
+                        Sabki pahunch mein automation. Affordable plans for every creator.
                     </p>
                 </div>
 

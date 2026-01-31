@@ -46,8 +46,8 @@ export default function HomePage() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 font-bold leading-relaxed mb-12 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-200">
-            Turn every Instagram comment into a meaningful connection. <br className="hidden md:block" />
-            Automate DMs, engage your audience, and grow your community <span className="text-slate-900 border-b-2 border-slate-900 pb-0.5">effortlessly</span>.
+            Never miss a comment again. Build authentic connections at scale. <br className="hidden md:block" />
+            Automate responses, engage your audience, and grow your community <span className="text-slate-900 border-b-2 border-slate-900 pb-0.5">effortlessly</span>.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-16 duration-700 delay-300">
@@ -101,7 +101,7 @@ export default function HomePage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Growth Impact</p>
-                      <p className="text-sm font-black text-white">847 connections made today</p>
+                      <p className="text-sm font-black text-white">1,247 messages sent today</p>
                     </div>
                   </div>
                 </div>
@@ -121,7 +121,7 @@ export default function HomePage() {
             </Badge>
             <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter mb-6">
               Everything you need <br />
-              to build your <span className="text-primary italic">Instagram Community.</span>
+              to stay connected with your <span className="text-primary italic">Audience.</span>
             </h2>
           </div>
 
@@ -130,13 +130,13 @@ export default function HomePage() {
               {
                 icon: <MessageSquare className="h-7 w-7" />,
                 title: "Smart Keyword Matching",
-                desc: "Specific keywords ya phir generic comments—humare AI triggers har comment ko analyze karte hain.",
+                desc: "Our AI triggers analyze every comment to help you respond instantly—no manual work needed.",
                 color: "text-blue-600 bg-blue-50"
               },
               {
                 icon: <Zap className="h-7 w-7" />,
                 title: "Instant DM Relay",
-                desc: "No delays. Comment post hua nahi ki DM gaya—connect with your audience instantly.",
+                desc: "No delays. Respond to your audience within seconds—never let a conversation go cold.",
                 color: "text-primary bg-primary/5"
               },
               {
@@ -193,7 +193,7 @@ export default function HomePage() {
               Ab karo <span className="text-primary italic">Smart Engagement.</span>
             </h2>
             <p className="text-slate-400 text-lg md:text-xl font-bold mb-12 max-w-2xl mx-auto leading-relaxed">
-              Join 5,000+ creators building authentic communities with instant, personal responses.
+              Join 5,000+ creators building authentic communities on Instagram without expensive tools.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">

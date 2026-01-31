@@ -32,8 +32,8 @@ export default async function DashboardPage() {
             <TrendingUp className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Community Velocity</p>
-            <p className="text-lg font-black text-slate-900 tracking-tight">Live Engagement</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Engagement Velocity</p>
+            <p className="text-lg font-black text-slate-900 tracking-tight">Live Connections</p>
           </div>
         </div>
       </div>
@@ -52,7 +52,7 @@ export default async function DashboardPage() {
               </div>
               <div className="space-y-1 text-center lg:text-left">
                 <h3 className="text-xl font-black text-white tracking-tight">
-                  Unlock High-Ticket Features
+                  Unlock Premium Features
                 </h3>
                 <p className="text-slate-400 font-medium text-sm leading-relaxed max-w-md">
                   Upgrade to <span className="text-white font-bold italic">Growth</span> and unlock powerful <span className="text-primary font-bold">Story Automation</span> + Priority Support.

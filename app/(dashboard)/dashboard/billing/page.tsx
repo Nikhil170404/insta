@@ -27,7 +27,7 @@ export default function BillingPage() {
                     India's Most Affordable Automation 🇮🇳
                 </Badge>
                 <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
-                    Scale your engagement <br />
+                    Grow your engagement <br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">at 1/10th the cost of ManyChat.</span>
                 </h1>
                 <p className="text-slate-500 text-lg font-medium leading-relaxed">

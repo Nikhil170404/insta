@@ -34,7 +34,7 @@ export default function ContactPage() {
                         </div>
                         <h1 className="text-5xl md:text-7xl font-[900] text-slate-900 tracking-tighter leading-tight">
                             We're here to help <br />
-                            <span className="text-primary italic">you scale faster.</span>
+                            <span className="text-primary italic">you engage better.</span>
                         </h1>
                         <p className="text-slate-500 text-lg font-medium max-w-lg mx-auto leading-relaxed italic">
                             Aapki success hamari priority hai. Get in touch with our team for any queries.

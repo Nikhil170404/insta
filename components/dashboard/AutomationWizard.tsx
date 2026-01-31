@@ -174,7 +174,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                             {triggerType === "story" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-bold text-slate-900">Customer replies to my story</p>
+                                            <p className="text-sm font-bold text-slate-900">Fan replies to my story</p>
                                             <p className="text-[11px] text-slate-400 font-medium">Auto-respond to all story engagements</p>
                                         </div>
                                         <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-indigo-600 text-white")}>
