@@ -310,6 +310,7 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         // 12. Log the result and update analytics
         await (supabase as any).from("dm_logs").insert({
             user_id: user.id,
+            automation_id: automation.id,
             instagram_comment_id: commentId,
             instagram_user_id: commenterId,
             instagram_username: commenterUsername,
@@ -489,6 +490,17 @@ async function handleMessagingEvent(instagramUserId: string, messaging: any) {
             if (dmSent) {
                 console.log("✅ Final link delivered successfully!");
                 await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                // Increment click count (This measures the button click that triggered the second DM)
+                await incrementAutomationCount(supabase, automation.id, "click_count");
+
+                // Update the log entry to reflect the click
+                await (supabase as any)
+                    .from("dm_logs")
+                    .update({ is_clicked: true })
+                    .eq("instagram_user_id", senderIgsid)
+                    .eq("automation_id", automation.id)
+                    .order("created_at", { ascending: false })
+                    .limit(1);
             } else {
                 console.error("❌ Failed to deliver link");
             }
