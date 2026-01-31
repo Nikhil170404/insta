@@ -16,85 +16,29 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const plans = [
-    {
-        name: "Starter",
-        price: "149",
-        upfront: "399",
-        duration: "3 Months",
-        description: "Perfect for budding creators",
-        icon: <Coffee className="h-6 w-6 text-orange-400" />,
-        features: [
-            "1 Instagram Account",
-            "5 Active Automations",
-            "300 automated DMs / day",
-            "Public Comment Replies",
-            "Email Support (72h)",
-        ],
-        cta: "Start 3-Month Trial",
-        popular: false
-    },
-    {
-        name: "Growth",
-        price: "249",
-        upfront: "799",
-        duration: "6 Months",
-        description: "Most popular for scaling fast",
-        icon: <Flame className="h-6 w-6 text-primary" />,
-        features: [
-            "1 Instagram Account",
-            "15 Active Automations",
-            "1,000 automated DMs / day",
-            "Story Reply Automation",
-            "Follow-up Delay Logic",
-            "Priority Support (24h)",
-        ],
-        cta: "Get Growth Pack",
-        popular: true
-    },
-    {
-        name: "Pro",
-        price: "349",
-        upfront: "1,499",
-        duration: "12 Months",
-        description: "For established businesses",
-        icon: <Crown className="h-6 w-6 text-yellow-500" />,
-        features: [
-            "2 Instagram Accounts",
-            "Unlimited Automations",
-            "5,000 automated DMs / day",
-            "All Growth Features",
-            "Custom Logic Support",
-            "Phone Support",
-        ],
-        cta: "Go Unlimited Pro",
-        popular: false
-    }
-];
+import { PLANS_ARRAY } from "@/lib/pricing";
 
 export default function BillingPage() {
-    const [selectedPlan, setSelectedPlan] = useState("growth");
-
     return (
         <div className="max-w-7xl mx-auto space-y-16 pb-20">
             {/* Header */}
             <div className="text-center space-y-4 max-w-3xl mx-auto">
                 <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full mb-4 mx-auto">
-                    Simple Transparent Pricing
+                    India's Most Affordable Automation 🇮🇳
                 </Badge>
                 <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
                     Scale your engagement <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">for the price of 2 coffees.</span>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">at 1/10th the cost of ManyChat.</span>
                 </h1>
                 <p className="text-slate-500 text-lg font-medium leading-relaxed">
-                    Choose a plan that fits your growth. No hidden fees, no complex contracts. <br className="hidden md:block" />
-                    Switch or cancel anytime.
+                    Designed for Indian creators. No complex contracts. <br className="hidden md:block" />
+                    Sabki pahunch mein automation!
                 </p>
             </div>
 
             {/* Pricing Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
-                {plans.map((plan) => (
+                {PLANS_ARRAY.map((plan) => (
                     <div
                         key={plan.name}
                         className={cn(
@@ -104,10 +48,13 @@ export default function BillingPage() {
                                 : "border-slate-100 hover:border-slate-200 hover:shadow-xl"
                         )}
                     >
-                        {plan.popular && (
+                        {plan.badge && (
                             <div className="absolute top-6 right-8">
-                                <Badge className="bg-primary text-white border-none font-black text-[10px] px-3 py-1 rounded-lg uppercase tracking-widest shadow-lg shadow-primary/20">
-                                    Recommended
+                                <Badge className={cn(
+                                    "border-none font-black text-[10px] px-3 py-1 rounded-lg uppercase tracking-widest shadow-lg",
+                                    plan.popular ? "bg-primary text-white shadow-primary/20" : "bg-slate-900 text-white shadow-slate-900/10"
+                                )}>
+                                    {plan.badge}
                                 </Badge>
                             </div>
                         )}
@@ -117,12 +64,15 @@ export default function BillingPage() {
                                 "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-500",
                                 plan.popular ? "bg-primary/10" : "bg-slate-50"
                             )}>
-                                {plan.icon}
+                                {plan.name === "Starter Pack" && <Coffee className="h-6 w-6 text-orange-400" />}
+                                {plan.name === "Growth Pack" && <Flame className="h-6 w-6 text-primary" />}
+                                {plan.name === "Pro Pack" && <Crown className="h-6 w-6 text-yellow-500" />}
                             </div>
 
                             <div>
                                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">{plan.name}</h3>
                                 <p className="text-sm font-medium text-slate-400 mt-1">{plan.description}</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase mt-2 tracking-wide italic">{plan.hindiDesc}</p>
                             </div>
 
                             <div className="py-2">
@@ -130,9 +80,14 @@ export default function BillingPage() {
                                     <span className="text-4xl font-black text-slate-900 tracking-tighter">₹{plan.upfront}</span>
                                     <span className="text-slate-400 font-bold text-sm">/ {plan.duration}</span>
                                 </div>
-                                <p className="text-[10px] font-black text-primary uppercase tracking-[0.1em] mt-2">
-                                    Then just ₹{plan.price}/mo
-                                </p>
+                                <div className="mt-2 space-y-1">
+                                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.1em]">
+                                        Phir sirf ₹{plan.price}/mo Muscle 💪
+                                    </p>
+                                    <Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-100 font-black text-[10px] rounded-md px-2 py-0.5">
+                                        {plan.savings} 🎉
+                                    </Badge>
+                                </div>
                             </div>
 
                             <div className="space-y-4 pt-4 border-t border-slate-50">

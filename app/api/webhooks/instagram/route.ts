@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import {
     sendInstagramDM,
@@ -37,27 +38,69 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        console.log("Webhook received:", JSON.stringify(body, null, 2));
+        const signature = request.headers.get('x-hub-signature-256');
+        const rawBody = await request.text();
+
+        // 1. Verify Meta Signature
+        if (process.env.NODE_ENV === "production" || process.env.INSTAGRAM_APP_SECRET) {
+            const expectedSignature = crypto
+                .createHmac('sha256', process.env.INSTAGRAM_APP_SECRET!)
+                .update(rawBody)
+                .digest('hex');
+
+            if (signature !== `sha256=${expectedSignature}`) {
+                console.warn("⚠️ Invalid Meta Signature received");
+                return new NextResponse('Invalid signature', { status: 403 });
+            }
+        }
+
+        const body = JSON.parse(rawBody);
+        console.log("Webhook verified & received:", JSON.stringify(body, null, 2));
 
         if (body.object === "instagram") {
-            // Process each entry
+            const supabase = getSupabaseAdmin();
+            const batchInserts = [];
+
+            // Fast: Batch all entries and changes
             for (const entry of body.entry || []) {
                 const instagramUserId = entry.id;
 
+                // 2. Batch comment events
                 for (const change of entry.changes || []) {
-                    // Handle comment events
                     if (change.field === "comments") {
-                        await handleCommentEvent(instagramUserId, change.value);
+                        batchInserts.push({
+                            instagram_user_id: instagramUserId,
+                            event_type: 'comment',
+                            payload: change.value,
+                            priority: 5,
+                        });
                     }
                 }
 
+                // 3. Batch messaging events
                 for (const messaging of entry.messaging || []) {
-                    // Handle messaging events (Quick Reply clicks)
-                    if (messaging.message?.is_echo) continue;
+                    if (!messaging.message?.is_echo) {
+                        const isStoryReply = !!messaging.message?.reply_to?.story_id;
+                        batchInserts.push({
+                            instagram_user_id: instagramUserId,
+                            event_type: isStoryReply ? 'story_reply' : 'message',
+                            payload: messaging,
+                            priority: 5,
+                        });
+                    }
+                }
+            }
 
-                    console.log("📥 Messaging event received:", JSON.stringify(messaging, null, 2));
-                    await handleMessagingEvent(instagramUserId, messaging);
+            // Insert everything in one go for maximum speed
+            if (batchInserts.length > 0) {
+                const { error } = await (supabase as any)
+                    .from('webhook_batch')
+                    .insert(batchInserts);
+
+                if (error) {
+                    console.error("❌ Failed to queue webhooks in batch:", error);
+                } else {
+                    console.log(`✅ Queued ${batchInserts.length} webhooks for processing.`);
                 }
             }
 
@@ -250,30 +293,32 @@ async function handleCommentEvent(instagramUserId: string, eventData: any) {
         }
 
         const rateLimitResult = await smartRateLimit(user.id, {
-            hourlyLimit: RATE_LIMITS.INITIAL.hourly, // Use Safe limits for App Review
+            hourlyLimit: RATE_LIMITS.INITIAL.hourly,
             dailyLimit: RATE_LIMITS.INITIAL.daily,
-            spreadDelay: false, // Set to false for Hobby accounts (no minute cron)
+            spreadDelay: false, // Process immediately for Hobby accounts
         });
 
         if (!rateLimitResult.allowed) {
-            console.log(`⏸️ Rate limit reached. Queueing for next slot: ${rateLimitResult.estimatedSendTime}`);
-            await queueDM(user.id, {
-                commentId,
-                commenterId,
-                message: automation.reply_message,
-                automation_id: automation.id,
-            }, rateLimitResult.estimatedSendTime!);
+            console.warn(`⏸️ Rate limit reached for ${user.instagram_username}. Sending public fallback reply.`);
 
-            // Log as queued
+            // Send a public fallback apology if limited
+            await replyToComment(
+                user.instagram_access_token,
+                commentId,
+                "Thanks! 🔥 We're seeing huge demand right now. Please DM us directly for the link, or we'll get back to you shortly! ✨"
+            );
+
+            // Log as rate-limited
             await (supabase as any).from("dm_logs").insert({
                 user_id: user.id,
+                automation_id: automation.id,
                 instagram_comment_id: commentId,
                 instagram_user_id: commenterId,
                 instagram_username: commenterUsername,
                 keyword_matched: automation.trigger_keyword || "ANY",
                 comment_text: commentText,
                 reply_sent: false,
-                error_message: "Queued: Rate limit reached",
+                error_message: "Rate limit reached - public fallback sent",
             });
             return;
         }

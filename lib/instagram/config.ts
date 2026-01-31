@@ -90,6 +90,30 @@ export async function exchangeShortLivedForLongLived(shortLivedToken: string) {
 }
 
 /**
+ * Refresh an existing Long-Lived Token (Extends another 60 days)
+ * Can only be refreshed if it's at least 24 hours old and not expired.
+ */
+export async function refreshLongLivedToken(longLivedToken: string) {
+  const response = await fetch(
+    `https://graph.instagram.com/refresh_access_token?` +
+    `grant_type=ig_refresh_token` +
+    `&access_token=${longLivedToken}`
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("Token refresh error:", errorData);
+    return null;
+  }
+
+  const data = await response.json();
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in
+  };
+}
+
+/**
  * Gets the profile information for the Instagram Business account
  * Note: For the new Instagram Login flow, the token already represents the IG account.
  */
