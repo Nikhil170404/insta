@@ -23,7 +23,13 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --radius: 1.25rem;
+
+    /* Premium Design Tokens */
+    --nav-glass: rgba(255, 255, 255, 0.95);
+    --nav-blur: 32px;
+    --nav-shadow: 0 12px 64px -12px rgba(0, 0, 0, 0.08), 0 4px 20px -4px rgba(0, 0, 0, 0.04);
+    --premium-glow: 0 0 50px -10px rgba(59, 130, 246, 0.15);
   }
 
   .dark {
@@ -53,6 +59,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -76,3 +83,25 @@
   @apply bg-muted-foreground/50;
 }
 
+@layer utilities {
+  .glass-nav {
+    background: var(--nav-glass);
+    backdrop-filter: blur(var(--nav-blur));
+    box-shadow: var(--nav-shadow);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .premium-card {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.04);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+
+  .glow-primary {
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25);
+  }
+}

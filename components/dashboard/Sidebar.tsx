@@ -24,11 +24,11 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Automations", href: "/dashboard/automations", icon: Zap },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Automation Engine", href: "/dashboard", icon: LayoutDashboard },
+  { name: "My Automations", href: "/dashboard/automations", icon: Zap },
+  { name: "Sales Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "Scale & Plans", href: "/dashboard/billing", icon: CreditCard },
+  { name: "Engine Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function DashboardSidebar({ user }: SidebarProps) {
@@ -42,11 +42,11 @@ export function DashboardSidebar({ user }: SidebarProps) {
         <div className="flex flex-col flex-grow bg-white border-r border-slate-100 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
           {/* Logo Section */}
           <div className="flex items-center h-20 px-8">
-            <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform flex items-center justify-center bg-white">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-lg shadow-primary/20 group-hover:scale-110 transition-all duration-500 flex items-center justify-center bg-white ring-1 ring-slate-100">
                 <img src="/logo.png" alt="ReplyKaro Logo" className="w-full h-full object-cover" />
               </div>
-              <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
+              <span className="text-2xl font-black tracking-tighter text-slate-900 uppercase">
                 ReplyKaro
               </span>
             </Link>
@@ -129,20 +129,22 @@ export function DashboardSidebar({ user }: SidebarProps) {
         </div>
       </div>
 
-      {/* --- MOBILE HEADER & MENU --- */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] bg-white border-b border-slate-100 px-4 h-16 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-white shadow-sm">
-            <img src="/logo.png" alt="ReplyKaro Logo" className="w-full h-full object-cover" />
-          </div>
-          <span className="text-lg font-bold text-slate-900 tracking-tight">ReplyKaro</span>
-        </Link>
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-slate-600 hover:bg-slate-50 rounded-xl active:scale-95 transition-all"
-        >
-          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+      {/* --- MOBILE HEADER --- */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] px-4 py-4">
+        <div className="flex items-center justify-between glass-nav px-6 h-16 rounded-[2rem]">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-sm border border-slate-100">
+              <img src="/logo.png" alt="ReplyKaro Logo" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-lg font-black text-slate-900 tracking-tighter uppercase">ReplyKaro</span>
+          </Link>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-50 rounded-full active:scale-90 transition-all"
+          >
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5 text-primary" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Slide-over Overlay */}
@@ -153,8 +155,8 @@ export function DashboardSidebar({ user }: SidebarProps) {
 
       {/* Mobile Sidebar Content */}
       <div className={cn(
-        "lg:hidden fixed top-[64px] left-0 bottom-0 w-[280px] z-[58] bg-white shadow-2xl transition-transform duration-300 ease-out flex flex-col",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        "lg:hidden fixed top-24 left-4 bottom-4 w-[280px] z-[58] bg-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col rounded-[2.5rem] border border-slate-100",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-[calc(100%+2rem)]"
       )}>
         <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
           {navigation.map((item) => {

@@ -14,10 +14,10 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF]">
+    <div className="min-h-screen bg-white">
       <DashboardSidebar user={session} />
-      <main className="lg:pl-72 pt-16 lg:pt-0">
-        <div className="p-4 md:p-8 max-w-[1400px] mx-auto">
+      <main className="lg:pl-72 pt-20 lg:pt-0">
+        <div className="p-4 md:p-10 max-w-[1400px] mx-auto min-h-screen">
           {children}
         </div>
       </main>

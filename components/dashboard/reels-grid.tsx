@@ -189,6 +189,32 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
         }
     }
 
+    async function fetchAll() {
+        if (!nextCursor || loadingMore) return;
+        setLoadingMore(true);
+        let currentCursor = nextCursor;
+
+        try {
+            while (currentCursor) {
+                const url = `/api/reels?after=${currentCursor}`;
+                const res = await fetch(url);
+                if (!res.ok) break;
+
+                const data = await res.json();
+                if (data.media && data.media.length > 0) {
+                    setMedia(prev => [...prev, ...data.media]);
+                }
+
+                currentCursor = data.nextCursor;
+            }
+            setNextCursor(null);
+        } catch (error) {
+            console.error("Error fetching all media:", error);
+        } finally {
+            setLoadingMore(false);
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -271,6 +297,14 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                         <Play className="h-20 w-20 text-slate-100 mx-auto mb-6" />
                         <p className="text-slate-400 text-lg font-bold">No Instagram posts found</p>
                         <p className="text-slate-300 text-sm mt-1">Make sure you've posted some Reels or Photos</p>
+                    </div>
+                ) : filteredMedia.length === 0 ? (
+                    <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] py-24 text-center">
+                        <Search className="h-20 w-20 text-slate-100 mx-auto mb-6" />
+                        <p className="text-slate-400 text-lg font-bold">No posts match your search</p>
+                        {nextCursor && (
+                            <p className="text-slate-300 text-sm mt-1">Try fetching more posts to search deeper.</p>
+                        )}
                     </div>
                 ) : (
                     <>
@@ -389,21 +423,42 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                         </div>
 
                         {nextCursor && (
-                            <div className="pt-10 flex justify-center">
-                                <Button
-                                    onClick={loadMore}
-                                    disabled={loadingMore}
-                                    className="h-14 px-10 rounded-3xl bg-white border border-slate-100 text-slate-900 font-bold hover:bg-slate-50 shadow-sm gap-3 group"
-                                >
-                                    {loadingMore ? (
-                                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                    ) : (
-                                        <>
-                                            Explore More Posts
-                                            <ChevronDown className="h-5 w-5 text-slate-400 group-hover:translate-y-0.5 transition-transform" />
-                                        </>
-                                    )}
-                                </Button>
+                            <div className="pt-10 flex flex-col items-center gap-4">
+                                <div className="flex items-center gap-4">
+                                    <Button
+                                        onClick={loadMore}
+                                        disabled={loadingMore}
+                                        variant="outline"
+                                        className="h-14 px-8 rounded-3xl bg-white border-slate-100 text-slate-900 font-bold hover:bg-slate-50 shadow-sm gap-3 group"
+                                    >
+                                        {loadingMore ? (
+                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                        ) : (
+                                            <>
+                                                Explore More
+                                                <ChevronDown className="h-5 w-5 text-slate-400 group-hover:translate-y-0.5 transition-transform" />
+                                            </>
+                                        )}
+                                    </Button>
+
+                                    <Button
+                                        onClick={fetchAll}
+                                        disabled={loadingMore}
+                                        className="h-14 px-8 rounded-3xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl gap-3 group"
+                                    >
+                                        {loadingMore ? (
+                                            <Loader2 className="h-5 w-5 animate-spin text-white" />
+                                        ) : (
+                                            <>
+                                                Fetch All Posts
+                                                <Zap className="h-4 w-4 fill-primary text-primary" />
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic animate-pulse">
+                                    Click "Fetch All" to search through your entire Instagram library
+                                </p>
                             </div>
                         )}
                     </>

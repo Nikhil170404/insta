@@ -53,6 +53,7 @@ export default function AnalyticsPage() {
     });
     const [loading, setLoading] = useState(true);
     const [visibleLogs, setVisibleLogs] = useState(15);
+    const [selectedLog, setSelectedLog] = useState<DmLog | null>(null);
 
     useEffect(() => {
         fetchAnalytics();
@@ -190,7 +191,7 @@ export default function AnalyticsPage() {
                 ) : (
                     <div className="grid grid-cols-1 gap-4">
                         {logs.slice(0, visibleLogs).map((log) => (
-                            <ActivityRow key={log.id} log={log} />
+                            <ActivityRow key={log.id} log={log} onClick={() => setSelectedLog(log)} />
                         ))}
 
                         {visibleLogs < logs.length && (
@@ -204,6 +205,77 @@ export default function AnalyticsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Detail Modal */}
+            {selectedLog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl p-8 relative animate-in zoom-in-95 duration-300">
+                        <button
+                            onClick={() => setSelectedLog(null)}
+                            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all font-black"
+                        >
+                            ✕
+                        </button>
+
+                        <div className="space-y-8">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 rounded-[1.5rem] bg-slate-100 flex items-center justify-center text-slate-900 font-black text-2xl">
+                                    {selectedLog.instagram_username?.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">@{selectedLog.instagram_username}</h2>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest italic">{new Date(selectedLog.created_at).toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Inbound Comment</p>
+                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 italic text-slate-600 font-medium">
+                                        "{selectedLog.comment_text}"
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Trigger Match</p>
+                                    <div className="flex items-center gap-2">
+                                        <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg">
+                                            {selectedLog.keyword_matched || "ANY"}
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Delivery Status</p>
+                                    <div className={cn(
+                                        "flex items-center gap-3 p-4 rounded-2xl border",
+                                        selectedLog.reply_sent ? "bg-green-50 border-green-100 text-green-700" : "bg-red-50 border-red-100 text-red-700"
+                                    )}>
+                                        <div className={cn("w-2 h-2 rounded-full", selectedLog.reply_sent ? "bg-green-500" : "bg-red-500")} />
+                                        <span className="font-black text-xs uppercase tracking-widest">
+                                            {selectedLog.reply_sent ? "DM Successfully Delivered" : "Delivery Failed"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {selectedLog.is_clicked && (
+                                    <div className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-100 text-purple-700 rounded-2xl">
+                                        <Zap className="h-4 w-4 fill-current" />
+                                        <span className="font-black text-xs uppercase tracking-widest italic">User clicked the DM button! 🔥</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={() => setSelectedLog(null)}
+                                className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95"
+                            >
+                                Close Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -228,9 +300,12 @@ function StatCard({ icon, value, label, color }: { icon: React.ReactNode, value:
     );
 }
 
-function ActivityRow({ log }: { log: DmLog }) {
+function ActivityRow({ log, onClick }: { log: DmLog, onClick?: () => void }) {
     return (
-        <div className="flex items-center gap-5 p-5 bg-white rounded-[2rem] border border-slate-50 transition-all duration-300 hover:shadow-lg group">
+        <div
+            onClick={onClick}
+            className="flex items-center gap-5 p-5 bg-white rounded-[2rem] border border-slate-50 transition-all duration-300 hover:shadow-lg group cursor-pointer active:scale-[0.99] hover:border-primary/20"
+        >
             {/* User Profile Simulation */}
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 font-black text-lg shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform relative">
                 {log.instagram_username?.charAt(0).toUpperCase() || "?"}
@@ -284,11 +359,19 @@ function ActivityRow({ log }: { log: DmLog }) {
                         </span>
                     </div>
 
-                    <button className="p-2 text-slate-200 group-hover:text-slate-400 transition-colors hidden md:block">
-                        <ChevronRight className="h-5 w-5" />
-                    </button>
+                    <div className="p-2 text-slate-200 group-hover:text-primary transition-colors hidden md:block">
+                        <ChevronRight className="h-5 w-5 translate-x-0 group-hover:translate-x-1 transition-transform" />
+                    </div>
                 </div>
             </div>
         </div>
+    );
+}
+
+function Badge({ children, className }: { children: React.ReactNode, className?: string }) {
+    return (
+        <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2", className)}>
+            {children}
+        </span>
     );
 }
