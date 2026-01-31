@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, X, ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,9 +12,14 @@ interface NavigationProps {
 }
 
 export function Navigation({ hideFeatures = false }: NavigationProps) {
+    const pathname = usePathname();
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+
+    // Hide navigation on dashboard and auth pages
+    const isDashboard = pathname?.startsWith("/dashboard");
+    const isAuthPage = pathname === "/signin" || pathname === "/signup";
 
     useEffect(() => {
         // Auth Check
@@ -30,6 +36,8 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
+    if (isDashboard || isAuthPage) return null;
+
     const navLinks = [
         { name: "Features", href: "/#features", hide: hideFeatures },
         { name: "Pricing", href: "/pricing" },
@@ -45,7 +53,7 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
             )}>
                 <div className="container mx-auto flex items-center justify-center gap-3">
                     {/* Main Nav Pill */}
-                    <div className="flex items-center justify-between glass-nav px-6 md:px-8 py-4 rounded-[2.5rem] flex-1 max-w-4xl">
+                    <div className="flex items-center justify-between glass-nav px-6 md:px-8 py-4 rounded-[2.5rem] flex-1 max-w-4xl border border-white/20">
                         {/* Logo & Brand Pod */}
                         <Link href="/" className="flex items-center gap-3 md:gap-4 transition-transform hover:scale-105 active:scale-95 group">
                             <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] flex items-center justify-center ring-1 ring-slate-100 group-hover:rotate-12 transition-all duration-500 overflow-hidden shrink-0">
@@ -56,15 +64,24 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
 
                         {/* Desktop Links */}
                         <div className="hidden md:flex items-center gap-10 mx-8">
-                            {navLinks.filter(l => !l.hide).map((link) => (
-                                <Link
-                                    key={link.name}
-                                    href={link.href}
-                                    className="text-[11px] font-black text-slate-400 hover:text-primary transition-colors uppercase tracking-[0.2em]"
-                                >
-                                    {link.name}
-                                </Link>
-                            ))}
+                            {navLinks.filter(l => !l.hide).map((link) => {
+                                const isActive = pathname === link.href;
+                                return (
+                                    <Link
+                                        key={link.name}
+                                        href={link.href}
+                                        className={cn(
+                                            "text-[11px] font-black uppercase tracking-[0.2em] transition-all relative group/link",
+                                            isActive ? "text-primary" : "text-slate-400 hover:text-primary"
+                                        )}
+                                    >
+                                        {link.name}
+                                        {isActive && (
+                                            <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                                        )}
+                                    </Link>
+                                );
+                            })}
                         </div>
 
                         {/* Auth Actions */}
@@ -129,17 +146,26 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
                 </div>
 
                 <nav className="flex-1 p-6 space-y-2">
-                    {navLinks.map((item) => (
-                        <Link
-                            key={item.name}
-                            href={item.href}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="flex items-center justify-between p-4 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-primary transition-all group"
-                        >
-                            {item.name}
-                            <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                        </Link>
-                    ))}
+                    {navLinks.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={cn(
+                                    "flex items-center justify-between p-4 rounded-2xl text-sm font-bold transition-all group",
+                                    isActive ? "bg-primary/5 text-primary" : "text-slate-600 hover:bg-slate-50 hover:text-primary"
+                                )}
+                            >
+                                {item.name}
+                                <ArrowRight className={cn(
+                                    "h-4 w-4 transition-all",
+                                    isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
+                                )} />
+                            </Link>
+                        );
+                    })}
                 </nav>
 
                 <div className="p-6 border-t border-slate-50">

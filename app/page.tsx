@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Play
 } from "lucide-react";
-import { Navigation } from "@/components/ui/Navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -22,7 +21,6 @@ import { cn } from "@/lib/utils";
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-white selection:bg-primary selection:text-white overflow-x-hidden">
-      <Navigation />
 
       {/* Hero Section */}
       <section className="relative pt-48 pb-32 px-4">

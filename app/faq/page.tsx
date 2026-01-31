@@ -61,12 +61,9 @@ const FAQS = [
     }
 ];
 
-import { Navigation } from "@/components/ui/Navigation";
-
 export default function FAQPage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white">
-            <Navigation />
 
             <main className="flex-1 container mx-auto px-4 pt-48 pb-16 relative">
                 {/* Decorative */}
