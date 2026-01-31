@@ -12,20 +12,20 @@ export async function GET(request: NextRequest) {
     try {
         console.log("🧹 Starting database cleanup...");
 
-        // 1. Delete processed webhooks older than 7 days
+        // 1. Delete processed webhooks older than 1 HOUR (Immediate recovery)
         const { count: webhookCount, error: webhookError } = await (supabase as any)
             .from('webhook_batch')
             .delete({ count: 'exact' })
             .eq('processed', true)
-            .lt('processed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+            .lt('processed_at', new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString());
 
         if (webhookError) console.error("Error cleaning up webhooks:", webhookError);
 
-        // 2. Delete old DM logs (keep 30 days)
+        // 2. Delete old DM logs (Aggressive 7-day limit for free tier)
         const { count: logCount, error: logError } = await (supabase as any)
             .from('dm_logs')
             .delete({ count: 'exact' })
-            .lt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+            .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
         if (logError) console.error("Error cleaning up logs:", logError);
 

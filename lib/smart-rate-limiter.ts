@@ -8,16 +8,16 @@ import { getSupabaseAdmin } from "./supabase/client";
  * Our Smart Limits (Optimized for Production):
  */
 export const RATE_LIMITS = {
-    // FOR APP REVIEW (show restraint)
+    // FOR STARTER/TRIAL (Protect Free Tier)
     INITIAL: {
-        hourly: 100,
-        daily: 500,
+        hourly: 50,
+        daily: 250,
     },
 
-    // AFTER APPROVAL (ramp up gradually)
+    // AFTER UPGRADE
     PRODUCTION: {
-        hourly: 180,  // Standard Production Limit
-        daily: 1500,  // 3x initial
+        hourly: 200,
+        daily: 1500,
     }
 };
 

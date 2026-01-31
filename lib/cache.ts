@@ -1,75 +1,42 @@
-import { Redis } from '@upstash/redis';
+// In-memory cache with TTL support for Free Tier endurance
+const cache = new Map<string, { data: any; expiresAt: number }>();
 
-// Initialize Redis only if environment variables are present
-const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    })
-    : null;
-
-const CACHE_TTL = 300; // 5 minutes
+const CACHE_TTL = 300 * 1000; // 5 minutes in ms
 
 /**
- * Get cached user data
+ * Get cached item
  */
-export async function getCachedUser(instagramUserId: string) {
-    if (!redis) return null;
-    try {
-        const cached = await redis.get(`user:${instagramUserId}`);
-        return typeof cached === 'string' ? JSON.parse(cached) : cached;
-    } catch (error) {
-        console.error("Cache get error (user):", error);
+export async function getCached(key: string) {
+    const entry = cache.get(key);
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+        cache.delete(key);
         return null;
     }
+    return entry.data;
 }
 
 /**
- * Cache user data
+ * Set cached item
  */
-export async function setCachedUser(instagramUserId: string, userData: any) {
-    if (!redis) return;
-    try {
-        await redis.set(`user:${instagramUserId}`, JSON.stringify(userData), { ex: CACHE_TTL });
-    } catch (error) {
-        console.error("Cache set error (user):", error);
+export async function setCached(key: string, data: any, ttl = CACHE_TTL) {
+    cache.set(key, {
+        data,
+        expiresAt: Date.now() + ttl
+    });
+
+    // Size management: Clear oldest if cache grows too large (> 1000 items)
+    if (cache.size > 1000) {
+        const firstKey = cache.keys().next().value;
+        if (firstKey) cache.delete(firstKey);
     }
 }
 
-/**
- * Get cached automation rules
- */
-export async function getCachedAutomation(cacheKey: string) {
-    if (!redis) return null;
-    try {
-        const cached = await redis.get(cacheKey);
-        return typeof cached === 'string' ? JSON.parse(cached) : cached;
-    } catch (error) {
-        console.error("Cache get error (automation):", error);
-        return null;
-    }
-}
+export const getCachedUser = (id: string) => getCached(`user:${id}`);
+export const setCachedUser = (id: string, data: any) => setCached(`user:${id}`, data);
 
-/**
- * Cache automation rules
- */
-export async function setCachedAutomation(cacheKey: string, automation: any) {
-    if (!redis) return;
-    try {
-        await redis.set(cacheKey, JSON.stringify(automation), { ex: CACHE_TTL });
-    } catch (error) {
-        console.error("Cache set error (automation):", error);
-    }
-}
+export const getCachedAutomation = (id: string) => getCached(`auto:${id}`);
+export const setCachedAutomation = (id: string, data: any) => setCached(`auto:${id}`, data);
 
-/**
- * Clear user cache
- */
-export async function clearUserCache(instagramUserId: string) {
-    if (!redis) return;
-    try {
-        await redis.del(`user:${instagramUserId}`);
-    } catch (error) {
-        console.error("Cache clear error:", error);
-    }
-}
+export const clearUserCache = (id: string) => cache.delete(`user:${id}`);

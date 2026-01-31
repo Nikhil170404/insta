@@ -1,63 +1,62 @@
 export const PRICING_PLANS = {
     STARTER: {
         name: "Starter Pack",
-        price: "133",
-        upfront: "399",
+        price: "299",
+        upfront: "899",
         duration: "3 Months",
         description: "Perfect for budding creators",
         hindiDesc: "Chhote creators ke liye perfect",
         features: [
             "1 Instagram Account",
             "10 Active Automations",
-            "500 DMs per day",
-            "5,000 comments handled daily",
+            "200 DMs per day",
+            "⚡ DMs sent within 30 seconds",
             "Email Support (48h)",
         ],
-        cta: "Start ₹399 Pack",
+        cta: "Get Starter Pack",
         popular: false,
-        savings: "₹48 bachao!",
-        badge: "🔥 Most Popular"
+        savings: "Save ₹100+",
+        badge: "Most Affordable"
     },
     GROWTH: {
         name: "Growth Pack",
-        price: "266",
-        upfront: "799",
+        price: "699",
+        upfront: "1,999",
         duration: "3 Months",
         description: "Best for growing creators",
         hindiDesc: "Growing creators ke liye best",
         features: [
-            "2 Instagram Accounts",
+            "1 Instagram Account",
             "25 Active Automations",
-            "2,000 DMs per day",
-            "25,000 comments handled daily",
+            "1,000 DMs per day",
+            "⚡ Real-time processing",
             "Story Automation",
             "Priority Support (12h)",
         ],
-        cta: "Start ₹799 Pack",
+        cta: "Get Growth Pack",
         popular: true,
-        savings: "₹98 bachao!",
-        badge: "⚡ Best Value"
+        savings: "Save ₹300+",
+        badge: "Best Seller"
     },
     PRO: {
         name: "Pro Pack",
-        price: "500",
-        upfront: "1,499",
+        price: "1,299",
+        upfront: "3,499",
         duration: "3 Months",
         description: "Established creators & agencies",
-        hindiDesc: "Established creators ke liye",
+        hindiDesc: "Agencies aur Pro creators ke liye",
         features: [
-            "5 Instagram Accounts",
+            "3 Instagram Accounts",
             "Unlimited Automations",
-            "10,000 DMs per day",
+            "5,000 DMs per day",
             "1 LAKH comments handled daily 💪",
-            "All Growth Features",
             "Dedicated Support Manager",
             "Phone Support",
         ],
-        cta: "Start ₹1,499 Pack",
+        cta: "Go Pro Unlimited",
         popular: false,
-        savings: "₹298 bachao!",
-        badge: "👑 Enterprise"
+        savings: "Save ₹600+",
+        badge: "Agency Choice"
     }
 };
 
