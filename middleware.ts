@@ -12,7 +12,7 @@ const COOKIE_NAME = "replykaro_session";
 const protectedRoutes = ["/dashboard", "/keywords", "/analytics", "/settings"];
 
 // Routes that should redirect to dashboard if authenticated
-const authRoutes = ["/signin", "/signup", "/pricing", "/about", "/faq", "/contact"];
+const authRoutes = ["/signin", "/signup"];
 const isRootPath = (pathname: string) => pathname === "/";
 
 async function getSessionFromRequest(request: NextRequest) {

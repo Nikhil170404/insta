@@ -15,12 +15,105 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import Script from "next/script";
 
 import { PLANS_ARRAY } from "@/lib/pricing";
 
 export default function BillingPage() {
+    const router = useRouter();
+    const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+    const handlePayment = async (plan: any) => {
+        console.log("Initializing payment from dashboard for plan:", plan.name);
+        try {
+            setLoadingPlan(plan.name);
+
+            // 1. Create Order
+            const response = await fetch("/api/payments/razorpay/order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amount: parseInt(plan.upfront.replace(/,/g, "")),
+                    planId: plan.name
+                }),
+            });
+
+            if (response.status === 401) {
+                toast.error("Humein pehle Sign In karna hoga");
+                router.push("/signin");
+                return;
+            }
+
+            const order = await response.json();
+            if (order.error) throw new Error(order.error);
+
+            // 2. Open Razorpay
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: order.amount,
+                currency: order.currency,
+                name: "ReplyKaro",
+                description: `Upgrade to ${plan.name}`,
+                image: "/logo.png",
+                order_id: order.id,
+                handler: async function (response: any) {
+                    try {
+                        const verifyRes = await fetch("/api/payments/razorpay/verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                amount: parseInt(plan.upfront.replace(/,/g, ""))
+                            }),
+                        });
+
+                        const result = await verifyRes.json();
+                        if (result.success) {
+                            toast.success("Payment Successful! Aapka plan update ho gaya hai.");
+                            router.refresh(); // Refresh to show new plan state if any
+                        } else {
+                            throw new Error(result.error || "Verification failed");
+                        }
+                    } catch (err: any) {
+                        toast.error(err.message || "Payment verification fail ho gaya");
+                    }
+                },
+                prefill: {
+                    name: "",
+                    email: "",
+                    contact: ""
+                },
+                theme: {
+                    color: "#000000",
+                },
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                console.error("Payment failed event:", response.error);
+                toast.error("Payment fail ho gaya: " + response.error.description);
+            });
+            rzp.open();
+
+        } catch (error: any) {
+            console.error("Payment error from dashboard:", error);
+            toast.error(error.message || "Payment initialize nahi ho paaya");
+        } finally {
+            setLoadingPlan(null);
+        }
+    };
+
     return (
         <div className="max-w-7xl mx-auto space-y-16 pb-20">
+            <Script
+                id="razorpay-checkout-js-billing"
+                src="https://checkout.razorpay.com/v1/checkout.js"
+            />
+
             {/* Header */}
             <div className="text-center space-y-4 max-w-3xl mx-auto">
                 <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full mb-4 mx-auto">
@@ -104,6 +197,8 @@ export default function BillingPage() {
 
                         <div className="mt-10">
                             <Button
+                                onClick={() => handlePayment(plan)}
+                                disabled={loadingPlan === plan.name}
                                 className={cn(
                                     "w-full h-14 rounded-2xl font-black text-sm tracking-tight transition-all duration-300 gap-3 group/btn shadow-xl",
                                     plan.popular
@@ -111,7 +206,7 @@ export default function BillingPage() {
                                         : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
                                 )}
                             >
-                                {plan.cta}
+                                {loadingPlan === plan.name ? "Processing..." : plan.cta}
                                 <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
                             </Button>
                         </div>

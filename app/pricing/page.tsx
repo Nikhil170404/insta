@@ -16,10 +16,105 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PLANS_ARRAY } from "@/lib/pricing";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import Script from "next/script";
 
 export default function PricingPage() {
+    const router = useRouter();
+    const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+    const handlePayment = async (plan: any) => {
+        console.log("Initializing payment for plan:", plan.name);
+        try {
+            setLoadingPlan(plan.name);
+
+            // 1. Create Order
+            const response = await fetch("/api/payments/razorpay/order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amount: parseInt(plan.upfront.replace(/,/g, "")),
+                    planId: plan.name
+                }),
+            });
+
+            if (response.status === 401) {
+                console.log("Unauthorized: Redirecting to signin");
+                toast.error("Humein pehle Sign In karna hoga");
+                router.push("/signin");
+                return;
+            }
+
+            const order = await response.json();
+            if (order.error) throw new Error(order.error);
+
+            // 2. Open Razorpay
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: order.amount,
+                currency: order.currency,
+                name: "ReplyKaro",
+                description: `Upgrade to ${plan.name}`,
+                image: "/logo.png",
+                order_id: order.id,
+                handler: async function (response: any) {
+                    try {
+                        const verifyRes = await fetch("/api/payments/razorpay/verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                amount: parseInt(plan.upfront.replace(/,/g, ""))
+                            }),
+                        });
+
+                        const result = await verifyRes.json();
+                        if (result.success) {
+                            toast.success("Payment Successful! Aapka plan update ho gaya hai.");
+                            router.push("/dashboard");
+                        } else {
+                            throw new Error(result.error || "Verification failed");
+                        }
+                    } catch (err: any) {
+                        toast.error(err.message || "Payment verification fail ho gaya");
+                    }
+                },
+                prefill: {
+                    name: "",
+                    email: "",
+                    contact: ""
+                },
+                theme: {
+                    color: "#000000",
+                },
+            };
+
+            console.log("Opening Razorpay modal...");
+            const rzp = new (window as any).Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                console.error("Payment failed event:", response.error);
+                toast.error("Payment fail ho gaya: " + response.error.description);
+            });
+            rzp.open();
+
+        } catch (error: any) {
+            console.error("Payment error:", error);
+            toast.error(error.message || "Payment initialize nahi ho paaya");
+        } finally {
+            setLoadingPlan(null);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 selection:bg-primary selection:text-white">
+            <Script
+                id="razorpay-checkout-js"
+                src="https://checkout.razorpay.com/v1/checkout.js"
+            />
 
             <main className="flex-1 container mx-auto px-4 pt-48 pb-16 relative">
                 {/* Decorative Background Elements */}
@@ -110,19 +205,19 @@ export default function PricingPage() {
                             </div>
 
                             <div className="mt-12">
-                                <Link href="/signin">
-                                    <Button
-                                        className={cn(
-                                            "w-full h-16 rounded-[2rem] font-black text-sm tracking-[0.05em] uppercase transition-all duration-500 gap-4 group/btn shadow-2xl active:scale-95",
-                                            plan.popular
-                                                ? "bg-primary text-white hover:bg-primary/90 shadow-primary/25"
-                                                : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
-                                        )}
-                                    >
-                                        {plan.cta}
-                                        <ArrowRight className="h-5 w-5 group-hover/btn:translate-x-2 transition-transform duration-500" />
-                                    </Button>
-                                </Link>
+                                <Button
+                                    onClick={() => handlePayment(plan)}
+                                    disabled={loadingPlan === plan.name}
+                                    className={cn(
+                                        "w-full h-16 rounded-[2rem] font-black text-sm tracking-[0.05em] uppercase transition-all duration-500 gap-4 group/btn shadow-2xl active:scale-95",
+                                        plan.popular
+                                            ? "bg-primary text-white hover:bg-primary/90 shadow-primary/25"
+                                            : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
+                                    )}
+                                >
+                                    {loadingPlan === plan.name ? "Processing..." : plan.cta}
+                                    <ArrowRight className="h-5 w-5 group-hover/btn:translate-x-2 transition-transform duration-500" />
+                                </Button>
                             </div>
                         </div>
                     ))}

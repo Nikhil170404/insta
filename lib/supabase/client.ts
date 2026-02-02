@@ -1,9 +1,9 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "./types";
 
-// Lazy initialization to avoid errors during build when env vars are not set
-let supabaseAdmin: ReturnType<typeof createSupabaseClient> | null = null;
+let supabaseAdmin: SupabaseClient<Database> | null = null;
 
-export function getSupabaseAdmin() {
+export function getSupabaseAdmin(): SupabaseClient<Database> {
   if (!supabaseAdmin) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -12,7 +12,7 @@ export function getSupabaseAdmin() {
       throw new Error("Missing Supabase environment variables");
     }
 
-    supabaseAdmin = createSupabaseClient(url, key);
+    supabaseAdmin = createSupabaseClient<Database>(url, key);
   }
 
   return supabaseAdmin;
