@@ -193,7 +193,7 @@ export default function TermsPage() {
               If you have questions about these Terms, please contact us at:
             </p>
             <p className="text-gray-600">
-              Email: support@replykaro.com
+              Email: replykaro1704@gmail.com
             </p>
           </section>
         </div>

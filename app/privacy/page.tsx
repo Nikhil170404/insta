@@ -135,7 +135,7 @@ export default function PrivacyPolicyPage() {
               <li><strong>Object:</strong> Object to certain data processing activities</li>
             </ul>
             <p className="text-gray-600 mt-4">
-              To exercise these rights, email us at: <strong>privacy@replykaro.com</strong>
+              To exercise these rights, email us at: <strong>replykaro1704@gmail.com</strong>
             </p>
           </section>
 
@@ -160,7 +160,7 @@ export default function PrivacyPolicyPage() {
             <p className="text-gray-600">
               ReplyKaro is not intended for users under 18 years of age. We do not knowingly
               collect information from children. If you believe we have collected data from
-              a minor, please contact us immediately at privacy@replykaro.com and we will
+              a minor, please contact us immediately at replykaro1704@gmail.com and we will
               delete it promptly.
             </p>
           </section>
@@ -258,8 +258,8 @@ export default function PrivacyPolicyPage() {
             <div className="bg-gray-50 p-6 rounded-lg">
               <p className="text-gray-700"><strong>Business Name:</strong> ReplyKaro</p>
               <p className="text-gray-700 mt-2"><strong>Udyam Registration:</strong> UDYAM-MH-18-0517632</p>
-              <p className="text-gray-700 mt-2"><strong>Email:</strong> privacy@replykaro.com</p>
-              <p className="text-gray-700 mt-2"><strong>Support:</strong> support@replykaro.com</p>
+              <p className="text-gray-700 mt-2"><strong>Email:</strong> replykaro1704@gmail.com</p>
+              <p className="text-gray-700 mt-2"><strong>Support:</strong> replykaro1704@gmail.com</p>
               <p className="text-gray-700 mt-2"><strong>Location:</strong> Mumbai, Maharashtra, India</p>
               <p className="text-gray-700 mt-2"><strong>Domain:</strong> replykaro.com</p>
               <p className="text-gray-700 mt-2"><strong>Response Time:</strong> Within 48 hours</p>

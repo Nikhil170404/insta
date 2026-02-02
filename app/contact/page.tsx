@@ -49,9 +49,9 @@ export default function ContactPage() {
                             <p className="text-slate-400 font-medium mb-8 leading-relaxed">
                                 Best for technical queries and plan upgrades. We usually reply within 2 hours.
                             </p>
-                            <a href="mailto:support@replykaro.com" className="block">
+                            <a href="mailto:replykaro1704@gmail.com" className="block">
                                 <Button className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-sm uppercase tracking-widest gap-3 shadow-xl">
-                                    support@replykaro.com
+                                    replykaro1704@gmail.com
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </a>
@@ -87,7 +87,7 @@ export default function ContactPage() {
                                 <p className="text-slate-400 font-medium mt-1">If you need custom limits or a dedicated account manager, humein mail kijiye!</p>
                             </div>
                             <div className="md:ml-auto">
-                                <Link href="mailto:agencies@replykaro.com">
+                                <Link href="mailto:replykaro1704@gmail.com">
                                     <Button className="h-12 px-8 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 shadow-xl shadow-primary/20">
                                         Agency Plan
                                     </Button>
