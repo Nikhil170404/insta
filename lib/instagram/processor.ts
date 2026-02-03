@@ -450,7 +450,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 senderIgsid,
                 automation.final_message || "Here is the link you requested! ✨",
                 automation.id,
-                automation.button_text || "Open Link",
+                automation.final_button_text || "Open Link",
                 automation.link_url,
                 automation.media_thumbnail_url
             );

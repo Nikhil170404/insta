@@ -53,6 +53,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
     const [showOpeningDM, setShowOpeningDM] = useState(true);
 
     const [finalDM, setFinalDM] = useState(initialData?.final_message || "Here is the link you requested! ✨");
+    const [finalButtonText, setFinalButtonText] = useState(initialData?.final_button_text || "Open Link");
     const [linkUrl, setLinkUrl] = useState(initialData?.link_url || "");
     const [requireFollow, setRequireFollow] = useState(initialData?.require_follow || false);
     const [followGateMessage, setFollowGateMessage] = useState(initialData?.follow_gate_message || "Hey! 👋 To unlock this, please follow us first!");
@@ -72,6 +73,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
             button_text: buttonText,
             link_url: linkUrl,
             final_message: finalDM,
+            final_button_text: finalButtonText,
             require_follow: requireFollow,
             follow_gate_message: requireFollow ? followGateMessage : null,
             respond_to_replies: respondToReplies,
@@ -477,6 +479,17 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                                         className="w-full h-14 pl-14 pr-6 bg-white rounded-2xl border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-primary shadow-sm text-sm font-bold text-slate-600"
                                                     />
                                                 </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="text-[11px] text-slate-400 font-bold px-1 uppercase tracking-widest">Button Text</p>
+                                                <input
+                                                    type="text"
+                                                    value={finalButtonText}
+                                                    onChange={(e) => setFinalButtonText(e.target.value)}
+                                                    placeholder="Open Link"
+                                                    className="w-full h-12 px-6 bg-white rounded-2xl border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-primary shadow-sm text-sm font-bold text-center text-primary"
+                                                />
                                             </div>
                                         </div>
                                     </div>

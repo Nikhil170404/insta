@@ -7,9 +7,10 @@ ADD COLUMN IF NOT EXISTS is_follow_gate BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS user_is_following BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS automation_id UUID REFERENCES public.automations(id) ON DELETE SET NULL;
 
--- Add final_message column to automations for customizable "Final Reward" message
+-- Add final_message and final_button_text columns for customizable "Final Reward"
 ALTER TABLE public.automations
-ADD COLUMN IF NOT EXISTS final_message TEXT DEFAULT 'Here is the link you requested! ✨';
+ADD COLUMN IF NOT EXISTS final_message TEXT DEFAULT 'Here is the link you requested! ✨',
+ADD COLUMN IF NOT EXISTS final_button_text VARCHAR(255) DEFAULT 'Open Link';
 
 -- Index for follow-gate queries (used in hasReceivedFollowGate function)
 CREATE INDEX IF NOT EXISTS idx_dm_logs_follow_gate
