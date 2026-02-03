@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "./supabase/client";
 import { getPlanLimits } from "./pricing";
+import { logger } from "./logger";
 
 /**
  * Instagram API Rate Limits (2025):
@@ -148,11 +149,11 @@ export async function queueDM(
     });
 
     if (error) {
-        console.error("❌ Failed to queue DM:", error);
+        logger.error("Failed to queue DM", { category: "rate-limiter" }, error);
         throw error;
     }
 
-    console.log(`📬 DM queued for ${sendAt.toISOString()}`);
+    logger.info("DM queued", { sendAt: sendAt.toISOString(), category: "rate-limiter" });
 }
 
 /**
@@ -167,7 +168,7 @@ export async function processQueuedDMs() {
     const supabase = getSupabaseAdmin();
     const now = new Date();
 
-    console.log("⏰ Default Cron Processing Started...");
+    logger.info("Default Cron Processing Started", { category: "rate-limiter" });
 
     // 1. Fetch Processable DMs
     // Join with users and automations
@@ -185,13 +186,13 @@ export async function processQueuedDMs() {
         .limit(200); // Fetch sizeable batch
 
     if (error) {
-        console.error("Error fetching queue:", error);
+        logger.error("Error fetching queue", { category: "rate-limiter" }, error);
         return;
     }
 
     if (!queuedDMs || queuedDMs.length === 0) return;
 
-    console.log(`🚀 Processing ${queuedDMs.length} queued DMs in PARALLEL...`);
+    logger.info("Processing queued DMs in PARALLEL", { count: queuedDMs.length, category: "rate-limiter" });
 
     // 2. Group DMs by User for Bulk Limit Checking
     const userGroups: { [key: string]: typeof queuedDMs } = {};
@@ -259,7 +260,7 @@ export async function processQueuedDMs() {
                 const nextMonth = new Date(monthStart);
                 nextMonth.setMonth(nextMonth.getMonth() + 1);
                 nextAvailableTime = nextMonth;
-                console.log(`⚠️ User ${userId} hit MONTHLY limit. Rescheduling ${dmsToReschedule.length} DMs to ${nextAvailableTime.toISOString()}`);
+                logger.warn("User hit MONTHLY limit during queue processing", { userId, rescheduleCount: dmsToReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
             } else {
                 // Reschedule to next hour
                 const nextHour = new Date(hourStart);
@@ -268,7 +269,7 @@ export async function processQueuedDMs() {
                 const jitterMinutes = Math.floor(Math.random() * 10);
                 nextHour.setMinutes(jitterMinutes);
                 nextAvailableTime = nextHour;
-                console.log(`⚠️ User ${userId} hit HOURLY limit. Rescheduling ${dmsToReschedule.length} DMs to ${nextAvailableTime.toISOString()}`);
+                logger.warn("User hit HOURLY limit during queue processing", { userId, rescheduleCount: dmsToReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
             }
 
             // Bulk Update Rescheduled DMs
@@ -284,7 +285,7 @@ export async function processQueuedDMs() {
 
         // F. Send Allowed DMs
         if (dmsToSend.length > 0) {
-            console.log(`⚡ Sending ${dmsToSend.length} DMs for user ${userId} (${planType} Plan)...`);
+            logger.info("Sending queued DMs", { userId, count: dmsToSend.length, planType, category: "rate-limiter" });
 
             await Promise.allSettled(dmsToSend.map(async (dm: any) => {
                 try {
@@ -302,21 +303,44 @@ export async function processQueuedDMs() {
 
                     if (dmSent) {
                         await incrementAutomationCount(supabase, dm.automation_id, "dm_sent_count");
-                        await (supabase as any).from("dm_logs").insert({
-                            user_id: dm.user_id,
-                            instagram_comment_id: dm.instagram_comment_id,
-                            instagram_user_id: dm.instagram_user_id,
-                            keyword_matched: "QUEUED",
-                            comment_text: "Processed from queue",
-                            reply_sent: true,
-                            reply_sent_at: new Date().toISOString(),
-                        });
+                        // ATOMIC CLAIM FIX: Check if we already have a placeholder log for this comment
+                        // If so, update it to "success" instead of creating a duplicate
+                        let existingLog = null;
+                        if (dm.instagram_comment_id) {
+                            const { data } = await (supabase as any)
+                                .from("dm_logs")
+                                .select("id")
+                                .eq("user_id", dm.user_id)
+                                .eq("instagram_comment_id", dm.instagram_comment_id)
+                                .maybeSingle();
+                            existingLog = data;
+                        }
+
+                        if (existingLog) {
+                            await (supabase as any).from("dm_logs").update({
+                                reply_sent: true,
+                                reply_sent_at: new Date().toISOString(),
+                                keyword_matched: "QUEUED", // Mark as queued so user knows
+                                comment_text: "Processed from queue",
+                            }).eq("id", existingLog.id);
+                        } else {
+                            // Fallback: Insert new if no placeholder (e.g. strict mode or missed claim)
+                            await (supabase as any).from("dm_logs").insert({
+                                user_id: dm.user_id,
+                                instagram_comment_id: dm.instagram_comment_id,
+                                instagram_user_id: dm.instagram_user_id,
+                                keyword_matched: "QUEUED",
+                                comment_text: "Processed from queue",
+                                reply_sent: true,
+                                reply_sent_at: new Date().toISOString(),
+                            });
+                        }
                         await (supabase as any).from("dm_queue").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", dm.id);
                     } else {
                         throw new Error("DM delivery failed");
                     }
                 } catch (error) {
-                    console.error(`❌ Failed DM ${dm.id}:`, error);
+                    logger.error("Failed to send queued DM", { dmId: dm.id, category: "rate-limiter" }, error as Error);
                     // Mark failed, but maybe retry logic could go here later
                     await (supabase as any).from("dm_queue").update({ status: "failed", error_message: (error as Error).message }).eq("id", dm.id);
                     await incrementAutomationCount(supabase, dm.automation_id, "dm_failed_count");
@@ -326,5 +350,5 @@ export async function processQueuedDMs() {
     });
 
     await Promise.allSettled(userPromises);
-    console.log("✅ Queue Processing Complete.");
+    logger.info("Queue Processing Complete", { category: "rate-limiter" });
 }

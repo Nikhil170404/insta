@@ -12,6 +12,7 @@ import {
 import { smartRateLimit, queueDM } from "@/lib/smart-rate-limiter";
 import { getCachedUser, setCachedUser, getCachedAutomation, setCachedAutomation } from "@/lib/cache";
 import { getPlanLimits } from "@/lib/pricing";
+import { logger } from "@/lib/logger";
 
 /**
  * Handle a comment event from the batch
@@ -44,7 +45,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         // 3. Self-comment detection
         if (!user || commenterId === user.instagram_user_id) {
-            if (user) console.log("ℹ️ Skipping self-comment");
+            if (user) logger.info("Skipping self-comment", { instagramUserId });
             return;
         }
 
@@ -56,7 +57,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             .single();
 
         if (existingLog) {
-            console.log(`ℹ️ Skipping duplicate comment ID: ${commentId}`);
+            logger.info("Skipping duplicate comment ID", { commentId });
             return;
         }
 
@@ -73,7 +74,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 .eq("is_active", true);
 
             if (!allAutomations || allAutomations.length === 0) {
-                console.log(`ℹ️ User has NO active automations.`);
+                logger.info("User has no active automations", { userId: user.id });
                 return;
             }
 
@@ -86,12 +87,12 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                     a.trigger_type === 'all_posts' || !a.media_id
                 );
                 if (matchedAutomation) {
-                    console.log(`✅ Using GLOBAL 'all_posts' fallback automation.`);
+                    logger.info("Using global all_posts fallback automation", { automationId: matchedAutomation.id });
                 }
             }
 
             if (!matchedAutomation) {
-                console.log(`ℹ️ No matching automation for media ${mediaId}. Active IDs: ${allAutomations.map((a: any) => a.media_id).join(', ')}`);
+                logger.info("No matching automation for media", { mediaId, activeIds: allAutomations.map((a: any) => a.media_id) });
                 return;
             }
 
@@ -101,13 +102,13 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         // Guard against null automation (TypeScript strict)
         if (!automation) {
-            console.log(`ℹ️ No automation found after cache/db lookup.`);
+            logger.info("No automation found after cache/db lookup", { userId: user.id, mediaId });
             return;
         }
 
         // 6. Check keyword match
         if (!checkKeywordMatch(automation.trigger_type, automation.trigger_keyword ?? null, commentText)) {
-            console.log(`ℹ️ Keyword mismatch: '${commentText}' vs '${automation.trigger_keyword || "params"}'`);
+            logger.info("Keyword mismatch", { commentText, triggerKeyword: automation.trigger_keyword || "any" });
             return;
         }
 
@@ -130,7 +131,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             .maybeSingle();
 
         if (userAlreadyDmed) {
-            console.log(`⚠️ Skipping: User ${commenterUsername} already DMed for this automation.`);
+            logger.info("Skipping: User already DMed for this automation", { commenterUsername, automationId: automation.id });
             return;
         }
 
@@ -155,11 +156,11 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         if (claimError) {
             // Unique constraint violation (code 23505) means another request already claimed this
             if (claimError.code === '23505') {
-                console.log(`⚠️ Race condition prevented: Another request already processing for user ${commenterUsername}`);
+                logger.info("Race condition prevented: Another request already processing", { commenterUsername });
                 return;
             }
             // Log other errors but continue (non-critical)
-            console.error(`⚠️ Claim insert warning:`, claimError.message);
+            logger.error("Claim insert warning", { commenterUsername }, new Error(claimError.message));
         }
 
         // 9. Rate Limit Check
@@ -172,7 +173,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         });
 
         if (!rateLimitResult.allowed) {
-            console.log(`⚠️ Rate limit hit for user ${user.id} (${user.plan_type}). Queuing DM... Details:`, JSON.stringify(rateLimitResult.remaining));
+            logger.info("Rate limit hit, queuing DM", { userId: user.id, planType: user.plan_type, remaining: rateLimitResult.remaining });
 
             // Determine Priority
             let priority = 5; // Default/Free
@@ -214,7 +215,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 );
 
                 if (isFollowingNow) {
-                    console.log(`✅ User ${commenterUsername} is now following! Sending greeting with button.`);
+                    logger.info("User is now following, sending greeting", { commenterUsername });
                     // Send greeting message with button - NOT direct link
                     // When they click button, CLICK_LINK_ handler will send the actual link
                     const greetingSent = await sendInstagramDM(
@@ -246,7 +247,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                     return;
                 } else {
                     // Still not following - send gate again
-                    console.log(`❌ User ${commenterUsername} still not following after gate`);
+                    logger.info("User still not following after gate", { commenterUsername });
                     const cardSent = await sendFollowGateCard(
                         user.instagram_access_token,
                         instagramUserId,
@@ -311,7 +312,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 } else {
                     // User IS following on first comment - send greeting with button
                     // NOT direct link - they click button to get the link
-                    console.log(`✅ User ${commenterUsername} is already following! Sending greeting with button.`);
+                    logger.info("User already following, sending greeting", { commenterUsername });
 
                     const greetingSent = await sendInstagramDM(
                         user.instagram_access_token,
@@ -372,7 +373,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         }
 
     } catch (error) {
-        console.error("Error in batch processor handleCommentEvent:", error);
+        logger.error("Error in handleCommentEvent", { instagramUserId }, error as Error);
     }
 }
 
@@ -467,13 +468,23 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             if (dmSent) {
                 await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
                 await incrementAutomationCount(supabase, automation.id, "click_count");
-                await supabase
+
+                // FIX: Only update the specific log for this interaction
+                const { data: latestLog } = await supabase
                     .from("dm_logs")
-                    .update({ is_clicked: true })
+                    .select("id")
                     .eq("instagram_user_id", senderIgsid)
                     .eq("automation_id", automation.id)
                     .order("created_at", { ascending: false })
-                    .limit(1);
+                    .limit(1)
+                    .single();
+
+                if (latestLog) {
+                    await supabase
+                        .from("dm_logs")
+                        .update({ is_clicked: true })
+                        .eq("id", latestLog.id);
+                }
             }
         }
 
@@ -508,7 +519,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             if (isFollowing) {
                 // They are following! Send greeting with button (NOT direct link)
                 // They click button to get the actual link
-                console.log(`✅ User ${senderIgsid} verified as following, sending greeting with button`);
+                logger.info("User verified as following, sending greeting", { senderIgsid });
 
                 const dmSent = await sendInstagramDM(
                     user.instagram_access_token,
@@ -534,7 +545,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 }
             } else {
                 // Not following yet - send the gate card again with a hint
-                console.log(`❌ User ${senderIgsid} not yet following, sending gate again`);
+                logger.info("User not yet following, sending gate again", { senderIgsid });
 
                 const { sendFollowGateCard } = await import("@/lib/instagram/service");
                 await sendFollowGateCard(
@@ -550,7 +561,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             }
         }
     } catch (error) {
-        console.error("Error in batch processor handleCommentEvent:", error);
+        logger.error("Error in handleMessageEvent", { instagramUserId }, error as Error);
     }
 }
 

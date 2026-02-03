@@ -27,7 +27,7 @@ CREATE TABLE public.users (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
 
-  CONSTRAINT valid_plan CHECK (plan_type IN ('trial', 'paid', 'expired'))
+  CONSTRAINT valid_plan CHECK (plan_type IN ('trial', 'free', 'starter', 'growth', 'pro', 'paid', 'expired'))
 );
 
 -- Indexes
@@ -282,3 +282,25 @@ CREATE POLICY "Service role full access" ON public.webhook_queue FOR ALL USING (
 -- ALTER TABLE public.automations ADD COLUMN button_text VARCHAR(255);
 -- ALTER TABLE public.automations ADD COLUMN link_url TEXT;
 -- ALTER TABLE public.automations ADD CONSTRAINT check_comment_reply CHECK (LENGTH(comment_reply) <= 1000);
+
+-- ============================================
+-- MIGRATION: 2025-02-03 - Add follow-gate and click tracking columns
+-- ============================================
+-- Run these on your Supabase instance to add missing columns:
+ALTER TABLE public.automations ADD COLUMN IF NOT EXISTS follow_gate_message VARCHAR(500);
+ALTER TABLE public.automations ADD COLUMN IF NOT EXISTS final_message VARCHAR(500);
+ALTER TABLE public.automations ADD COLUMN IF NOT EXISTS final_button_text VARCHAR(40);
+ALTER TABLE public.automations ADD COLUMN IF NOT EXISTS click_count INTEGER DEFAULT 0;
+
+-- Add missing dm_logs columns for follow-gate tracking
+ALTER TABLE public.dm_logs ADD COLUMN IF NOT EXISTS automation_id UUID REFERENCES public.automations(id) ON DELETE SET NULL;
+ALTER TABLE public.dm_logs ADD COLUMN IF NOT EXISTS is_follow_gate BOOLEAN DEFAULT false;
+ALTER TABLE public.dm_logs ADD COLUMN IF NOT EXISTS user_is_following BOOLEAN;
+ALTER TABLE public.dm_logs ADD COLUMN IF NOT EXISTS followed_after_gate BOOLEAN DEFAULT false;
+ALTER TABLE public.dm_logs ADD COLUMN IF NOT EXISTS is_clicked BOOLEAN DEFAULT false;
+
+-- Create unique index for atomic claim (prevents race conditions)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_logs_unique_user_automation
+  ON public.dm_logs(instagram_user_id, automation_id, is_follow_gate)
+  WHERE is_follow_gate = false;
+

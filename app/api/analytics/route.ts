@@ -34,6 +34,7 @@ export async function GET(request: Request) {
             .from("dm_logs")
             .select("*", { count: "exact", head: true })
             .eq("user_id", session.id)
+            .eq("reply_sent", true)
             .gte("created_at", todayStart.toISOString());
 
         // Get this period's DMs
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
             .from("dm_logs")
             .select("*", { count: "exact", head: true })
             .eq("user_id", session.id)
+            .eq("reply_sent", true)
             .gte("created_at", periodStart.toISOString());
 
         // Get this month's DMs
@@ -48,6 +50,7 @@ export async function GET(request: Request) {
             .from("dm_logs")
             .select("*", { count: "exact", head: true })
             .eq("user_id", session.id)
+            .eq("reply_sent", true)
             .gte("created_at", thisMonthStart.toISOString());
 
         // Get last month's DMs
@@ -55,6 +58,7 @@ export async function GET(request: Request) {
             .from("dm_logs")
             .select("*", { count: "exact", head: true })
             .eq("user_id", session.id)
+            .eq("reply_sent", true)
             .gte("created_at", lastMonthStart.toISOString())
             .lte("created_at", lastMonthEnd.toISOString());
 
@@ -62,7 +66,8 @@ export async function GET(request: Request) {
         const { count: totalCount } = await (supabase as any)
             .from("dm_logs")
             .select("*", { count: "exact", head: true })
-            .eq("user_id", session.id);
+            .eq("user_id", session.id)
+            .eq("reply_sent", true);
 
         // Get success count (all time)
         const { count: successCount } = await (supabase as any)
@@ -125,6 +130,7 @@ export async function GET(request: Request) {
                 .from("dm_logs")
                 .select("*", { count: "exact", head: true })
                 .eq("user_id", session.id)
+                .eq("reply_sent", true)
                 .gte("created_at", date.toISOString())
                 .lt("created_at", nextDate.toISOString());
 
@@ -147,6 +153,7 @@ export async function GET(request: Request) {
                 .from("dm_logs")
                 .select("*", { count: "exact", head: true })
                 .eq("user_id", session.id)
+                .eq("reply_sent", true)
                 .gte("created_at", hourStart.toISOString())
                 .lte("created_at", hourEnd.toISOString());
 

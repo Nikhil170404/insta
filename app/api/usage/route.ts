@@ -21,6 +21,7 @@ export async function GET() {
             .from("dm_logs")
             .select("*", { count: "exact", head: true })
             .eq("user_id", session.id)
+            .eq("reply_sent", true) // Only count successful deliveries
             .gte("created_at", monthStart.toISOString());
 
         // Get plan limits
@@ -36,7 +37,8 @@ export async function GET() {
             percentage,
             isUnlimited,
             planName: planLimits.planName,
-            planType: session.plan_type
+            planType: session.plan_type,
+            hourlyLimit: planLimits.dmsPerHour, // Expose speed limit
         });
 
     } catch (error) {

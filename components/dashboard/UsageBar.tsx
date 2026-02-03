@@ -11,6 +11,7 @@ interface UsageData {
     isUnlimited: boolean;
     planName: string;
     planType: string;
+    hourlyLimit?: number;
 }
 
 interface UsageBarProps {
@@ -122,15 +123,26 @@ export function UsageBar({ className, compact = false }: UsageBarProps) {
                 <span className="text-xs text-slate-500">
                     <span className="font-bold text-slate-700">{formatNumber(usage.used)}</span> / {formatNumber(usage.limit)}
                 </span>
-                {usage.percentage >= 80 && (
+
+                {/* Hourly Speed Indicator */}
+                {usage.hourlyLimit && (
+                    <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded-md" title="Max Delivery Speed">
+                        <Zap className="w-3 h-3 text-slate-400 fill-slate-400" />
+                        <span className="text-[10px] font-bold text-slate-500">{usage.hourlyLimit}/hr</span>
+                    </div>
+                )}
+            </div>
+
+            {usage.percentage >= 80 && (
+                <div className="mt-2 text-right">
                     <a
                         href="/dashboard/billing"
                         className="text-[10px] font-bold text-primary hover:underline"
                     >
-                        Upgrade
+                        Upgrade Plan
                     </a>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
