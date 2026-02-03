@@ -52,7 +52,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
     const [buttonText, setButtonText] = useState(initialData?.button_text || "Show me more");
     const [showOpeningDM, setShowOpeningDM] = useState(true);
 
-    const [finalDM, setFinalDM] = useState("Here is the link you requested!");
+    const [finalDM, setFinalDM] = useState(initialData?.final_message || "Here is the link you requested! ✨");
     const [linkUrl, setLinkUrl] = useState(initialData?.link_url || "");
     const [requireFollow, setRequireFollow] = useState(initialData?.require_follow || false);
     const [followGateMessage, setFollowGateMessage] = useState(initialData?.follow_gate_message || "Hey! 👋 To unlock this, please follow us first!");
@@ -71,6 +71,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
             comment_reply: replyToComments && triggerType !== "story" ? (initialData?.comment_reply || "Check your DMs! 📬") : null,
             button_text: buttonText,
             link_url: linkUrl,
+            final_message: finalDM,
             require_follow: requireFollow,
             follow_gate_message: requireFollow ? followGateMessage : null,
             respond_to_replies: respondToReplies,

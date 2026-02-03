@@ -95,7 +95,28 @@ export async function sendInstagramDM(
 
         // Use Generic Templates (Structured Cards) for a premium feel
         if (linkUrl && (buttonText || thumbnailUrl)) {
-            console.log("💎 Sending Structured Template (Card)");
+            console.log("💎 Sending Structured Template (Card with Link)");
+
+            // Build element - only include image_url if thumbnail exists
+            const element: any = {
+                title: buttonText || "Click to View",
+                subtitle: message.substring(0, 80),
+                default_action: {
+                    type: "web_url",
+                    url: linkUrl
+                },
+                buttons: [
+                    {
+                        type: "web_url",
+                        url: linkUrl,
+                        title: (buttonText || "Open Link").substring(0, 20)
+                    }
+                ]
+            };
+            if (thumbnailUrl) {
+                element.image_url = thumbnailUrl;
+            }
+
             body = {
                 recipient: recipient,
                 message: {
@@ -103,24 +124,7 @@ export async function sendInstagramDM(
                         type: "template",
                         payload: {
                             template_type: "generic",
-                            elements: [
-                                {
-                                    title: buttonText || "Click to View",
-                                    subtitle: message.substring(0, 80),
-                                    image_url: thumbnailUrl || "",
-                                    default_action: {
-                                        type: "web_url",
-                                        url: linkUrl
-                                    },
-                                    buttons: [
-                                        {
-                                            type: "web_url",
-                                            url: linkUrl,
-                                            title: (buttonText || "Open Link").substring(0, 20)
-                                        }
-                                    ]
-                                }
-                            ]
+                            elements: [element]
                         }
                     }
                 }
@@ -129,6 +133,23 @@ export async function sendInstagramDM(
             // Greeting card with postback button (no direct link)
             // User clicks button → triggers CLICK_LINK_ handler → sends actual link
             console.log("💬 Sending Greeting Card with Postback Button");
+
+            // Build element - only include image_url if thumbnail exists
+            const element: any = {
+                title: message.substring(0, 80) || "You have a message!",
+                subtitle: "Tap below to continue ✨",
+                buttons: [
+                    {
+                        type: "postback",
+                        title: buttonText.substring(0, 20),
+                        payload: `CLICK_LINK_${automationId}`
+                    }
+                ]
+            };
+            if (thumbnailUrl) {
+                element.image_url = thumbnailUrl;
+            }
+
             body = {
                 recipient: recipient,
                 message: {
@@ -136,20 +157,7 @@ export async function sendInstagramDM(
                         type: "template",
                         payload: {
                             template_type: "generic",
-                            elements: [
-                                {
-                                    title: message.substring(0, 80) || "You have a message!",
-                                    subtitle: "Tap below to continue ✨",
-                                    image_url: thumbnailUrl || "",
-                                    buttons: [
-                                        {
-                                            type: "postback",
-                                            title: buttonText.substring(0, 20),
-                                            payload: `CLICK_LINK_${automationId}`
-                                        }
-                                    ]
-                                }
-                            ]
+                            elements: [element]
                         }
                     }
                 }
@@ -220,6 +228,27 @@ export async function sendFollowGateCard(
 
         const message = customMessage || "Hey! 👋 To unlock this, please follow us first!";
 
+        // Build element - only include image_url if thumbnail exists
+        const element: any = {
+            title: "Follow & Get Access",
+            subtitle: message,
+            buttons: [
+                {
+                    type: "web_url",
+                    url: `https://instagram.com/${profileUsername}`,
+                    title: "Follow & Get Access"
+                },
+                {
+                    type: "postback",
+                    title: "I'm Following ✓",
+                    payload: `VERIFY_FOLLOW_${automationId}`
+                }
+            ]
+        };
+        if (thumbnailUrl) {
+            element.image_url = thumbnailUrl;
+        }
+
         // Send the follow-gate card with TWO buttons
         const body = {
             recipient: recipient,
@@ -228,25 +257,7 @@ export async function sendFollowGateCard(
                     type: "template",
                     payload: {
                         template_type: "generic",
-                        elements: [
-                            {
-                                title: "Follow & Get Access",
-                                subtitle: message,
-                                image_url: thumbnailUrl || "",
-                                buttons: [
-                                    {
-                                        type: "web_url",
-                                        url: `https://instagram.com/${profileUsername}`,
-                                        title: "Follow & Get Access"
-                                    },
-                                    {
-                                        type: "postback",
-                                        title: "I'm Following ✓",
-                                        payload: `VERIFY_FOLLOW_${automationId}`
-                                    }
-                                ]
-                            }
-                        ]
+                        elements: [element]
                     }
                 }
             }

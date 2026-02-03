@@ -420,10 +420,12 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             return;
         }
 
-        // Quick Reply / Postback
+        // Quick Reply / Postback - Handle CLICK_LINK_ from both quick_reply and postback
         const quickReply = message?.quick_reply;
-        if (quickReply?.payload?.startsWith("CLICK_LINK_")) {
-            const automationId = quickReply.payload.replace("CLICK_LINK_", "");
+        const postbackPayload = messaging.postback?.payload || quickReply?.payload;
+
+        if (postbackPayload?.startsWith("CLICK_LINK_")) {
+            const automationId = postbackPayload.replace("CLICK_LINK_", "");
 
             const { data: automation } = await supabase
                 .from("automations")
@@ -446,7 +448,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 instagramUserId,
                 null,
                 senderIgsid,
-                `Here is the link you requested! ✨`,
+                automation.final_message || "Here is the link you requested! ✨",
                 automation.id,
                 automation.button_text || "Open Link",
                 automation.link_url,
