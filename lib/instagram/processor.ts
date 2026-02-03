@@ -43,8 +43,8 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         }
 
         // 3. Self-comment detection
-        if (commenterId === user.instagram_user_id) {
-            console.log("ℹ️ Skipping self-comment");
+        if (!user || commenterId === user.instagram_user_id) {
+            if (user) console.log("ℹ️ Skipping self-comment");
             return;
         }
 
@@ -99,8 +99,14 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             await setCachedAutomation(automationCacheKey, matchedAutomation);
         }
 
+        // Guard against null automation (TypeScript strict)
+        if (!automation) {
+            console.log(`ℹ️ No automation found after cache/db lookup.`);
+            return;
+        }
+
         // 6. Check keyword match
-        if (!checkKeywordMatch(automation.trigger_type, automation.trigger_keyword, commentText)) {
+        if (!checkKeywordMatch(automation.trigger_type, automation.trigger_keyword ?? null, commentText)) {
             console.log(`ℹ️ Keyword mismatch: '${commentText}' vs '${automation.trigger_keyword || "params"}'`);
             return;
         }
@@ -394,6 +400,9 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 user = dbUser;
                 await setCachedUser(instagramUserId, dbUser);
             }
+
+            // Guard against null user (TypeScript strict)
+            if (!user) return;
 
             const { data: automation } = await supabase
                 .from("automations")

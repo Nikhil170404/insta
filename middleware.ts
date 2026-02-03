@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(
-  process.env.SESSION_SECRET || "replykaro-secret-key-change-in-production"
-);
+// CRITICAL: Session secret must be set in environment
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+  throw new Error("SESSION_SECRET environment variable must be set and be at least 32 characters");
+}
+
+const SECRET = new TextEncoder().encode(SESSION_SECRET);
 
 const COOKIE_NAME = "replykaro_session";
 

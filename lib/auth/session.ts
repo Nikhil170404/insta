@@ -2,9 +2,12 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "@/lib/supabase/types";
 
-const SECRET = new TextEncoder().encode(
-  process.env.SESSION_SECRET || "replykaro-secret-key-change-in-production"
-);
+// CRITICAL: Session secret must be set in environment
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+  throw new Error("SESSION_SECRET environment variable must be set and be at least 32 characters");
+}
+
+const SECRET = new TextEncoder().encode(process.env.SESSION_SECRET);
 
 const COOKIE_NAME = "replykaro_session";
 

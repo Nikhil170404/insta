@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 export default function AboutPage() {
     return (
-        <div className="min-h-screen bg-white flex flex-col selection:bg-primary selection:text-white">
+        <div className="min-h-screen bg-white flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
 
             <main className="flex-1 container mx-auto px-4 pt-48 pb-16 relative">
                 {/* Hero */}

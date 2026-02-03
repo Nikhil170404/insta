@@ -53,13 +53,13 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
             )}>
                 <div className="container mx-auto flex items-center justify-center gap-3">
                     {/* Main Nav Pill */}
-                    <div className="flex items-center justify-between glass-nav px-6 md:px-8 py-4 rounded-[2.5rem] flex-1 max-w-4xl border border-white/20">
+                    <div className="flex items-center justify-between glass-nav px-3 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl sm:rounded-[2.5rem] flex-1 max-w-4xl border border-white/20 overflow-hidden">
                         {/* Logo & Brand Pod */}
-                        <Link href="/" className="flex items-center gap-3 md:gap-4 transition-transform hover:scale-105 active:scale-95 group">
-                            <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] flex items-center justify-center ring-1 ring-slate-100 group-hover:rotate-12 transition-all duration-500 overflow-hidden shrink-0">
-                                <Zap className="h-4 w-4 md:h-5 md:w-5 text-primary fill-primary" />
+                        <Link href="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 transition-transform hover:scale-105 active:scale-95 group flex-shrink-0">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] flex items-center justify-center ring-1 ring-slate-100 group-hover:rotate-12 transition-all duration-500 overflow-hidden shrink-0">
+                                <Zap className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-primary fill-primary" />
                             </div>
-                            <div className="text-lg md:text-xl font-[900] text-slate-900 tracking-tighter uppercase font-sans whitespace-nowrap">ReplyKaro</div>
+                            <div className="text-base sm:text-lg md:text-xl font-[900] text-slate-900 tracking-tighter uppercase font-sans whitespace-nowrap">ReplyKaro</div>
                         </Link>
 
                         {/* Desktop Links */}
@@ -85,12 +85,12 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
                         </div>
 
                         {/* Auth Actions */}
-                        <div className="flex items-center gap-2 md:gap-4 ml-4">
+                        <div className="flex items-center gap-1 sm:gap-2 md:gap-4 ml-2 sm:ml-4 flex-shrink-0">
                             {isLoggedIn === null ? (
                                 <div className="w-24 h-11 bg-slate-100 animate-pulse rounded-2xl" />
                             ) : isLoggedIn ? (
                                 <Link href="/dashboard">
-                                    <Button className="bg-primary text-white hover:bg-primary/90 rounded-2xl px-6 md:px-8 font-black text-[11px] md:text-[13px] uppercase tracking-widest glow-primary h-11 transition-all active:scale-95">
+                                    <Button className="bg-primary text-white hover:bg-primary/90 rounded-xl sm:rounded-2xl px-4 sm:px-6 md:px-8 font-black text-[10px] sm:text-[11px] md:text-[13px] uppercase tracking-widest glow-primary h-9 sm:h-11 transition-all active:scale-95">
                                         Engine
                                     </Button>
                                 </Link>
@@ -112,9 +112,9 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
                             {/* Mobile Menu Button - inside nav pill */}
                             <button
                                 onClick={() => setIsMobileMenuOpen(true)}
-                                className="md:hidden w-11 h-11 flex items-center justify-center text-slate-600 hover:text-primary rounded-xl hover:bg-slate-50 active:scale-90 transition-all"
+                                className="md:hidden w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center text-slate-600 hover:text-primary rounded-lg sm:rounded-xl hover:bg-slate-50 active:scale-90 transition-all flex-shrink-0"
                             >
-                                <Menu className="h-5 w-5" />
+                                <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
                             </button>
                         </div>
                     </div>
