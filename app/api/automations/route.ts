@@ -18,6 +18,7 @@ export async function GET() {
             .from("automations")
             .select("*")
             .eq("user_id", session.id)
+            .eq("is_archived", false)
             .order("created_at", { ascending: false });
 
         if (error) {
@@ -29,8 +30,19 @@ export async function GET() {
         const limits = getPlanLimits(session.plan_type);
         const activeCount = automations?.filter((a: { is_active: boolean }) => a.is_active).length || 0;
 
+        // Get monthly count for dashboard "One Source of Truth"
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const { count: monthlyCount } = await (supabase as any)
+            .from("dm_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", session.id)
+            .eq("reply_sent", true)
+            .gte("created_at", monthStart.toISOString());
+
         return NextResponse.json({
             automations: automations || [],
+            monthlyCount: monthlyCount || 0,
             limits: {
                 current: activeCount,
                 max: limits.automations,
@@ -95,6 +107,7 @@ export async function POST(request: NextRequest) {
             .from("automations")
             .select("*", { count: "exact", head: true })
             .eq("user_id", session.id)
+            .eq("is_archived", false)
             .eq("is_active", true);
 
         const limits = getPlanLimits(session.plan_type);

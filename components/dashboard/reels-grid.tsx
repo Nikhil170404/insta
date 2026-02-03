@@ -58,6 +58,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
     const [editingAutomation, setEditingAutomation] = useState<any | null>(null);
+    const [monthlyCount, setMonthlyCount] = useState<number | null>(null);
     const [showWizard, setShowWizard] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -91,6 +92,9 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
             if (autoRes && autoRes.ok) {
                 const autoData = await autoRes.json();
                 setAutomations(autoData.automations || []);
+                if (autoData.monthlyCount !== undefined) {
+                    setMonthlyCount(autoData.monthlyCount);
+                }
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -249,10 +253,10 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-12 -mt-12 blur-xl group-hover:scale-110 transition-transform" />
                     <TrendingUp className="h-3.5 w-3.5 text-primary/40 mb-1.5 md:mb-2" />
                     <div className="flex items-baseline gap-2">
-                        <p className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">{totalDMs}</p>
+                        <p className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">{monthlyCount ?? totalDMs}</p>
                         <Badge className="bg-primary/10 text-primary border-none text-[7px] md:text-[8px] px-1.5 py-0 rounded-md animate-pulse uppercase font-black">LIVE</Badge>
                     </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">DMs Delivered</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Monthly DMs</p>
                 </div>
             </div>
 

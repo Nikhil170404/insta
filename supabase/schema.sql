@@ -83,6 +83,7 @@ CREATE TABLE public.automations (
 
   -- Status
   is_active BOOLEAN DEFAULT true,
+  is_archived BOOLEAN DEFAULT false,
 
   -- Analytics
   comment_count INTEGER DEFAULT 0,

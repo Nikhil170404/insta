@@ -96,10 +96,11 @@ export async function DELETE(
         const { id } = await params;
         const supabase = getSupabaseAdmin();
 
+        // Soft Delete (Archive)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase as any)
             .from("automations")
-            .delete()
+            .update({ is_archived: true, is_active: false })
             .eq("id", id)
             .eq("user_id", session.id);
 
