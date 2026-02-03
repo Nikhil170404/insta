@@ -60,6 +60,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  serverExternalPackages: ["@upstash/redis", "@upstash/ratelimit"],
 };
 
 export default nextConfig;
