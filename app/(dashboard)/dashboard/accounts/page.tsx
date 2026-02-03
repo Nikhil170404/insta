@@ -1,19 +1,74 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, CheckCircle2, Instagram, AlertCircle, Crown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, CheckCircle2, Instagram, AlertCircle, Crown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+interface Account {
+    id: string;
+    username: string;
+    status: "active" | "expired";
+    dmsSent: number;
+    isPrimary: boolean;
+    profilePic?: string;
+}
+
 export default function AccountsPage() {
-    // In production, this would fetch from API
-    const [accounts] = useState([
-        { id: "1", username: "your_account", status: "active", dmsSent: 0, isPrimary: true },
-    ]);
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchAccounts() {
+            try {
+                const res = await fetch("/api/auth/session");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user) {
+                        // Get DM count from analytics
+                        let totalDmsSent = 0;
+                        try {
+                            const analyticsRes = await fetch("/api/analytics");
+                            if (analyticsRes.ok) {
+                                const analytics = await analyticsRes.json();
+                                totalDmsSent = analytics.stats?.total || 0;
+                            }
+                        } catch {
+                            // Ignore analytics fetch error
+                        }
+
+                        setAccounts([{
+                            id: data.user.id,
+                            username: data.user.instagram_username || "Unknown",
+                            status: data.user.token_expires_at && new Date(data.user.token_expires_at) > new Date()
+                                ? "active"
+                                : "active", // Default to active
+                            dmsSent: totalDmsSent,
+                            isPrimary: true,
+                            profilePic: data.user.instagram_profile_pic,
+                        }]);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching accounts:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchAccounts();
+    }, []);
 
     const maxAccounts = 3; // Based on Growth plan
     const canAddMore = accounts.length < maxAccounts;
+
+    if (loading) {
+        return (
+            <div className="max-w-4xl mx-auto flex items-center justify-center py-32">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto space-y-10 pb-20">
@@ -72,9 +127,17 @@ export default function AccountsPage() {
                     >
                         <div className="flex items-center gap-5">
                             <div className="relative">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center text-white font-black text-2xl shadow-lg">
-                                    {acc.username.charAt(0).toUpperCase()}
-                                </div>
+                                {acc.profilePic ? (
+                                    <img
+                                        src={acc.profilePic}
+                                        alt={acc.username}
+                                        className="w-16 h-16 rounded-2xl object-cover shadow-lg"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center text-white font-black text-2xl shadow-lg">
+                                        {acc.username.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
                                 {acc.status === "active" && (
                                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
                                         <CheckCircle2 className="h-3 w-3 text-white" />

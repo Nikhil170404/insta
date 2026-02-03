@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { getPlanLimits, getUpgradeSuggestion } from "@/lib/pricing";
 
 // GET - List all automations for the user
 export async function GET() {
@@ -24,7 +25,19 @@ export async function GET() {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ automations: automations || [] });
+        // Get plan limits for response
+        const limits = getPlanLimits(session.plan_type);
+        const activeCount = automations?.filter((a: { is_active: boolean }) => a.is_active).length || 0;
+
+        return NextResponse.json({
+            automations: automations || [],
+            limits: {
+                current: activeCount,
+                max: limits.automations,
+                canCreate: activeCount < limits.automations,
+                planName: limits.planName
+            }
+        });
 
     } catch (error) {
         console.error("Error in GET /api/automations:", error);
@@ -75,6 +88,30 @@ export async function POST(request: NextRequest) {
         }
 
         const supabase = getSupabaseAdmin();
+
+        // CHECK PLAN LIMITS - Count active automations
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { count: activeCount } = await (supabase as any)
+            .from("automations")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", session.id)
+            .eq("is_active", true);
+
+        const limits = getPlanLimits(session.plan_type);
+
+        if ((activeCount || 0) >= limits.automations) {
+            const upgrade = getUpgradeSuggestion(session.plan_type);
+            return NextResponse.json({
+                error: "Automation limit reached",
+                upgrade_required: true,
+                current_count: activeCount || 0,
+                max_allowed: limits.automations,
+                current_plan: limits.planName,
+                next_plan: upgrade
+            }, { status: 403 });
+        }
+
+        // Check if automation already exists for this media
 
         // Check if automation already exists for this media
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

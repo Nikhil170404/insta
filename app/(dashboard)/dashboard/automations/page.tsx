@@ -22,10 +22,12 @@ import {
     LayoutGrid,
     Search,
     ChevronRight,
-    ArrowRight
+    ArrowRight,
+    Crown
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import UpgradeModal from "@/components/UpgradeModal";
 
 interface Automation {
     id: string;
@@ -48,9 +50,18 @@ interface Automation {
     created_at: string;
 }
 
+interface PlanLimits {
+    current: number;
+    max: number;
+    canCreate: boolean;
+    planName: string;
+}
+
 export default function AutomationsPage() {
     const [automations, setAutomations] = useState<Automation[]>([]);
     const [loading, setLoading] = useState(true);
+    const [limits, setLimits] = useState<PlanLimits | null>(null);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
     // Edit state
     const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
@@ -75,6 +86,9 @@ export default function AutomationsPage() {
             if (res.ok) {
                 const data = await res.json();
                 setAutomations(data.automations || []);
+                if (data.limits) {
+                    setLimits(data.limits);
+                }
             }
         } catch (error) {
             console.error("Error fetching automations:", error);
@@ -230,6 +244,50 @@ export default function AutomationsPage() {
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Responses Sent</p>
                 </div>
             </div>
+
+            {/* Plan Limits Banner */}
+            {limits && (
+                <div className={cn(
+                    "rounded-[2rem] p-6 flex flex-col md:flex-row md:items-center justify-between gap-4",
+                    limits.canCreate
+                        ? "bg-gradient-to-r from-slate-900 to-slate-800"
+                        : "bg-gradient-to-r from-amber-500 to-orange-500"
+                )}>
+                    <div className="flex items-center gap-4">
+                        <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center",
+                            limits.canCreate ? "bg-primary/20" : "bg-white/20"
+                        )}>
+                            <Crown className={cn("h-6 w-6", limits.canCreate ? "text-primary" : "text-white")} />
+                        </div>
+                        <div>
+                            <p className="text-white font-bold">
+                                {limits.current} of {limits.max} automations used
+                            </p>
+                            <p className={cn("text-sm", limits.canCreate ? "text-slate-400" : "text-white/70")}>
+                                {limits.canCreate
+                                    ? `${limits.planName} • ${limits.max - limits.current} remaining`
+                                    : "Upgrade to create more automations!"
+                                }
+                            </p>
+                        </div>
+                    </div>
+                    {!limits.canCreate && (
+                        <Button
+                            onClick={() => setShowUpgradeModal(true)}
+                            className="bg-white text-amber-600 hover:bg-white/90 font-bold rounded-xl h-12 px-6"
+                        >
+                            <Crown className="h-4 w-4 mr-2" />
+                            Upgrade Plan
+                        </Button>
+                    )}
+                    {limits.canCreate && limits.current >= limits.max - 1 && (
+                        <Badge className="bg-amber-500/20 text-amber-300 border-none font-bold">
+                            Almost at limit
+                        </Badge>
+                    )}
+                </div>
+            )}
 
             {/* Flows List */}
             <div className="space-y-6">
@@ -499,6 +557,23 @@ export default function AutomationsPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Upgrade Modal */}
+            {limits && (
+                <UpgradeModal
+                    isOpen={showUpgradeModal}
+                    onClose={() => setShowUpgradeModal(false)}
+                    currentPlan={limits.planName}
+                    limitType="automations"
+                    currentUsage={limits.current}
+                    maxAllowed={limits.max}
+                    nextPlan={{
+                        name: "Starter Pack",
+                        price: "₹149/month",
+                        benefits: ["5 Automations", "100,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+                    }}
+                />
             )}
         </div>
     );

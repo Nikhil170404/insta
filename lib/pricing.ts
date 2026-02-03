@@ -149,10 +149,81 @@ export function getPlanByType(type: string) {
 export function hasFeature(planType: string, feature: string): boolean {
     const featureMap: Record<string, string[]> = {
         free: ["follow_gate", "basic_automation", "queue"],
+        trial: ["follow_gate", "basic_automation", "queue"],
         starter: ["follow_gate", "story_automation", "basic_analytics", "queue", "viral_handling"],
         growth: ["follow_gate", "story_automation", "email_capture", "ab_testing", "advanced_analytics", "queue", "priority_queue", "viral_handling"],
-        pro: ["follow_gate", "story_automation", "email_capture", "ab_testing", "drip_campaigns", "webhooks", "advanced_analytics", "queue", "priority_queue", "load_balancing", "viral_handling"]
+        pro: ["follow_gate", "story_automation", "email_capture", "ab_testing", "drip_campaigns", "webhooks", "advanced_analytics", "queue", "priority_queue", "load_balancing", "viral_handling"],
+        paid: ["follow_gate", "story_automation", "email_capture", "ab_testing", "advanced_analytics", "queue", "priority_queue", "viral_handling"],
     };
 
     return featureMap[planType.toLowerCase()]?.includes(feature) || false;
+}
+
+// Get limits for a plan type
+export function getPlanLimits(planType: string): {
+    accounts: number;
+    automations: number;
+    dmsPerMonth: number;
+    dmsPerHour: number;
+    planName: string;
+} {
+    const planMap: Record<string, typeof PRICING_PLANS.FREE.limits & { planName: string }> = {
+        free: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" },
+        trial: { ...PRICING_PLANS.FREE.limits, planName: "Free Trial" },
+        starter: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" },
+        growth: { ...PRICING_PLANS.GROWTH.limits, planName: "Growth Pack" },
+        pro: { ...PRICING_PLANS.PRO.limits, planName: "Pro Pack" },
+        paid: { ...PRICING_PLANS.GROWTH.limits, planName: "Paid Plan" }, // Default paid to Growth
+    };
+
+    return planMap[planType?.toLowerCase()] || planMap.free;
+}
+
+// Check if user can create more automations
+export function canCreateAutomation(planType: string, currentCount: number): boolean {
+    const limits = getPlanLimits(planType);
+    return currentCount < limits.automations;
+}
+
+// Check if user can send more DMs this month
+export function canSendDM(planType: string, currentMonthCount: number): boolean {
+    const limits = getPlanLimits(planType);
+    return currentMonthCount < limits.dmsPerMonth;
+}
+
+// Get upgrade suggestion based on current plan
+export function getUpgradeSuggestion(planType: string): {
+    nextPlan: string;
+    nextPlanPrice: string;
+    benefits: string[];
+} | null {
+    const upgrades: Record<string, { nextPlan: string; nextPlanPrice: string; benefits: string[] }> = {
+        free: {
+            nextPlan: "Starter Pack",
+            nextPlanPrice: "₹149/month",
+            benefits: ["5 Automations", "100,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+        },
+        trial: {
+            nextPlan: "Starter Pack",
+            nextPlanPrice: "₹149/month",
+            benefits: ["5 Automations", "100,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+        },
+        starter: {
+            nextPlan: "Growth Pack",
+            nextPlanPrice: "₹299/month",
+            benefits: ["3 Accounts", "15 Automations", "300,000 DMs/month", "Email Capture", "A/B Testing"]
+        },
+        growth: {
+            nextPlan: "Pro Pack",
+            nextPlanPrice: "₹599/month",
+            benefits: ["10 Accounts", "Unlimited Automations", "1M DMs/month", "Drip Campaigns", "Webhooks"]
+        },
+        paid: {
+            nextPlan: "Pro Pack",
+            nextPlanPrice: "₹599/month",
+            benefits: ["10 Accounts", "Unlimited Automations", "1M DMs/month", "Drip Campaigns", "Webhooks"]
+        }
+    };
+
+    return upgrades[planType?.toLowerCase()] || upgrades.free;
 }
