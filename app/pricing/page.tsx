@@ -168,7 +168,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Pricing Grid - 4 columns */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10 px-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10 px-4 max-w-7xl mx-auto">
                     {PLANS_ARRAY.map((plan) => (
                         <div
                             key={plan.name}

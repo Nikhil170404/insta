@@ -156,7 +156,7 @@ export default function BillingPage() {
             </div>
 
             {/* Pricing Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4 max-w-7xl mx-auto">
                 {PLANS_ARRAY.map((plan) => {
                     const isCurrentPlan = plan.name === currentPlan;
 
