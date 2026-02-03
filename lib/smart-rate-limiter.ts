@@ -128,7 +128,8 @@ export async function queueDM(
         message: string;
         automation_id: string;
     },
-    sendAt: Date
+    sendAt: Date,
+    priority: number = 5
 ) {
     const supabase = getSupabaseAdmin();
 
@@ -140,6 +141,7 @@ export async function queueDM(
         automation_id: dmData.automation_id,
         scheduled_send_at: sendAt.toISOString(),
         status: "pending",
+        priority: priority,
     });
 
     if (error) {
@@ -170,6 +172,7 @@ export async function processQueuedDMs() {
     `)
         .eq("status", "pending")
         .lte("scheduled_send_at", now.toISOString())
+        .order("priority", { ascending: false }) // Process High Priority First
         .order("scheduled_send_at", { ascending: true })
         .limit(20); // Process small batches per minute
 

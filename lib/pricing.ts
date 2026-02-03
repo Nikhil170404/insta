@@ -10,7 +10,7 @@ export const PRICING_PLANS = {
             "1 Instagram Account",
             "3 Active Automations",
             "1,000 DMs/month",
-            "⚡ Up to 200/hour (IG limit)",
+            "⚡ 200/hour (Max Speed)",
             "Queue All Comments ✨",
             "Follow-Gate Feature ✨",
             "Email Support (72h)",
@@ -19,7 +19,8 @@ export const PRICING_PLANS = {
             accounts: 1,
             automations: 3,
             dmsPerMonth: 1000,
-            dmsPerHour: 200, // Instagram API limit per account
+            dmsPerHour: 200, // Max Speed for all
+            dmsPerDay: 250,
             queueEnabled: true,
         },
         cta: "Start Free Forever",
@@ -30,16 +31,16 @@ export const PRICING_PLANS = {
 
     STARTER: {
         name: "Starter Pack",
-        price: "149",
-        upfront: "149",
+        price: "99",
+        upfront: "79",
         duration: "Monthly",
         description: "Perfect for growing creators",
         hindiDesc: "Naye creators ke liye perfect",
         features: [
             "1 Instagram Account",
-            "5 Active Automations",
+            "10 Active Automations",
             "50,000 DMs/month",
-            "⚡ Up to 200/hour (Half Speed)",
+            "⚡ 200/hour (Max Speed)",
             "Queue All Comments",
             "Handle Viral Posts 🔥",
             "Story Automation ✨",
@@ -48,15 +49,16 @@ export const PRICING_PLANS = {
         ],
         limits: {
             accounts: 1,
-            automations: 5,
+            automations: 10,
             dmsPerMonth: 50000,
-            dmsPerHour: 100, // Half of limit
+            dmsPerHour: 200, // Max Speed
+            dmsPerDay: 1000,
             queueEnabled: true,
         },
         cta: "Upgrade to Starter",
         popular: false,
-        savings: "Most Affordable",
-        badge: "Budget Friendly"
+        savings: "renews @ ₹99/mo",
+        badge: "Most Affordable"
     },
 
     PRO: {
@@ -76,7 +78,7 @@ export const PRICING_PLANS = {
             "Story Automation ✨",
             "Follow-Gate Feature ✨",
             "Email Capture 🎯",
-            "Advanced Analytics",
+            "Detailed Analytics",
             "Priority Support (12h)",
         ],
         limits: {
@@ -84,6 +86,7 @@ export const PRICING_PLANS = {
             automations: 999,
             dmsPerMonth: 1000000,
             dmsPerHour: 200,
+            dmsPerDay: 2000,
             queueEnabled: true,
             priorityQueue: true,
         },
@@ -112,9 +115,8 @@ export function hasFeature(planType: string, feature: string): boolean {
         free: ["follow_gate", "basic_automation", "queue"],
         trial: ["follow_gate", "basic_automation", "queue"],
         starter: ["follow_gate", "story_automation", "basic_analytics", "queue", "viral_handling"],
-        growth: ["follow_gate", "story_automation", "email_capture", "ab_testing", "advanced_analytics", "queue", "priority_queue", "viral_handling"],
-        pro: ["follow_gate", "story_automation", "email_capture", "ab_testing", "drip_campaigns", "webhooks", "advanced_analytics", "queue", "priority_queue", "load_balancing", "viral_handling"],
-        paid: ["follow_gate", "story_automation", "email_capture", "ab_testing", "advanced_analytics", "queue", "priority_queue", "viral_handling"],
+        pro: ["follow_gate", "story_automation", "detailed_analytics", "queue", "priority_queue", "viral_handling"],
+        paid: ["follow_gate", "story_automation", "detailed_analytics", "queue", "priority_queue", "viral_handling"],
     };
 
     return featureMap[planType.toLowerCase()]?.includes(feature) || false;
@@ -126,6 +128,7 @@ export function getPlanLimits(planType: string): {
     automations: number;
     dmsPerMonth: number;
     dmsPerHour: number;
+    dmsPerDay: number;
     planName: string;
 } {
     const planMap: Record<string, typeof PRICING_PLANS.FREE.limits & { planName: string }> = {
@@ -160,23 +163,23 @@ export function getUpgradeSuggestion(planType: string): {
     const upgrades: Record<string, { nextPlan: string; nextPlanPrice: string; benefits: string[] }> = {
         free: {
             nextPlan: "Starter Pack",
-            nextPlanPrice: "₹149/month",
-            benefits: ["5 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+            nextPlanPrice: "₹99/month",
+            benefits: ["10 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
         },
         trial: {
             nextPlan: "Starter Pack",
-            nextPlanPrice: "₹149/month",
-            benefits: ["5 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+            nextPlanPrice: "₹99/month",
+            benefits: ["10 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
         },
         starter: {
             nextPlan: "Pro Pack",
             nextPlanPrice: "₹299/month",
-            benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Email Capture", "Advanced Analytics"]
+            benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Detailed Analytics"]
         },
         paid: {
             nextPlan: "Pro Pack",
             nextPlanPrice: "₹299/month",
-            benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Email Capture", "Advanced Analytics"]
+            benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Detailed Analytics"]
         }
     };
 

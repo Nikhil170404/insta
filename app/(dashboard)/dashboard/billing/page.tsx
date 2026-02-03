@@ -129,7 +129,7 @@ export default function BillingPage() {
         switch (name) {
             case "Free Starter": return <Gift className="h-6 w-6 text-emerald-600" />;
             case "Starter Pack": return <Coffee className="h-6 w-6 text-amber-600" />;
-            case "Growth Pack": return <Flame className="h-6 w-6 text-blue-600" />;
+
             case "Pro Pack": return <Crown className="h-6 w-6 text-purple-600" />;
             default: return <Star className="h-6 w-6 text-slate-600" />;
         }

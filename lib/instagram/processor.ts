@@ -11,6 +11,7 @@ import {
 } from "@/lib/instagram/service";
 import { smartRateLimit, queueDM, RATE_LIMITS } from "@/lib/smart-rate-limiter";
 import { getCachedUser, setCachedUser, getCachedAutomation, setCachedAutomation } from "@/lib/cache";
+import { getPlanLimits } from "@/lib/pricing";
 
 /**
  * Handle a comment event from the batch
@@ -32,7 +33,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         if (!user) {
             const { data: dbUser } = await supabase
                 .from("users")
-                .select("id, instagram_access_token, instagram_user_id")
+                .select("id, instagram_access_token, instagram_user_id, plan_type")
                 .eq("instagram_user_id", instagramUserId)
                 .single();
 
@@ -94,14 +95,20 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         if (userAlreadyDmed) return;
 
         // 9. Rate Limit Check
+        const planLimits = getPlanLimits(user.plan_type || 'free');
+
         const rateLimitResult = await smartRateLimit(user.id, {
-            hourlyLimit: RATE_LIMITS.INITIAL.hourly,
-            dailyLimit: RATE_LIMITS.INITIAL.daily,
+            hourlyLimit: planLimits.dmsPerHour,
+            dailyLimit: planLimits.dmsPerDay || 250,
             spreadDelay: false,
         });
 
         if (!rateLimitResult.allowed) {
-            console.log(`⚠️ Rate limit hit for user ${user.id}. Queuing DM...`);
+            console.log(`⚠️ Rate limit hit for user ${user.id} (${user.plan_type}). Queuing DM...`);
+
+            // Determine Priority
+            let priority = 5; // Default/Free
+            if (user.plan_type === 'pro' || user.plan_type === 'starter') priority = 10;
 
             // Queue the DM for later
             await queueDM(
@@ -112,7 +119,8 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                     message: automation.reply_message, // Use automation.reply_message directly
                     automation_id: automation.id
                 },
-                rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000) // Default to 1 min later
+                rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000), // Default to 1 min later
+                priority
             );
 
             return;
