@@ -30,8 +30,8 @@ export const PRICING_PLANS = {
 
     STARTER: {
         name: "Starter Pack",
-        price: "149",
-        upfront: "149",
+        price: "79",
+        upfront: "79",
         duration: "Monthly",
         description: "Perfect for growing creators",
         hindiDesc: "Naye creators ke liye perfect",
@@ -56,22 +56,22 @@ export const PRICING_PLANS = {
         },
         cta: "Upgrade to Starter",
         popular: false,
-        savings: "70% cheaper than ManyChat",
+        savings: "Best Introductory Offer",
         badge: "Most Affordable"
     },
 
     GROWTH: {
         name: "Growth Pack",
-        price: "299",
-        upfront: "299",
+        price: "149",
+        upfront: "149",
         duration: "Monthly",
         description: "Scale your engagement",
         hindiDesc: "Growth creators ke liye",
         features: [
-            "3 Instagram Accounts",
+            "1 Instagram Account",
             "15 Active Automations",
             "300,000 DMs/month",
-            "⚡ 600/hour (3 accounts)",
+            "⚡ 200/hour (Instagram Limit)",
             "Priority Queue Processing",
             "Handle Multiple Viral Posts 🔥",
             "Story Automation ✨",
@@ -82,53 +82,51 @@ export const PRICING_PLANS = {
             "Priority Support (12h)",
         ],
         limits: {
-            accounts: 3,
+            accounts: 1,
             automations: 15,
             dmsPerMonth: 300000,
-            dmsPerHour: 600, // 200 × 3 accounts
+            dmsPerHour: 200,
             queueEnabled: true,
             priorityQueue: true,
         },
         cta: "Scale to Growth",
         popular: true,
-        savings: "40% cheaper than SuperProfile",
+        savings: "Limited Time 50% Off",
         badge: "Most Popular"
     },
 
     PRO: {
         name: "Pro Pack",
-        price: "599",
-        upfront: "599",
+        price: "299",
+        upfront: "299",
         duration: "Monthly",
         description: "Enterprise-grade automation",
         hindiDesc: "Pro creators aur teams ke liye",
         features: [
-            "10 Instagram Accounts",
+            "1 Instagram Account",
             "Unlimited Automations",
             "1,000,000 DMs/month",
-            "⚡ 2,000/hour (10 accounts)",
+            "⚡ 200/hour (Instagram Limit)",
             "Instant Queue Processing",
             "Enterprise Viral Handling 🔥",
-            "Multi-Account Load Balancing",
             "All Growth Features",
             "Drip Campaigns 📬",
             "Webhook Integrations 🔗",
-            "WhatsApp Coming Soon 💚",
             "Dedicated Support (4h)",
             "Phone Support",
         ],
         limits: {
-            accounts: 10,
+            accounts: 1,
             automations: 999,
             dmsPerMonth: 1000000,
-            dmsPerHour: 2000, // 200 × 10 accounts
+            dmsPerHour: 200,
             queueEnabled: true,
             priorityQueue: true,
             loadBalancing: true,
         },
         cta: "Go Pro Unlimited",
         popular: false,
-        savings: "5x cheaper than ManyChat Pro",
+        savings: "Best Value for Pros",
         badge: "Enterprise"
     }
 };

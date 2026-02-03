@@ -9,7 +9,7 @@ import {
     sendFollowGateCard,
     hasReceivedFollowGate
 } from "@/lib/instagram/service";
-import { smartRateLimit, RATE_LIMITS } from "@/lib/smart-rate-limiter";
+import { smartRateLimit, queueDM, RATE_LIMITS } from "@/lib/smart-rate-limiter";
 import { getCachedUser, setCachedUser, getCachedAutomation, setCachedAutomation } from "@/lib/cache";
 
 /**
@@ -101,24 +101,20 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         });
 
         if (!rateLimitResult.allowed) {
-            // Fallback public reply
-            await replyToComment(
-                user.instagram_access_token,
-                commentId,
-                "Thanks! 🔥 We're seeing huge demand right now. Please DM us directly for the link! ✨"
+            console.log(`⚠️ Rate limit hit for user ${user.id}. Queuing DM...`);
+
+            // Queue the DM for later
+            await queueDM(
+                user.id,
+                {
+                    commentId,
+                    commenterId,
+                    message: automation.reply_message, // Use automation.reply_message directly
+                    automation_id: automation.id
+                },
+                rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000) // Default to 1 min later
             );
 
-            await supabase.from("dm_logs").insert({
-                user_id: user.id,
-                automation_id: automation.id,
-                instagram_comment_id: commentId,
-                instagram_user_id: commenterId,
-                instagram_username: commenterUsername,
-                keyword_matched: automation.trigger_keyword || "ANY",
-                comment_text: commentText,
-                reply_sent: false,
-                error_message: "Rate limit reached - public fallback sent",
-            });
             return;
         }
 

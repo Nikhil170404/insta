@@ -26,6 +26,7 @@ import Script from "next/script";
 export default function PricingPage() {
     const router = useRouter();
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+    const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
 
     const handlePayment = async (plan: any) => {
         // FREE plan - redirect to signin
@@ -224,7 +225,7 @@ export default function PricingPage() {
                                 </div>
 
                                 <div className="space-y-3 pt-4 border-t border-slate-50">
-                                    {plan.features.slice(0, 6).map((feature) => (
+                                    {plan.features.slice(0, expandedPlan === plan.name ? undefined : 6).map((feature) => (
                                         <div key={feature} className="flex items-start gap-3 group/feat">
                                             <div className="mt-0.5 w-5 h-5 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover/feat:bg-primary/10 transition-all duration-300">
                                                 <Check className="h-3 w-3 text-slate-400 group-hover/feat:text-primary transition-colors" />
@@ -233,7 +234,12 @@ export default function PricingPage() {
                                         </div>
                                     ))}
                                     {plan.features.length > 6 && (
-                                        <p className="text-[10px] font-bold text-slate-400 pl-8">+{plan.features.length - 6} more...</p>
+                                        <button
+                                            onClick={() => setExpandedPlan(expandedPlan === plan.name ? null : plan.name)}
+                                            className="text-[10px] font-bold text-primary hover:text-primary/80 pl-8 hover:underline focus:outline-none transition-colors"
+                                        >
+                                            {expandedPlan === plan.name ? "Show Less" : `+${plan.features.length - 6} more...`}
+                                        </button>
                                     )}
                                 </div>
                             </div>

@@ -119,22 +119,32 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // 2. Fire off instant processors in parallel (but don't await yet to keep response fast)
-            // We await them before returning to ensure reliability for small bursts
-            if (instantResults.length > 0) {
-                console.log(`⚡ Processing ${instantResults.length} events instantly...`);
-                await Promise.allSettled(instantResults);
-            }
+            // 2. Fire off instant processors in parallel (but don't await to keep response fast)
+            const processingPromise = (async () => {
+                try {
+                    if (instantResults.length > 0) {
+                        console.log(`⚡ Processing ${instantResults.length} events instantly...`);
+                        await Promise.allSettled(instantResults);
+                    }
 
-            // 3. Batch any remainder (viral bursts)
-            if (batchInserts.length > 0) {
-                console.log(`📦 Burst detected! Batching ${batchInserts.length} events for cron fallback.`);
-                const { error } = await (supabase as any)
-                    .from('webhook_batch')
-                    .insert(batchInserts.map(i => ({ ...i, priority: 5 })));
+                    // 3. Batch any remainder (viral bursts)
+                    if (batchInserts.length > 0) {
+                        console.log(`📦 Burst detected! Batching ${batchInserts.length} events for cron fallback.`);
+                        const { error } = await (supabase as any)
+                            .from('webhook_batch')
+                            .insert(batchInserts.map(i => ({ ...i, priority: 5 })));
 
-                if (error) console.error("❌ Batch insert error:", error);
-            }
+                        if (error) console.error("❌ Batch insert error:", error);
+                    }
+                } catch (err) {
+                    console.error("Background processing error:", err);
+                }
+            })();
+
+            // Do NOT await processing - return immediately to keep Meta happy (< 5s)
+            // Next.js might kill the lambda, but for "instant" results it usually finishes.
+            // For 100% reliability, Vercel suggests using Inngest or similar, but this improves 
+            // over the previous blocking implementation.
 
             return new NextResponse("EVENT_RECEIVED", { status: 200 });
         }

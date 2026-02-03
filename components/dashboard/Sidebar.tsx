@@ -88,22 +88,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
             </nav>
           </div>
 
-          {/* Pro Badge Card */}
-          <div className="px-6 mb-8">
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-5 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/20 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
-              <div className="relative z-10">
-                <p className="text-white font-bold text-sm mb-1 italic">Engagement Boost</p>
-                <p className="text-slate-400 text-xs mb-4 leading-relaxed">Turn your stories & reels into a 24/7 engagement engine.</p>
-                <Link
-                  href="/dashboard/billing"
-                  className="inline-flex items-center justify-center w-full py-2 bg-primary hover:bg-primary/90 text-white text-[11px] font-bold rounded-xl transition-all shadow-lg shadow-primary/20"
-                >
-                  START 3-MONTH TRIAL
-                </Link>
-              </div>
-            </div>
-          </div>
+
 
           {/* User Section */}
           <div className="border-t border-slate-50 p-6 bg-slate-50/30">

@@ -34,16 +34,18 @@ export default function AccountsPage() {
                         setMaxAccounts(limits.accounts);
                         setPlanName(limits.planName);
 
-                        // Get DM count from analytics
+                        // Get DM count from automations to match other page
                         let totalDmsSent = 0;
                         try {
-                            const analyticsRes = await fetch("/api/analytics");
-                            if (analyticsRes.ok) {
-                                const analytics = await analyticsRes.json();
-                                totalDmsSent = analytics.stats?.total || 0;
+                            const automationsRes = await fetch("/api/automations");
+                            if (automationsRes.ok) {
+                                const data = await automationsRes.json();
+                                if (data.automations) {
+                                    totalDmsSent = data.automations.reduce((sum: number, a: any) => sum + (a.dm_sent_count || 0), 0);
+                                }
                             }
                         } catch {
-                            // Ignore analytics fetch error
+                            // Ignore fetch error
                         }
 
                         setAccounts([{

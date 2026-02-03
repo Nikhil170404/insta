@@ -214,8 +214,8 @@ export default function AutomationsPage() {
     }
 
     const activeCount = automations.filter((a) => a.is_active).length;
-    // Use analytics as single source of truth for DM count
-    const totalDMs = totalDMsFromAnalytics ?? automations.reduce((sum, a) => sum + a.dm_sent_count, 0);
+    // Use sum of automation counts to ensure UI consistency with cards
+    const totalDMs = automations.reduce((sum, a) => sum + a.dm_sent_count, 0);
 
     return (
         <div className="space-y-10">
