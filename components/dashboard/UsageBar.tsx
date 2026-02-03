@@ -17,9 +17,10 @@ interface UsageData {
 interface UsageBarProps {
     className?: string;
     compact?: boolean;
+    resetDateText?: string;
 }
 
-export function UsageBar({ className, compact = false }: UsageBarProps) {
+export function UsageBar({ className, compact = false, resetDateText }: UsageBarProps) {
     const [usage, setUsage] = useState<UsageData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -125,12 +126,14 @@ export function UsageBar({ className, compact = false }: UsageBarProps) {
                 </span>
 
                 {/* Hourly Speed Indicator */}
-                {usage.hourlyLimit && (
-                    <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded-md" title="Max Delivery Speed">
-                        <Zap className="w-3 h-3 text-slate-400 fill-slate-400" />
-                        <span className="text-[10px] font-bold text-slate-500">{usage.hourlyLimit}/hr</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-2">
+                    {resetDateText && (
+                        <span className="text-[10px] font-bold text-slate-400">
+                            {resetDateText}
+                        </span>
+                    )}
+
+                </div>
             </div>
 
             {usage.percentage >= 80 && (

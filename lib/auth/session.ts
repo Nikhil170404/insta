@@ -16,6 +16,9 @@ export interface SessionUser {
   instagram_user_id: string;
   instagram_username: string;
   plan_type: "trial" | "paid" | "expired";
+  profile_picture_url?: string;
+  created_at: string;
+  plan_expires_at?: string;
 }
 
 export async function createSession(user: User): Promise<string> {
@@ -24,6 +27,9 @@ export async function createSession(user: User): Promise<string> {
     instagram_user_id: user.instagram_user_id,
     instagram_username: user.instagram_username,
     plan_type: user.plan_type,
+    profile_picture_url: user.profile_picture_url,
+    created_at: user.created_at,
+    plan_expires_at: user.plan_expires_at,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

@@ -50,7 +50,9 @@ export async function GET(request: NextRequest) {
     // 'profile.user_id' is the real Instagram ID (IGID) like 1784...
     // The webhooks use the IGID, so we MUST save the IGID to the database.
     const instagramUserId = (profile.user_id || profile.id).toString();
+    const profilePictureUrl = profile.profile_picture_url;
     console.log(`✅ Final Resolved Instagram ID (IGID): "${instagramUserId}"`);
+    console.log(`📸 Profile Pic: ${profilePictureUrl ? "Found" : "Not Found"}`);
     if (profile.user_id) console.log(`ℹ️ App-Scoped ID (ASID) was: "${profile.id}"`);
 
     // Step 3: Auto-subscribe webhooks (Native Instagram subscription)
@@ -117,6 +119,7 @@ export async function GET(request: NextRequest) {
           instagram_username: profile.username,
           instagram_access_token: accessToken,
           instagram_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+          profile_picture_url: profilePictureUrl, // SAVE PROFILE PIC
         })
         .eq("id", userRecord.id)
         .select()
@@ -140,6 +143,7 @@ export async function GET(request: NextRequest) {
           instagram_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
           plan_type: "trial",
           plan_expires_at: trialExpiresAt.toISOString(),
+          profile_picture_url: profilePictureUrl, // SAVE PROFILE PIC
         })
         .select()
         .single();

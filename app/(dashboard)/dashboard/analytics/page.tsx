@@ -42,6 +42,7 @@ interface HourlyStat {
     hour: number;
     label: string;
     count: number;
+    timestamp?: string;
 }
 
 interface MonthlyTrend {
@@ -349,8 +350,8 @@ export default function AnalyticsPage() {
                                     <Clock className="h-5 w-5 text-blue-500" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Today's Activity</h3>
-                                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Hourly distribution</p>
+                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Activity Pulse</h3>
+                                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Last 24 Hours</p>
                                 </div>
                             </div>
 
@@ -365,7 +366,11 @@ export default function AnalyticsPage() {
                                             style={{ height: `${Math.max((hour.count / maxHourlyCount) * 100, 2)}%` }}
                                         />
                                         {idx % 4 === 0 && (
-                                            <span className="text-[8px] text-slate-400 font-bold mt-1">{hour.hour}</span>
+                                            <span className="text-[8px] text-slate-400 font-bold mt-1">
+                                                {hour.timestamp
+                                                    ? new Date(hour.timestamp).getHours() + ":00"
+                                                    : hour.label}
+                                            </span>
                                         )}
                                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] font-bold py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                                             {hour.count}

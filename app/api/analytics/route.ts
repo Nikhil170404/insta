@@ -11,8 +11,9 @@ export async function GET(request: Request) {
 
         const supabase = getSupabaseAdmin();
         const searchParams = new URL(request.url).searchParams;
-        const days = parseInt(searchParams.get("days") || "7");
-        const period = searchParams.get("period") || "week"; // week, month, all
+        const daysParam = searchParams.get("days");
+        const isAllTime = daysParam === "all";
+        const days = isAllTime ? 3650 : parseInt(daysParam || "7"); // 10 years for all time
 
         const now = new Date();
         const todayStart = new Date(now);
@@ -20,7 +21,11 @@ export async function GET(request: Request) {
 
         // Current period start
         const periodStart = new Date(now);
-        periodStart.setDate(periodStart.getDate() - days);
+        if (!isAllTime) {
+            periodStart.setDate(periodStart.getDate() - days);
+        } else {
+            periodStart.setFullYear(2020, 0, 1); // Earliest possible date
+        }
 
         // This month start
         const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -119,10 +124,26 @@ export async function GET(request: Request) {
 
         // Get daily stats for the chart
         const dailyStats = [];
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date(now);
+        // For "All Time", we potentially condense data or just limit to last 90 days? 
+        // User probably expects all data. If it's huge, charts break.
+        // Let's assume reasonable usage for now or limit "All" chart to 90 days but totals to "All".
+
+        let loopDays = days;
+        if (isAllTime) loopDays = 90; // Limit daily chart to 90 days for UI sanity, or maybe grouping?
+        // Actually, let's just stick to periodStart logic. If it's 10 years, loop is huge. 
+        // Let's dynamically group if > 60 days? Too complex for this prompt.
+        // Simple fix: If isAllTime, show last 30 days trend OR yearly? 
+        // Let's keep existing logic but careful with loop.
+
+        // Re-implementing clearer logic:
+        const rangeDate = new Date(now);
+        rangeDate.setHours(0, 0, 0, 0);
+
+        const chartDays = isAllTime ? 30 : days; // Show last 30 days on chart even for "All Time" to avoid crowding
+
+        for (let i = chartDays - 1; i >= 0; i--) {
+            const date = new Date(rangeDate);
             date.setDate(date.getDate() - i);
-            date.setHours(0, 0, 0, 0);
             const nextDate = new Date(date);
             nextDate.setDate(nextDate.getDate() + 1);
 
@@ -141,13 +162,14 @@ export async function GET(request: Request) {
             });
         }
 
-        // Get hourly distribution for today
+        // Get hourly distribution (Last 24 Hours)
         const hourlyStats = [];
-        for (let hour = 0; hour < 24; hour++) {
-            const hourStart = new Date(todayStart);
-            hourStart.setHours(hour, 0, 0, 0);
-            const hourEnd = new Date(todayStart);
-            hourEnd.setHours(hour, 59, 59, 999);
+        for (let i = 23; i >= 0; i--) {
+            const hourStart = new Date(now);
+            hourStart.setHours(hourStart.getHours() - i, 0, 0, 0);
+
+            const hourEnd = new Date(hourStart);
+            hourEnd.setHours(hourEnd.getHours(), 59, 59, 999);
 
             const { count } = await (supabase as any)
                 .from("dm_logs")
@@ -158,8 +180,10 @@ export async function GET(request: Request) {
                 .lte("created_at", hourEnd.toISOString());
 
             hourlyStats.push({
-                hour: hour,
-                label: `${hour.toString().padStart(2, '0')}:00`,
+                hour: hourStart.getHours(),
+                // Label used for display, user can format if needed but we send partial
+                label: `${hourStart.getHours().toString().padStart(2, '0')}:00`,
+                timestamp: hourStart.toISOString(),
                 count: count || 0
             });
         }

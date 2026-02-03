@@ -89,28 +89,39 @@ export function DashboardSidebar({ user }: SidebarProps) {
 
           {/* Usage Bar - Desktop */}
           <div className="px-4 pb-4">
-            <UsageBar />
+            <UsageBar resetDateText={getPlanDateText(user)} />
           </div>
 
           {/* User Section */}
           <div className="border-t border-slate-50 p-6 bg-slate-50/30">
             <div className="flex items-center gap-4">
               <div className="relative transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/10">
-                  {user.instagram_username.charAt(0).toUpperCase()}
-                </div>
+                {user.profile_picture_url ? (
+                  <img
+                    src={user.profile_picture_url}
+                    alt={user.instagram_username}
+                    className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-primary/10 ring-2 ring-white"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/10">
+                    {user.instagram_username.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" title="Active" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-slate-900 truncate">
                   @{user.instagram_username}
                 </p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-col gap-1 mt-0.5">
                   <span className={cn(
-                    "text-[10px] uppercase font-black px-1.5 py-0.5 rounded-md",
+                    "text-[10px] uppercase font-black px-1.5 py-0.5 rounded-md w-fit",
                     user.plan_type === "trial" ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"
                   )}>
                     {user.plan_type}
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400">
+                    {getPlanDateText(user)}
                   </span>
                 </div>
               </div>
@@ -175,7 +186,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
 
         {/* Usage Bar - Mobile */}
         <div className="px-4 py-3 border-t border-slate-50">
-          <UsageBar compact />
+          <UsageBar compact resetDateText={getPlanDateText(user)} />
         </div>
 
         <div className="p-6 border-t border-slate-50 bg-slate-50/30">
@@ -199,4 +210,28 @@ export function DashboardSidebar({ user }: SidebarProps) {
       </div>
     </>
   );
+}
+
+function getPlanDateText(user: SessionUser): string {
+  // Paid Plans (Starter, Pro, etc.) - Show Expiry Date
+  if (["paid", "starter", "growth", "pro"].includes(user.plan_type)) {
+    if (user.plan_expires_at) {
+      return `Expires ${new Date(user.plan_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    }
+  }
+
+  // Free & Trial Plans - Show Monthly Reset Date (based on creation)
+  if (user.created_at) {
+    const createdDate = new Date(user.created_at);
+    const dayOfMonth = createdDate.getDate();
+    return `Resets on ${dayOfMonth}${getOrdinal(dayOfMonth)}`;
+  }
+
+  return "";
+}
+
+function getOrdinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
 }

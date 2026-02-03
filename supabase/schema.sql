@@ -15,6 +15,7 @@ CREATE TABLE public.users (
   instagram_username VARCHAR(255) NOT NULL,
   instagram_access_token TEXT NOT NULL,
   instagram_token_expires_at TIMESTAMPTZ NOT NULL,
+  profile_picture_url TEXT,
 
   -- Plan details
   plan_type VARCHAR(20) DEFAULT 'trial',
@@ -304,4 +305,10 @@ ALTER TABLE public.dm_logs ADD COLUMN IF NOT EXISTS is_clicked BOOLEAN DEFAULT f
 CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_logs_unique_user_automation
   ON public.dm_logs(instagram_user_id, automation_id, is_follow_gate)
   WHERE is_follow_gate = false;
+
+
+-- ============================================
+-- MIGRATION: 2025-02-04 - Cleanup Legacy Columns
+-- ============================================
+-- ALTER TABLE public.users DROP COLUMN IF EXISTS max_comments_per_day;
 
