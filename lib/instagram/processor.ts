@@ -208,8 +208,36 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 );
 
                 if (isFollowingNow) {
-                    console.log(`✅ User ${commenterUsername} is now following! Sending content.`);
-                    // Continue to send content (falls through to step 11)
+                    console.log(`✅ User ${commenterUsername} is now following! Sending greeting with button.`);
+                    // Send greeting message with button - NOT direct link
+                    // When they click button, CLICK_LINK_ handler will send the actual link
+                    const greetingSent = await sendInstagramDM(
+                        user.instagram_access_token,
+                        instagramUserId,
+                        commentId,
+                        commenterId,
+                        automation.reply_message,
+                        automation.id,
+                        automation.button_text || "Get Access",
+                        undefined, // NO link_url - this triggers quick_reply button flow
+                        automation.media_thumbnail_url
+                    );
+
+                    // Update placeholder record
+                    await supabase.from("dm_logs")
+                        .update({
+                            reply_sent: greetingSent,
+                            reply_sent_at: greetingSent ? new Date().toISOString() : null,
+                            user_is_following: true,
+                        })
+                        .eq("instagram_comment_id", commentId);
+
+                    if (greetingSent) {
+                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    } else {
+                        await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
+                    }
+                    return;
                 } else {
                     // Still not following - send gate again
                     console.log(`❌ User ${commenterUsername} still not following after gate`);
@@ -254,11 +282,11 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         followGateMsg
                     );
 
-                    // Log as follow-gate attempt
+                    // Log as follow-gate attempt (separate from placeholder - this is follow-gate specific)
                     await supabase.from("dm_logs").insert({
                         user_id: user.id,
                         automation_id: automation.id,
-                        instagram_comment_id: commentId,
+                        instagram_comment_id: `${commentId}_followgate`,
                         instagram_user_id: commenterId,
                         instagram_username: commenterUsername,
                         keyword_matched: automation.trigger_keyword || "ANY",
@@ -274,6 +302,38 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                     }
 
                     return; // Stop here, don't send main message yet
+                } else {
+                    // User IS following on first comment - send greeting with button
+                    // NOT direct link - they click button to get the link
+                    console.log(`✅ User ${commenterUsername} is already following! Sending greeting with button.`);
+
+                    const greetingSent = await sendInstagramDM(
+                        user.instagram_access_token,
+                        instagramUserId,
+                        commentId,
+                        commenterId,
+                        automation.reply_message,
+                        automation.id,
+                        automation.button_text || "Get Access",
+                        undefined, // NO link_url - triggers quick_reply button flow
+                        automation.media_thumbnail_url
+                    );
+
+                    // Update placeholder record
+                    await supabase.from("dm_logs")
+                        .update({
+                            reply_sent: greetingSent,
+                            reply_sent_at: greetingSent ? new Date().toISOString() : null,
+                            user_is_following: true,
+                        })
+                        .eq("instagram_comment_id", commentId);
+
+                    if (greetingSent) {
+                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    } else {
+                        await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
+                    }
+                    return;
                 }
             }
         }
@@ -435,8 +495,9 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             );
 
             if (isFollowing) {
-                // They are following! Send the content
-                console.log(`✅ User ${senderIgsid} verified as following, sending content`);
+                // They are following! Send greeting with button (NOT direct link)
+                // They click button to get the actual link
+                console.log(`✅ User ${senderIgsid} verified as following, sending greeting with button`);
 
                 const dmSent = await sendInstagramDM(
                     user.instagram_access_token,
@@ -445,8 +506,8 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     senderIgsid,
                     automation.reply_message,
                     automation.id,
-                    automation.button_text,
-                    automation.link_url,
+                    automation.button_text || "Get Access",
+                    undefined, // NO link_url - triggers quick_reply button flow
                     automation.media_thumbnail_url
                 );
 

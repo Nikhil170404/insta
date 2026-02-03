@@ -125,24 +125,42 @@ export async function sendInstagramDM(
                     }
                 }
             };
+        } else if (buttonText && automationId && !linkUrl) {
+            // Greeting card with postback button (no direct link)
+            // User clicks button → triggers CLICK_LINK_ handler → sends actual link
+            console.log("💬 Sending Greeting Card with Postback Button");
+            body = {
+                recipient: recipient,
+                message: {
+                    attachment: {
+                        type: "template",
+                        payload: {
+                            template_type: "generic",
+                            elements: [
+                                {
+                                    title: message.substring(0, 80) || "You have a message!",
+                                    subtitle: "Tap below to continue ✨",
+                                    image_url: thumbnailUrl || "",
+                                    buttons: [
+                                        {
+                                            type: "postback",
+                                            title: buttonText.substring(0, 20),
+                                            payload: `CLICK_LINK_${automationId}`
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            };
         } else {
-            // Fallback to text if No link or thumbnail
+            // Fallback to plain text if no button needed
             console.log("📝 Sending Plain Text Message");
             body = {
                 recipient: recipient,
                 message: { text: message }
             };
-
-            // If they just wanted a button click flow (no card)
-            if (buttonText && automationId && !linkUrl) {
-                body.message.quick_replies = [
-                    {
-                        content_type: "text",
-                        title: buttonText.substring(0, 20),
-                        payload: `CLICK_LINK_${automationId}`
-                    }
-                ];
-            }
         }
 
         const response = await fetch(baseUrl, {
