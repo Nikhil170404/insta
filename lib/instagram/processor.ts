@@ -121,9 +121,10 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         // 10. FOLLOW-GATE CHECK (if enabled)
         if (automation.require_follow) {
+            // Check if user is a known follower from our tracking table
             const isFollowing = await checkFollowStatus(
-                user.instagram_access_token,
-                instagramUserId,
+                supabase,
+                user.id,
                 commenterId
             );
 

@@ -187,31 +187,101 @@ export function getUniqueMessage(message: string): string {
 }
 
 /**
- * Check if commenter follows the account
+ * Check if user is a known follower (from our tracking table)
+ * This is the CORRECT way - we track follows via webhooks
  */
 export async function checkFollowStatus(
-    accessToken: string,
-    accountId: string,
-    commenterId: string
+    supabase: any,
+    userId: string,
+    followerInstagramId: string
 ): Promise<boolean> {
     try {
-        // Note: This endpoint requires instagram_manage_messages permission
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${accountId}?` +
-            `fields=followers&access_token=${accessToken}`
-        );
+        const { data, error } = await supabase
+            .from("follow_tracking")
+            .select("is_following")
+            .eq("user_id", userId)
+            .eq("follower_instagram_id", followerInstagramId)
+            .single();
 
-        if (!response.ok) {
-            console.log("Could not check follow status, assuming not following");
+        if (error || !data) {
+            // Not in tracking table = unknown (assume not following for follow-gate)
+            console.log(`📋 Follow status unknown for ${followerInstagramId}, assuming not following`);
             return false;
         }
 
-        // TODO: Implement proper follow check when permissions are available
-        return true;
+        return data.is_following === true;
     } catch (error) {
         console.error("Error checking follow status:", error);
-        return true; // Allow DM on error to not block functionality
+        return false; // Fail safe: assume not following for follow-gate
     }
+}
+
+/**
+ * Record a follow event (called from webhook handler)
+ */
+export async function recordFollowEvent(
+    supabase: any,
+    userId: string,
+    followerInstagramId: string,
+    followerUsername: string | null,
+    isFollowing: boolean
+): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from("follow_tracking")
+            .upsert({
+                user_id: userId,
+                follower_instagram_id: followerInstagramId,
+                follower_username: followerUsername,
+                is_following: isFollowing,
+                followed_at: isFollowing ? new Date().toISOString() : undefined,
+                unfollowed_at: !isFollowing ? new Date().toISOString() : undefined,
+            }, {
+                onConflict: 'user_id,follower_instagram_id',
+            });
+
+        if (error) {
+            console.error("Error recording follow event:", error);
+        } else {
+            console.log(`✅ Recorded ${isFollowing ? 'follow' : 'unfollow'} for ${followerUsername || followerInstagramId}`);
+        }
+    } catch (error) {
+        console.error("Exception recording follow event:", error);
+    }
+}
+
+/**
+ * Send a follow-gate message prompting user to follow
+ */
+export async function sendFollowGateMessage(
+    accessToken: string,
+    senderId: string,
+    recipientId: string,
+    customMessage?: string,
+    triggerKeyword?: string
+): Promise<boolean> {
+    const defaultMessage = `Hey! 👋
+
+To unlock this exclusive content, please follow our account first! 
+
+Once you're following, just comment "${triggerKeyword || 'the keyword'}" again and I'll send it right over! ✨
+
+Tap the button below to follow us:`;
+
+    const message = customMessage || defaultMessage;
+
+    // Send follow-gate message with a "follow" CTA
+    return sendInstagramDM(
+        accessToken,
+        senderId,
+        null,
+        recipientId,
+        message,
+        undefined,
+        "Follow Us",
+        `https://instagram.com/_u/${senderId}`, // Deep link to profile
+        undefined
+    );
 }
 
 /**

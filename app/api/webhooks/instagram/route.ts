@@ -6,7 +6,8 @@ import {
     replyToComment,
     checkFollowStatus,
     getUniqueMessage,
-    incrementAutomationCount
+    incrementAutomationCount,
+    recordFollowEvent
 } from "@/lib/instagram/service";
 import { smartRateLimit, queueDM, RATE_LIMITS } from "@/lib/smart-rate-limiter";
 import { handleCommentEvent, handleMessageEvent } from "@/lib/instagram/processor";
@@ -76,6 +77,29 @@ export async function POST(request: NextRequest) {
                             instantResults.push(handleCommentEvent(instagramUserId, change.value, supabase));
                         } else {
                             batchInserts.push({ instagram_user_id: instagramUserId, event_type: 'comment', payload: change.value });
+                        }
+                    }
+
+                    // Handle follow events for Follow-Gate feature
+                    if (change.field === "follows") {
+                        const followData = change.value;
+                        // Get the user ID from our database
+                        const { data: user } = await (supabase as any)
+                            .from("users")
+                            .select("id")
+                            .eq("instagram_user_id", instagramUserId)
+                            .single();
+
+                        if (user && followData) {
+                            // Record the follow event in our tracking table
+                            await recordFollowEvent(
+                                supabase,
+                                user.id,
+                                followData.from?.id || followData.user_id,
+                                followData.from?.username,
+                                true // is following
+                            );
+                            console.log(`✅ Recorded follow from ${followData.from?.username || 'unknown'}`);
                         }
                     }
                 }

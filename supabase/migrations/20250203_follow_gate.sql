@@ -1,22 +1,31 @@
--- Follow-Gate Feature Migration
--- Add follow-gate columns to automations table
+-- Follow Tracking Table
+-- Tracks users who have followed the account (via webhooks)
 
+CREATE TABLE IF NOT EXISTS public.follow_tracking (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    follower_instagram_id VARCHAR(255) NOT NULL,
+    follower_username VARCHAR(255),
+    followed_at TIMESTAMPTZ DEFAULT NOW(),
+    unfollowed_at TIMESTAMPTZ,
+    is_following BOOLEAN DEFAULT true,
+    
+    UNIQUE(user_id, follower_instagram_id)
+);
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_follow_tracking_user_follower 
+ON public.follow_tracking(user_id, follower_instagram_id, is_following);
+
+-- Update automation settings for follow-gate
 ALTER TABLE public.automations 
-ADD COLUMN IF NOT EXISTS follow_gate_message TEXT DEFAULT 'Hey! 👋 To unlock this, please follow us first!',
-ADD COLUMN IF NOT EXISTS follow_gate_cta TEXT DEFAULT 'Follow & Get Access';
+ADD COLUMN IF NOT EXISTS require_follow BOOLEAN DEFAULT false;
 
--- Add tracking columns to dm_logs for follow-gate analytics
+-- Add follow tracking to dm_logs
 ALTER TABLE public.dm_logs 
-ADD COLUMN IF NOT EXISTS is_follow_gate BOOLEAN DEFAULT false,
-ADD COLUMN IF NOT EXISTS user_is_following BOOLEAN;
+ADD COLUMN IF NOT EXISTS follow_gate_sent BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS followed_after_gate BOOLEAN DEFAULT false;
 
--- Create index for follow-gate analytics
-CREATE INDEX IF NOT EXISTS idx_dm_logs_follow_gate 
-ON public.dm_logs(is_follow_gate, user_is_following) 
-WHERE is_follow_gate = true;
-
--- Comment for documentation
-COMMENT ON COLUMN public.automations.follow_gate_message IS 'Custom message sent when user is not following';
-COMMENT ON COLUMN public.automations.follow_gate_cta IS 'CTA button text for follow-gate message';
-COMMENT ON COLUMN public.dm_logs.is_follow_gate IS 'Whether this DM was a follow-gate message';
-COMMENT ON COLUMN public.dm_logs.user_is_following IS 'Whether user was following at time of DM';
+-- Comments
+COMMENT ON TABLE public.follow_tracking IS 'Tracks Instagram followers via webhook events for follow-gate feature';
+COMMENT ON COLUMN public.follow_tracking.is_following IS 'Current follow status - updated on follow/unfollow events';
