@@ -9,7 +9,7 @@ import {
     incrementAutomationCount,
     recordFollowEvent
 } from "@/lib/instagram/service";
-import { smartRateLimit, queueDM, RATE_LIMITS } from "@/lib/smart-rate-limiter";
+import { smartRateLimit, queueDM } from "@/lib/smart-rate-limiter";
 import { handleCommentEvent, handleMessageEvent } from "@/lib/instagram/processor";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
@@ -119,32 +119,34 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // 2. Fire off instant processors in parallel (but don't await to keep response fast)
-            const processingPromise = (async () => {
-                try {
-                    if (instantResults.length > 0) {
-                        console.log(`⚡ Processing ${instantResults.length} events instantly...`);
-                        await Promise.allSettled(instantResults);
-                    }
+            // 2. Process instant results (AWAITING now to ensure Vercel prevents early exit)
+            try {
+                if (instantResults.length > 0) {
+                    console.log(`⚡ Processing ${instantResults.length} events instantly...`);
+                    const results = await Promise.allSettled(instantResults);
 
-                    // 3. Batch any remainder (viral bursts)
-                    if (batchInserts.length > 0) {
-                        console.log(`📦 Burst detected! Batching ${batchInserts.length} events for cron fallback.`);
-                        const { error } = await (supabase as any)
-                            .from('webhook_batch')
-                            .insert(batchInserts.map(i => ({ ...i, priority: 5 })));
-
-                        if (error) console.error("❌ Batch insert error:", error);
-                    }
-                } catch (err) {
-                    console.error("Background processing error:", err);
+                    // Log results for debugging
+                    results.forEach((res, idx) => {
+                        if (res.status === 'rejected') {
+                            console.error(`❌ Instant process ${idx} failed:`, res.reason);
+                        } else {
+                            console.log(`✅ Instant process ${idx} completed`);
+                        }
+                    });
                 }
-            })();
 
-            // Do NOT await processing - return immediately to keep Meta happy (< 5s)
-            // Next.js might kill the lambda, but for "instant" results it usually finishes.
-            // For 100% reliability, Vercel suggests using Inngest or similar, but this improves 
-            // over the previous blocking implementation.
+                // 3. Batch any remainder (viral bursts)
+                if (batchInserts.length > 0) {
+                    console.log(`📦 Burst detected! Batching ${batchInserts.length} events for cron fallback.`);
+                    const { error } = await (supabase as any)
+                        .from('webhook_batch')
+                        .insert(batchInserts.map(i => ({ ...i, priority: 5 })));
+
+                    if (error) console.error("❌ Batch insert error:", error);
+                }
+            } catch (err) {
+                console.error("Processing error:", err);
+            }
 
             return new NextResponse("EVENT_RECEIVED", { status: 200 });
         }

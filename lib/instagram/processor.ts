@@ -9,7 +9,7 @@ import {
     sendFollowGateCard,
     hasReceivedFollowGate
 } from "@/lib/instagram/service";
-import { smartRateLimit, queueDM, RATE_LIMITS } from "@/lib/smart-rate-limiter";
+import { smartRateLimit, queueDM } from "@/lib/smart-rate-limiter";
 import { getCachedUser, setCachedUser, getCachedAutomation, setCachedAutomation } from "@/lib/cache";
 import { getPlanLimits } from "@/lib/pricing";
 
@@ -43,7 +43,10 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         }
 
         // 3. Self-comment detection
-        if (commenterId === user.instagram_user_id) return;
+        if (commenterId === user.instagram_user_id) {
+            console.log("ℹ️ Skipping self-comment");
+            return;
+        }
 
         // 4. Idempotency Check
         const { data: existingLog } = await supabase
@@ -52,28 +55,53 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             .eq("instagram_comment_id", commentId)
             .single();
 
-        if (existingLog) return;
+        if (existingLog) {
+            console.log(`ℹ️ Skipping duplicate comment ID: ${commentId}`);
+            return;
+        }
 
-        // 5. Find automation (with caching)
+        // 5. Find automation (with caching) - FAST SINGLE QUERY with Global Fallback
         const automationCacheKey = `automation:${user.id}:${mediaId}`;
         let automation = await getCachedAutomation(automationCacheKey);
 
         if (!automation) {
-            const { data: dbAutomation } = await supabase
+            // Single optimized query: Get ALL active automations for user, then pick best match
+            const { data: allAutomations } = await supabase
                 .from("automations")
                 .select("*")
                 .eq("user_id", user.id)
-                .eq("media_id", mediaId)
-                .eq("is_active", true)
-                .single();
+                .eq("is_active", true);
 
-            if (!dbAutomation) return;
-            automation = dbAutomation;
-            await setCachedAutomation(automationCacheKey, dbAutomation);
+            if (!allAutomations || allAutomations.length === 0) {
+                console.log(`ℹ️ User has NO active automations.`);
+                return;
+            }
+
+            // Priority 1: Exact media_id match
+            let matchedAutomation = allAutomations.find((a: any) => a.media_id === mediaId);
+
+            // Priority 2: Global fallback (trigger_type = 'all_posts' OR media_id is null/empty)
+            if (!matchedAutomation) {
+                matchedAutomation = allAutomations.find((a: any) =>
+                    a.trigger_type === 'all_posts' || !a.media_id
+                );
+                if (matchedAutomation) {
+                    console.log(`✅ Using GLOBAL 'all_posts' fallback automation.`);
+                }
+            }
+
+            if (!matchedAutomation) {
+                console.log(`ℹ️ No matching automation for media ${mediaId}. Active IDs: ${allAutomations.map((a: any) => a.media_id).join(', ')}`);
+                return;
+            }
+
+            automation = matchedAutomation;
+            await setCachedAutomation(automationCacheKey, matchedAutomation);
         }
 
         // 6. Check keyword match
         if (!checkKeywordMatch(automation.trigger_type, automation.trigger_keyword, commentText)) {
+            console.log(`ℹ️ Keyword mismatch: '${commentText}' vs '${automation.trigger_keyword || "params"}'`);
             return;
         }
 
@@ -83,28 +111,62 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             await replyToComment(user.instagram_access_token, commentId, uniqueReply);
         }
 
-        // 8. ONE DM PER USER CHECK
+        // 8. ONE DM PER USER CHECK + ATOMIC CLAIM
+        // Use atomic insert to prevent race conditions when multiple comments arrive simultaneously
+        // First do a fast check, then insert a placeholder to claim the slot atomically
         const { data: userAlreadyDmed } = await supabase
             .from("dm_logs")
             .select("id")
             .eq("instagram_user_id", commenterId)
-            .eq("keyword_matched", automation.trigger_keyword || "ANY")
+            .eq("automation_id", automation.id)
             .eq("user_id", user.id)
-            .single();
+            .eq("is_follow_gate", false)
+            .maybeSingle();
 
-        if (userAlreadyDmed) return;
+        if (userAlreadyDmed) {
+            console.log(`⚠️ Skipping: User ${commenterUsername} already DMed for this automation.`);
+            return;
+        }
+
+        // 8b. ATOMIC CLAIM - Insert placeholder to prevent race conditions
+        // Uses unique index idx_dm_logs_unique_user_automation to prevent duplicates
+        const placeholderRecord = {
+            user_id: user.id,
+            automation_id: automation.id,
+            instagram_comment_id: commentId,
+            instagram_user_id: commenterId,
+            instagram_username: commenterUsername,
+            keyword_matched: automation.trigger_keyword || "ANY",
+            comment_text: commentText,
+            reply_sent: false,
+            is_follow_gate: false,
+        };
+
+        const { error: claimError } = await supabase
+            .from("dm_logs")
+            .insert(placeholderRecord);
+
+        if (claimError) {
+            // Unique constraint violation (code 23505) means another request already claimed this
+            if (claimError.code === '23505') {
+                console.log(`⚠️ Race condition prevented: Another request already processing for user ${commenterUsername}`);
+                return;
+            }
+            // Log other errors but continue (non-critical)
+            console.error(`⚠️ Claim insert warning:`, claimError.message);
+        }
 
         // 9. Rate Limit Check
         const planLimits = getPlanLimits(user.plan_type || 'free');
 
         const rateLimitResult = await smartRateLimit(user.id, {
             hourlyLimit: planLimits.dmsPerHour,
-            dailyLimit: planLimits.dmsPerDay || 250,
+            monthlyLimit: planLimits.dmsPerMonth || 1000,
             spreadDelay: false,
         });
 
         if (!rateLimitResult.allowed) {
-            console.log(`⚠️ Rate limit hit for user ${user.id} (${user.plan_type}). Queuing DM...`);
+            console.log(`⚠️ Rate limit hit for user ${user.id} (${user.plan_type}). Queuing DM... Details:`, JSON.stringify(rateLimitResult.remaining));
 
             // Determine Priority
             let priority = 5; // Default/Free
@@ -225,22 +287,17 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             automation.reply_message,
             automation.id,
             automation.button_text,
-            undefined,
+            automation.link_url,
             automation.media_thumbnail_url
         );
 
-        // 11. Log and Update
-        await supabase.from("dm_logs").insert({
-            user_id: user.id,
-            automation_id: automation.id,
-            instagram_comment_id: commentId,
-            instagram_user_id: commenterId,
-            instagram_username: commenterUsername,
-            keyword_matched: automation.trigger_keyword || "ANY",
-            comment_text: commentText,
-            reply_sent: dmSent,
-            reply_sent_at: dmSent ? new Date().toISOString() : null,
-        });
+        // 12. Update placeholder record with result (placeholder was inserted in step 8b)
+        await supabase.from("dm_logs")
+            .update({
+                reply_sent: dmSent,
+                reply_sent_at: dmSent ? new Date().toISOString() : null,
+            })
+            .eq("instagram_comment_id", commentId);
 
         if (dmSent) {
             await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
@@ -421,7 +478,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             }
         }
     } catch (error) {
-        console.error("Error in batch processor handleMessageEvent:", error);
+        console.error("Error in batch processor handleCommentEvent:", error);
     }
 }
 

@@ -20,8 +20,8 @@ export const PRICING_PLANS = {
             automations: 3,
             dmsPerMonth: 1000,
             dmsPerHour: 200, // Max Speed for all
-            dmsPerDay: 250,
             queueEnabled: true,
+            priorityQueue: false,
         },
         cta: "Start Free Forever",
         popular: false,
@@ -52,8 +52,8 @@ export const PRICING_PLANS = {
             automations: 10,
             dmsPerMonth: 50000,
             dmsPerHour: 200, // Max Speed
-            dmsPerDay: 1000,
             queueEnabled: true,
+            priorityQueue: false,
         },
         cta: "Upgrade to Starter",
         popular: false,
@@ -86,7 +86,6 @@ export const PRICING_PLANS = {
             automations: 999,
             dmsPerMonth: 1000000,
             dmsPerHour: 200,
-            dmsPerDay: 2000,
             queueEnabled: true,
             priorityQueue: true,
         },
@@ -128,8 +127,9 @@ export function getPlanLimits(planType: string): {
     automations: number;
     dmsPerMonth: number;
     dmsPerHour: number;
-    dmsPerDay: number;
     planName: string;
+    queueEnabled?: boolean;
+    priorityQueue?: boolean;
 } {
     const planMap: Record<string, typeof PRICING_PLANS.FREE.limits & { planName: string }> = {
         free: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" },
