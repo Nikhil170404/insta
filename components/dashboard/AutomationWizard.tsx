@@ -339,26 +339,89 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                 </div>
 
                                 <div className="space-y-3">
-                                    <div className="group flex items-center justify-between p-6 bg-slate-50/50 rounded-[32px] border border-slate-100 opacity-60">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
-                                                <Users className="h-5 w-5" />
+                                    {/* Follow-Gate Toggle */}
+                                    <div className={cn(
+                                        "group rounded-[32px] border transition-all overflow-hidden",
+                                        requireFollow ? "border-primary/30 bg-primary/5" : "border-slate-100 bg-slate-50/50"
+                                    )}>
+                                        <div className="flex items-center justify-between p-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "w-10 h-10 rounded-xl shadow-sm flex items-center justify-center transition-colors",
+                                                    requireFollow ? "bg-primary text-white" : "bg-white text-slate-400 group-hover:text-primary"
+                                                )}>
+                                                    <Users className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm font-bold">Require Follow First</span>
+                                                    <p className="text-[11px] text-slate-400">Users must follow to unlock content</p>
+                                                </div>
                                             </div>
-                                            <span className="text-sm font-bold">Ask to follow first</span>
+                                            <div className="flex items-center gap-3">
+                                                <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-primary text-white")}>
+                                                    {planType === "trial" ? "TRIAL" : "PRO"}
+                                                </Badge>
+                                                <button
+                                                    onClick={() => setRequireFollow(!requireFollow)}
+                                                    className={cn("w-12 h-6.5 rounded-full transition-all flex items-center px-1", requireFollow ? "bg-primary" : "bg-slate-200")}
+                                                >
+                                                    <div className={cn("w-[18px] h-[18px] bg-white rounded-full shadow transition-all", requireFollow ? "translate-x-[20px]" : "translate-x-0")} />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "trial" ? "bg-green-500 text-white" : "bg-primary text-white")}>
-                                                {planType === "trial" ? "TRIAL" : "PRO"}
-                                            </Badge>
-                                            <button
-                                                onClick={() => setRequireFollow(!requireFollow)}
-                                                className={cn("w-12 h-6.5 rounded-full transition-all flex items-center px-1", requireFollow ? "bg-primary" : "bg-slate-200")}
-                                            >
-                                                <div className={cn("w-[18px] h-[18px] bg-white rounded-full shadow transition-all", requireFollow ? "translate-x-[20px]" : "translate-x-0")} />
-                                            </button>
-                                        </div>
+
+                                        {/* Follow-Gate Preview & Editor */}
+                                        {requireFollow && (
+                                            <div className="px-6 pb-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                {/* Preview Card */}
+                                                <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+                                                    <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 px-4 py-2 border-b border-slate-100">
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">📱 DM Preview</span>
+                                                    </div>
+                                                    <div className="p-4 space-y-3">
+                                                        {/* Simulated Card */}
+                                                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
+                                                            <div className="flex gap-3">
+                                                                <div className="w-16 h-16 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400 flex-shrink-0 overflow-hidden">
+                                                                    {selectedMedia?.thumbnail_url || selectedMedia?.media_url ? (
+                                                                        <img src={selectedMedia.thumbnail_url || selectedMedia.media_url} className="w-full h-full object-cover" alt="" />
+                                                                    ) : (
+                                                                        <Zap className="w-6 h-6" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-bold text-slate-900 text-sm">🔒 Follow to Unlock</p>
+                                                                    <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">{followGateMessage}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="mt-3 flex gap-2">
+                                                                <div className="flex-1 bg-primary text-white text-center py-2 rounded-lg text-xs font-bold">
+                                                                    Follow & Get Access
+                                                                </div>
+                                                                <div className="flex-1 bg-white border border-slate-200 text-slate-700 text-center py-2 rounded-lg text-xs font-bold">
+                                                                    I'm Following ✓
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Editable Message */}
+                                                <div className="space-y-2">
+                                                    <p className="text-[11px] text-slate-400 font-bold px-1 uppercase tracking-widest">Follow-Gate Message</p>
+                                                    <textarea
+                                                        value={followGateMessage}
+                                                        onChange={(e) => setFollowGateMessage(e.target.value)}
+                                                        rows={2}
+                                                        placeholder="Hey! 👋 To unlock this, please follow us first!"
+                                                        className="w-full p-4 bg-white rounded-xl border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-primary shadow-sm text-sm font-medium resize-none leading-relaxed"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
+                                    {/* Email Capture (Coming Soon) */}
                                     <div className="group flex items-center justify-between p-6 bg-slate-50/50 rounded-[32px] border border-slate-100 opacity-60">
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
