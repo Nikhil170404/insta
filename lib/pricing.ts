@@ -30,69 +30,33 @@ export const PRICING_PLANS = {
 
     STARTER: {
         name: "Starter Pack",
-        price: "79",
-        upfront: "79",
+        price: "149",
+        upfront: "149",
         duration: "Monthly",
         description: "Perfect for growing creators",
         hindiDesc: "Naye creators ke liye perfect",
         features: [
             "1 Instagram Account",
             "5 Active Automations",
-            "100,000 DMs/month",
-            "⚡ Up to 200/hour",
+            "50,000 DMs/month",
+            "⚡ Up to 200/hour (Half Speed)",
             "Queue All Comments",
             "Handle Viral Posts 🔥",
             "Story Automation ✨",
             "Follow-Gate Feature ✨",
             "Email Support (48h)",
-            "Basic Analytics",
         ],
         limits: {
             accounts: 1,
             automations: 5,
-            dmsPerMonth: 100000,
-            dmsPerHour: 200,
+            dmsPerMonth: 50000,
+            dmsPerHour: 100, // Half of limit
             queueEnabled: true,
         },
         cta: "Upgrade to Starter",
         popular: false,
-        savings: "Best Introductory Offer",
-        badge: "Most Affordable"
-    },
-
-    GROWTH: {
-        name: "Growth Pack",
-        price: "149",
-        upfront: "149",
-        duration: "Monthly",
-        description: "Scale your engagement",
-        hindiDesc: "Growth creators ke liye",
-        features: [
-            "1 Instagram Account",
-            "15 Active Automations",
-            "300,000 DMs/month",
-            "⚡ 200/hour (Instagram Limit)",
-            "Priority Queue Processing",
-            "Handle Multiple Viral Posts 🔥",
-            "Story Automation ✨",
-            "Follow-Gate Feature ✨",
-            "Email Capture 🎯",
-            "Advanced Analytics",
-            "A/B Testing 🧪",
-            "Priority Support (12h)",
-        ],
-        limits: {
-            accounts: 1,
-            automations: 15,
-            dmsPerMonth: 300000,
-            dmsPerHour: 200,
-            queueEnabled: true,
-            priorityQueue: true,
-        },
-        cta: "Scale to Growth",
-        popular: true,
-        savings: "Limited Time 50% Off",
-        badge: "Most Popular"
+        savings: "Most Affordable",
+        badge: "Budget Friendly"
     },
 
     PRO: {
@@ -100,20 +64,20 @@ export const PRICING_PLANS = {
         price: "299",
         upfront: "299",
         duration: "Monthly",
-        description: "Enterprise-grade automation",
+        description: "Scale your engagement",
         hindiDesc: "Pro creators aur teams ke liye",
         features: [
             "1 Instagram Account",
             "Unlimited Automations",
-            "1,000,000 DMs/month",
-            "⚡ 200/hour (Instagram Limit)",
+            "Unlimited DMs/month",
+            "⚡ 200/hour (Max Speed)",
             "Instant Queue Processing",
-            "Enterprise Viral Handling 🔥",
-            "All Growth Features",
-            "Drip Campaigns 📬",
-            "Webhook Integrations 🔗",
-            "Dedicated Support (4h)",
-            "Phone Support",
+            "Handle Multiple Viral Posts 🔥",
+            "Story Automation ✨",
+            "Follow-Gate Feature ✨",
+            "Email Capture 🎯",
+            "Advanced Analytics",
+            "Priority Support (12h)",
         ],
         limits: {
             accounts: 1,
@@ -122,12 +86,11 @@ export const PRICING_PLANS = {
             dmsPerHour: 200,
             queueEnabled: true,
             priorityQueue: true,
-            loadBalancing: true,
         },
         cta: "Go Pro Unlimited",
-        popular: false,
-        savings: "Best Value for Pros",
-        badge: "Enterprise"
+        popular: true,
+        savings: "Best Value",
+        badge: "Most Popular"
     }
 };
 
@@ -169,9 +132,8 @@ export function getPlanLimits(planType: string): {
         free: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" },
         trial: { ...PRICING_PLANS.FREE.limits, planName: "Free Trial" },
         starter: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" },
-        growth: { ...PRICING_PLANS.GROWTH.limits, planName: "Growth Pack" },
         pro: { ...PRICING_PLANS.PRO.limits, planName: "Pro Pack" },
-        paid: { ...PRICING_PLANS.GROWTH.limits, planName: "Paid Plan" }, // Default paid to Growth
+        paid: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" }, // Default paid to Starter
     };
 
     return planMap[planType?.toLowerCase()] || planMap.free;
@@ -199,27 +161,22 @@ export function getUpgradeSuggestion(planType: string): {
         free: {
             nextPlan: "Starter Pack",
             nextPlanPrice: "₹149/month",
-            benefits: ["5 Automations", "100,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+            benefits: ["5 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
         },
         trial: {
             nextPlan: "Starter Pack",
             nextPlanPrice: "₹149/month",
-            benefits: ["5 Automations", "100,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+            benefits: ["5 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
         },
         starter: {
-            nextPlan: "Growth Pack",
-            nextPlanPrice: "₹299/month",
-            benefits: ["3 Accounts", "15 Automations", "300,000 DMs/month", "Email Capture", "A/B Testing"]
-        },
-        growth: {
             nextPlan: "Pro Pack",
-            nextPlanPrice: "₹599/month",
-            benefits: ["10 Accounts", "Unlimited Automations", "1M DMs/month", "Drip Campaigns", "Webhooks"]
+            nextPlanPrice: "₹299/month",
+            benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Email Capture", "Advanced Analytics"]
         },
         paid: {
             nextPlan: "Pro Pack",
-            nextPlanPrice: "₹599/month",
-            benefits: ["10 Accounts", "Unlimited Automations", "1M DMs/month", "Drip Campaigns", "Webhooks"]
+            nextPlanPrice: "₹299/month",
+            benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Email Capture", "Advanced Analytics"]
         }
     };
 
