@@ -3,8 +3,11 @@ import {
     sendInstagramDM,
     replyToComment,
     checkFollowStatus,
+    checkIsFollowing,
     getUniqueMessage,
-    incrementAutomationCount
+    incrementAutomationCount,
+    sendFollowGateCard,
+    hasReceivedFollowGate
 } from "@/lib/instagram/service";
 import { smartRateLimit, RATE_LIMITS } from "@/lib/smart-rate-limiter";
 import { getCachedUser, setCachedUser, getCachedAutomation, setCachedAutomation } from "@/lib/cache";
@@ -119,52 +122,93 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             return;
         }
 
-        // 10. FOLLOW-GATE CHECK (if enabled)
+        // 10. FOLLOW-GATE CHECK (if enabled) - ManyChat style
         if (automation.require_follow) {
-            // Check if user is a known follower from our tracking table
-            const isFollowing = await checkFollowStatus(
+            // First check: Has user already received a follow-gate message for this automation?
+            // If yes, they've likely followed since then - send the content!
+            const alreadyReceivedGate = await hasReceivedFollowGate(
                 supabase,
                 user.id,
+                automation.id,
                 commenterId
             );
 
-            if (!isFollowing) {
-                // Send follow-gate message instead of main message
-                const followGateMsg = automation.follow_gate_message ||
-                    `Hey ${commenterUsername}! 👋\n\nTo unlock this content, please follow us first, then comment "${automation.trigger_keyword || 'the keyword'}" again!\n\n✨ We'll send it instantly once you're following.`;
-
-                const dmSent = await sendInstagramDM(
+            if (alreadyReceivedGate) {
+                // They commented again after receiving follow-gate
+                // Do a REAL-TIME check via Instagram API to verify they followed
+                const isFollowingNow = await checkIsFollowing(
                     user.instagram_access_token,
-                    instagramUserId,
-                    commentId,
-                    commenterId,
-                    followGateMsg,
-                    automation.id,
-                    automation.follow_gate_cta || "Follow Us",
-                    `https://instagram.com/${user.instagram_username || ''}`,
-                    automation.media_thumbnail_url
+                    commenterId
                 );
 
-                // Log as follow-gate attempt
-                await supabase.from("dm_logs").insert({
-                    user_id: user.id,
-                    automation_id: automation.id,
-                    instagram_comment_id: commentId,
-                    instagram_user_id: commenterId,
-                    instagram_username: commenterUsername,
-                    keyword_matched: automation.trigger_keyword || "ANY",
-                    comment_text: commentText,
-                    reply_sent: dmSent,
-                    reply_sent_at: dmSent ? new Date().toISOString() : null,
-                    is_follow_gate: true,
-                    user_is_following: false,
-                });
-
-                if (dmSent) {
-                    await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                if (isFollowingNow) {
+                    console.log(`✅ User ${commenterUsername} is now following! Sending content.`);
+                    // Continue to send content (falls through to step 11)
+                } else {
+                    // Still not following - send gate again
+                    console.log(`❌ User ${commenterUsername} still not following after gate`);
+                    const cardSent = await sendFollowGateCard(
+                        user.instagram_access_token,
+                        instagramUserId,
+                        commentId,
+                        commenterId,
+                        automation.id,
+                        user.instagram_username || '',
+                        automation.media_thumbnail_url,
+                        `Hey ${commenterUsername}! 👀 Hmm, looks like you haven't followed yet. Please follow us first to unlock this!`
+                    );
+                    if (cardSent) {
+                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    }
+                    return;
                 }
+            } else {
+                // First time - use REAL-TIME Instagram API to check if following
+                // This uses the is_user_follow_business API field (like ManyChat/SuperProfile)
+                const isFollowing = await checkIsFollowing(
+                    user.instagram_access_token,
+                    commenterId
+                );
 
-                return; // Stop here, don't send main message
+                if (!isFollowing) {
+                    // Send ManyChat-style follow-gate CARD with two buttons:
+                    // 1. "Follow & Get Access" - links to profile
+                    // 2. "I'm Following ✓" - triggers postback verification
+                    const followGateMsg = automation.follow_gate_message ||
+                        `Hey ${commenterUsername}! 👋 To unlock this, please follow us first!`;
+
+                    const cardSent = await sendFollowGateCard(
+                        user.instagram_access_token,
+                        instagramUserId,
+                        commentId,
+                        commenterId,
+                        automation.id,
+                        user.instagram_username || '',
+                        automation.media_thumbnail_url,
+                        followGateMsg
+                    );
+
+                    // Log as follow-gate attempt
+                    await supabase.from("dm_logs").insert({
+                        user_id: user.id,
+                        automation_id: automation.id,
+                        instagram_comment_id: commentId,
+                        instagram_user_id: commenterId,
+                        instagram_username: commenterUsername,
+                        keyword_matched: automation.trigger_keyword || "ANY",
+                        comment_text: commentText,
+                        reply_sent: cardSent,
+                        reply_sent_at: cardSent ? new Date().toISOString() : null,
+                        is_follow_gate: true,
+                        user_is_following: false,
+                    });
+
+                    if (cardSent) {
+                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    }
+
+                    return; // Stop here, don't send main message yet
+                }
             }
         }
 
@@ -298,6 +342,78 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     .eq("automation_id", automation.id)
                     .order("created_at", { ascending: false })
                     .limit(1);
+            }
+        }
+
+        // Handle "I'm Following" button click for follow-gate verification
+        const postback = messaging.postback?.payload || quickReply?.payload;
+        if (postback?.startsWith("VERIFY_FOLLOW_")) {
+            const automationId = postback.replace("VERIFY_FOLLOW_", "");
+
+            const { data: automation } = await supabase
+                .from("automations")
+                .select("*")
+                .eq("id", automationId)
+                .single();
+
+            if (!automation) return;
+
+            const { data: user } = await supabase
+                .from("users")
+                .select("id, instagram_access_token, instagram_username")
+                .eq("id", automation.user_id)
+                .single();
+
+            if (!user) return;
+
+            // Check if they are NOW following via REAL-TIME Instagram API
+            // This uses is_user_follow_business field (like ManyChat/SuperProfile)
+            const isFollowing = await checkIsFollowing(
+                user.instagram_access_token,
+                senderIgsid
+            );
+
+            if (isFollowing) {
+                // They are following! Send the content
+                console.log(`✅ User ${senderIgsid} verified as following, sending content`);
+
+                const dmSent = await sendInstagramDM(
+                    user.instagram_access_token,
+                    instagramUserId,
+                    null,
+                    senderIgsid,
+                    automation.reply_message,
+                    automation.id,
+                    automation.button_text,
+                    automation.link_url,
+                    automation.media_thumbnail_url
+                );
+
+                if (dmSent) {
+                    await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    // Update the follow-gate log to mark as converted
+                    await supabase
+                        .from("dm_logs")
+                        .update({ followed_after_gate: true, user_is_following: true })
+                        .eq("instagram_user_id", senderIgsid)
+                        .eq("automation_id", automation.id)
+                        .eq("is_follow_gate", true);
+                }
+            } else {
+                // Not following yet - send the gate card again with a hint
+                console.log(`❌ User ${senderIgsid} not yet following, sending gate again`);
+
+                const { sendFollowGateCard } = await import("@/lib/instagram/service");
+                await sendFollowGateCard(
+                    user.instagram_access_token,
+                    instagramUserId,
+                    null,
+                    senderIgsid,
+                    automation.id,
+                    user.instagram_username || '',
+                    automation.media_thumbnail_url,
+                    "Hmm, looks like you haven't followed yet! 🤔\n\nPlease follow us first, then tap 'I'm Following' again!"
+                );
             }
         }
     } catch (error) {
