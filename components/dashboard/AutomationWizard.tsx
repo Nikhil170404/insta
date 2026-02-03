@@ -55,6 +55,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
     const [finalDM, setFinalDM] = useState("Here is the link you requested!");
     const [linkUrl, setLinkUrl] = useState(initialData?.link_url || "");
     const [requireFollow, setRequireFollow] = useState(initialData?.require_follow || false);
+    const [followGateMessage, setFollowGateMessage] = useState(initialData?.follow_gate_message || "Hey! 👋 To unlock this, please follow us first!");
     const [respondToReplies, setRespondToReplies] = useState(initialData?.respond_to_replies || false);
     const [ignoreSelfComments, setIgnoreSelfComments] = useState(initialData?.ignore_self_comments ?? true);
 
@@ -71,6 +72,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
             button_text: buttonText,
             link_url: linkUrl,
             require_follow: requireFollow,
+            follow_gate_message: requireFollow ? followGateMessage : null,
             respond_to_replies: respondToReplies,
             ignore_self_comments: ignoreSelfComments,
             media_id: triggerType === "specific" ? (selectedMedia?.id || initialData?.media_id) : null,

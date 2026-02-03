@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import {
-    Zap,
     Check,
     ArrowRight,
     Sparkles,
     Rocket,
     ShieldCheck,
+    Gift,
     Coffee,
     Flame,
-    Crown
+    Crown,
+    Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,11 +27,15 @@ export default function BillingPage() {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
     const handlePayment = async (plan: any) => {
+        if (plan.price === "0") {
+            toast.info("Aap already FREE plan pe ho!");
+            return;
+        }
+
         console.log("Initializing payment from dashboard for plan:", plan.name);
         try {
             setLoadingPlan(plan.name);
 
-            // 1. Create Order
             const response = await fetch("/api/payments/razorpay/order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -41,7 +46,7 @@ export default function BillingPage() {
             });
 
             if (response.status === 401) {
-                toast.error("Humein pehle Sign In karna hoga");
+                toast.error("Session expired. Please sign in again.");
                 router.push("/signin");
                 return;
             }
@@ -49,7 +54,6 @@ export default function BillingPage() {
             const order = await response.json();
             if (order.error) throw new Error(order.error);
 
-            // 2. Open Razorpay
             const options = {
                 key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                 amount: order.amount,
@@ -73,42 +77,46 @@ export default function BillingPage() {
 
                         const result = await verifyRes.json();
                         if (result.success) {
-                            toast.success("Payment Successful! Aapka plan update ho gaya hai.");
-                            router.refresh(); // Refresh to show new plan state if any
+                            toast.success("Payment Successful! Plan upgraded.");
+                            router.refresh();
                         } else {
                             throw new Error(result.error || "Verification failed");
                         }
                     } catch (err: any) {
-                        toast.error(err.message || "Payment verification fail ho gaya");
+                        toast.error(err.message || "Payment verification failed");
                     }
                 },
-                prefill: {
-                    name: "",
-                    email: "",
-                    contact: ""
-                },
-                theme: {
-                    color: "#000000",
-                },
+                prefill: { name: "", email: "", contact: "" },
+                theme: { color: "#000000" },
             };
 
             const rzp = new (window as any).Razorpay(options);
             rzp.on('payment.failed', function (response: any) {
-                console.error("Payment failed event:", response.error);
-                toast.error("Payment fail ho gaya: " + response.error.description);
+                console.error("Payment failed:", response.error);
+                toast.error("Payment failed: " + response.error.description);
             });
             rzp.open();
 
         } catch (error: any) {
-            console.error("Payment error from dashboard:", error);
-            toast.error(error.message || "Payment initialize nahi ho paaya");
+            console.error("Payment error:", error);
+            toast.error(error.message || "Could not initialize payment");
         } finally {
             setLoadingPlan(null);
         }
     };
 
+    const getPlanIcon = (name: string) => {
+        switch (name) {
+            case "Free Starter": return <Gift className="h-6 w-6 text-emerald-500" />;
+            case "Starter Pack": return <Coffee className="h-6 w-6 text-orange-400" />;
+            case "Growth Pack": return <Flame className="h-6 w-6 text-primary" />;
+            case "Pro Pack": return <Crown className="h-6 w-6 text-yellow-500" />;
+            default: return <Star className="h-6 w-6" />;
+        }
+    };
+
     return (
-        <div className="max-w-7xl mx-auto space-y-16 pb-20">
+        <div className="max-w-7xl mx-auto space-y-12 pb-20">
             <Script
                 id="razorpay-checkout-js-billing"
                 src="https://checkout.razorpay.com/v1/checkout.js"
@@ -117,97 +125,102 @@ export default function BillingPage() {
             {/* Header */}
             <div className="text-center space-y-4 max-w-3xl mx-auto">
                 <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full mb-4 mx-auto">
-                    India's Most Affordable Automation 🇮🇳
+                    70% Cheaper than ManyChat 🚀
                 </Badge>
-                <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-tight">
-                    Grow your engagement <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">at 1/10th the cost of ManyChat.</span>
+                <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-tight">
+                    Upgrade Your Plan
                 </h1>
                 <p className="text-slate-500 text-lg font-medium leading-relaxed">
-                    Designed for Indian creators. No complex contracts. <br className="hidden md:block" />
-                    Sabki pahunch mein automation!
+                    Same features as ManyChat. Indian pricing. Sabki pahunch mein automation!
                 </p>
             </div>
 
             {/* Pricing Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
                 {PLANS_ARRAY.map((plan) => (
                     <div
                         key={plan.name}
                         className={cn(
-                            "relative flex flex-col p-8 md:p-10 bg-white rounded-[3rem] border transition-all duration-500 group overflow-hidden",
+                            "relative flex flex-col p-6 bg-white rounded-[2.5rem] border transition-all duration-500 group overflow-hidden",
                             plan.popular
                                 ? "border-primary/20 shadow-[0_32px_64px_-16px_rgba(var(--primary-rgb),0.1)] scale-105 z-10"
-                                : "border-slate-100 hover:border-slate-200 hover:shadow-xl"
+                                : plan.name === "Free Starter"
+                                    ? "border-emerald-200 bg-gradient-to-b from-emerald-50/50 to-white"
+                                    : "border-slate-100 hover:border-slate-200 hover:shadow-xl"
                         )}
                     >
                         {plan.badge && (
-                            <div className="absolute top-6 right-8">
+                            <div className="absolute top-5 right-5">
                                 <Badge className={cn(
-                                    "border-none font-black text-[10px] px-3 py-1 rounded-lg uppercase tracking-widest shadow-lg",
-                                    plan.popular ? "bg-primary text-white shadow-primary/20" : "bg-slate-900 text-white shadow-slate-900/10"
+                                    "border-none font-black text-[9px] px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg",
+                                    plan.popular ? "bg-primary text-white shadow-primary/20"
+                                        : plan.name === "Free Starter" ? "bg-emerald-500 text-white"
+                                            : "bg-slate-900 text-white shadow-slate-900/10"
                                 )}>
                                     {plan.badge}
                                 </Badge>
                             </div>
                         )}
 
-                        <div className="space-y-6 flex-1">
+                        <div className="space-y-5 flex-1">
                             <div className={cn(
-                                "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-500",
-                                plan.popular ? "bg-primary/10" : "bg-slate-50"
+                                "w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 duration-500",
+                                plan.popular ? "bg-primary/10" : plan.name === "Free Starter" ? "bg-emerald-100" : "bg-slate-50"
                             )}>
-                                {plan.name === "Starter Pack" && <Coffee className="h-6 w-6 text-orange-400" />}
-                                {plan.name === "Growth Pack" && <Flame className="h-6 w-6 text-primary" />}
-                                {plan.name === "Pro Pack" && <Crown className="h-6 w-6 text-yellow-500" />}
+                                {getPlanIcon(plan.name)}
                             </div>
 
                             <div>
-                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{plan.name}</h3>
-                                <p className="text-sm font-medium text-slate-400 mt-1">{plan.description}</p>
-                                <p className="text-[10px] font-black text-slate-400 uppercase mt-2 tracking-wide italic">{plan.hindiDesc}</p>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">{plan.name}</h3>
+                                <p className="text-xs font-medium text-slate-400 mt-1">{plan.description}</p>
                             </div>
 
                             <div className="py-2">
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black text-slate-900 tracking-tighter">₹{plan.upfront}</span>
-                                    <span className="text-slate-400 font-bold text-sm">/ {plan.duration}</span>
+                                    <span className="text-3xl font-black text-slate-900 tracking-tighter">
+                                        {plan.price === "0" ? "FREE" : `₹${plan.upfront}`}
+                                    </span>
+                                    {plan.price !== "0" && (
+                                        <span className="text-slate-400 font-bold text-sm">/ mo</span>
+                                    )}
                                 </div>
-                                <div className="mt-2 space-y-1">
-                                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.1em]">
-                                        Phir sirf ₹{plan.price}/mo Muscle 💪
-                                    </p>
-                                    <Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-100 font-black text-[10px] rounded-md px-2 py-0.5">
-                                        {plan.savings} 🎉
+                                {plan.savings && (
+                                    <Badge variant="outline" className="mt-2 text-emerald-600 bg-emerald-50 border-emerald-100 font-black text-[9px] rounded-md px-2 py-0.5">
+                                        {plan.savings}
                                     </Badge>
-                                </div>
+                                )}
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-slate-50">
-                                {plan.features.map((feature) => (
-                                    <div key={feature} className="flex items-start gap-3 group/feat">
-                                        <div className="mt-1 w-5 h-5 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover/feat:bg-primary/10 transition-colors">
-                                            <Check className="h-3 w-3 text-slate-400 group-hover/feat:text-primary transition-colors" />
+                            <div className="space-y-3 pt-4 border-t border-slate-50">
+                                {plan.features.slice(0, 5).map((feature) => (
+                                    <div key={feature} className="flex items-start gap-2 group/feat">
+                                        <div className="mt-0.5 w-4 h-4 rounded-full bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover/feat:bg-primary/10 transition-colors">
+                                            <Check className="h-2.5 w-2.5 text-slate-400 group-hover/feat:text-primary transition-colors" />
                                         </div>
-                                        <p className="text-sm font-bold text-slate-600 tracking-tight">{feature}</p>
+                                        <p className="text-xs font-bold text-slate-600 tracking-tight">{feature}</p>
                                     </div>
                                 ))}
+                                {plan.features.length > 5 && (
+                                    <p className="text-[10px] font-bold text-slate-400 pl-6">+{plan.features.length - 5} more</p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="mt-10">
+                        <div className="mt-6">
                             <Button
                                 onClick={() => handlePayment(plan)}
-                                disabled={loadingPlan === plan.name}
+                                disabled={loadingPlan === plan.name || plan.price === "0"}
                                 className={cn(
-                                    "w-full h-14 rounded-2xl font-black text-sm tracking-tight transition-all duration-300 gap-3 group/btn shadow-xl",
+                                    "w-full h-12 rounded-2xl font-black text-xs tracking-tight transition-all duration-300 gap-2 group/btn shadow-lg",
                                     plan.popular
                                         ? "bg-primary text-white hover:bg-primary/90 shadow-primary/20"
-                                        : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
+                                        : plan.name === "Free Starter"
+                                            ? "bg-emerald-100 text-emerald-700 cursor-default"
+                                            : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
                                 )}
                             >
-                                {loadingPlan === plan.name ? "Processing..." : plan.cta}
-                                <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                                {plan.name === "Free Starter" ? "Current Plan" : loadingPlan === plan.name ? "Processing..." : plan.cta}
+                                {plan.name !== "Free Starter" && <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />}
                             </Button>
                         </div>
                     </div>
@@ -215,31 +228,16 @@ export default function BillingPage() {
             </div>
 
             {/* Trust Badges */}
-            <div className="pt-20 border-t border-slate-100 flex flex-wrap justify-center gap-12 md:gap-24 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
-                <div className="flex items-center gap-2 font-black text-slate-900 italic tracking-tighter text-xl">
-                    <ShieldCheck className="h-6 w-6" /> Meta Verified
+            <div className="pt-16 border-t border-slate-100 flex flex-wrap justify-center gap-12 md:gap-24 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
+                <div className="flex items-center gap-2 font-black text-slate-900 italic tracking-tighter text-lg">
+                    <ShieldCheck className="h-5 w-5" /> Meta Verified
                 </div>
-                <div className="flex items-center gap-2 font-black text-slate-900 italic tracking-tighter text-xl">
-                    <Rocket className="h-6 w-6" /> Fast Launch
+                <div className="flex items-center gap-2 font-black text-slate-900 italic tracking-tighter text-lg">
+                    <Rocket className="h-5 w-5" /> Fast Launch
                 </div>
-                <div className="flex items-center gap-2 font-black text-slate-900 italic tracking-tighter text-xl">
-                    <Sparkles className="h-6 w-6" /> 100% Secure
+                <div className="flex items-center gap-2 font-black text-slate-900 italic tracking-tighter text-lg">
+                    <Sparkles className="h-5 w-5" /> 100% Secure
                 </div>
-            </div>
-
-            {/* FAQ Intro */}
-            <div className="bg-slate-900 rounded-[4rem] p-12 md:p-20 text-center relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -ml-48 -mt-48 group-hover:scale-150 transition-transform duration-1000" />
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[100px] -mr-48 -mb-48 group-hover:scale-150 transition-transform duration-1000" />
-
-                <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight relative z-10">Still have questions?</h2>
-                <p className="text-slate-400 font-medium text-lg mt-4 mb-8 relative z-10 max-w-lg mx-auto">
-                    We're here to help you get your automations running in minutes.
-                    Shoot us an email if you need anything.
-                </p>
-                <Button variant="outline" className="h-12 px-10 rounded-2xl border-white/20 text-white bg-white/10 hover:bg-white/20 relative z-10 font-bold">
-                    Talk to Support
-                </Button>
             </div>
         </div>
     );

@@ -119,7 +119,55 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             return;
         }
 
-        // 10. Send DM
+        // 10. FOLLOW-GATE CHECK (if enabled)
+        if (automation.require_follow) {
+            const isFollowing = await checkFollowStatus(
+                user.instagram_access_token,
+                instagramUserId,
+                commenterId
+            );
+
+            if (!isFollowing) {
+                // Send follow-gate message instead of main message
+                const followGateMsg = automation.follow_gate_message ||
+                    `Hey ${commenterUsername}! 👋\n\nTo unlock this content, please follow us first, then comment "${automation.trigger_keyword || 'the keyword'}" again!\n\n✨ We'll send it instantly once you're following.`;
+
+                const dmSent = await sendInstagramDM(
+                    user.instagram_access_token,
+                    instagramUserId,
+                    commentId,
+                    commenterId,
+                    followGateMsg,
+                    automation.id,
+                    automation.follow_gate_cta || "Follow Us",
+                    `https://instagram.com/${user.instagram_username || ''}`,
+                    automation.media_thumbnail_url
+                );
+
+                // Log as follow-gate attempt
+                await supabase.from("dm_logs").insert({
+                    user_id: user.id,
+                    automation_id: automation.id,
+                    instagram_comment_id: commentId,
+                    instagram_user_id: commenterId,
+                    instagram_username: commenterUsername,
+                    keyword_matched: automation.trigger_keyword || "ANY",
+                    comment_text: commentText,
+                    reply_sent: dmSent,
+                    reply_sent_at: dmSent ? new Date().toISOString() : null,
+                    is_follow_gate: true,
+                    user_is_following: false,
+                });
+
+                if (dmSent) {
+                    await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                }
+
+                return; // Stop here, don't send main message
+            }
+        }
+
+        // 11. Send DM
         const dmSent = await sendInstagramDM(
             user.instagram_access_token,
             instagramUserId,

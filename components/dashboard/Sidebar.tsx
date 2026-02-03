@@ -14,7 +14,11 @@ import {
   Menu,
   X,
   User,
-  ExternalLink
+  ExternalLink,
+  Mail,
+  Users,
+  ChevronDown,
+  Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -26,7 +30,9 @@ interface SidebarProps {
 const navigation = [
   { name: "Automation Engine", href: "/dashboard", icon: LayoutDashboard },
   { name: "My Automations", href: "/dashboard/automations", icon: Zap },
+  { name: "Email Leads", href: "/dashboard/leads", icon: Mail },
   { name: "Engagement Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "Connected Accounts", href: "/dashboard/accounts", icon: Users },
   { name: "Growth Plans", href: "/dashboard/billing", icon: CreditCard },
   { name: "Engine Settings", href: "/dashboard/settings", icon: Settings },
 ];
