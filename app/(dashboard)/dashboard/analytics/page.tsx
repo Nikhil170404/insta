@@ -5,6 +5,7 @@ import {
     BarChart3,
     MessageCircle,
     TrendingUp,
+    TrendingDown,
     Calendar,
     Loader2,
     Zap,
@@ -12,6 +13,12 @@ import {
     Activity,
     MousePointer2,
     Percent,
+    Clock,
+    ArrowUpRight,
+    ArrowDownRight,
+    Target,
+    Award,
+    CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +34,35 @@ interface DmLog {
 
 interface DailyStat {
     date: string;
+    fullDate: string;
     count: number;
+}
+
+interface HourlyStat {
+    hour: number;
+    label: string;
+    count: number;
+}
+
+interface MonthlyTrend {
+    month: string;
+    fullMonth: string;
+    dms: number;
+    clicks: number;
+    ctr: number;
+}
+
+interface TopKeyword {
+    keyword: string;
+    count: number;
+    automationId: string | null;
+}
+
+interface MonthData {
+    dms: number;
+    clicks: number;
+    success: number;
+    ctr: number;
 }
 
 interface Stats {
@@ -38,7 +73,15 @@ interface Stats {
     successRate: number;
     clickRate: number;
     daily: DailyStat[];
+    hourly: HourlyStat[];
+    thisMonth: MonthData;
+    lastMonth: MonthData;
+    monthGrowth: number;
+    monthlyTrend: MonthlyTrend[];
+    topKeywords: TopKeyword[];
 }
+
+type TimeRange = "7" | "14" | "30";
 
 export default function AnalyticsPage() {
     const [logs, setLogs] = useState<DmLog[]>([]);
@@ -50,22 +93,37 @@ export default function AnalyticsPage() {
         successRate: 0,
         clickRate: 0,
         daily: [],
+        hourly: [],
+        thisMonth: { dms: 0, clicks: 0, success: 0, ctr: 0 },
+        lastMonth: { dms: 0, clicks: 0, success: 0, ctr: 0 },
+        monthGrowth: 0,
+        monthlyTrend: [],
+        topKeywords: []
     });
     const [loading, setLoading] = useState(true);
     const [visibleLogs, setVisibleLogs] = useState(15);
     const [selectedLog, setSelectedLog] = useState<DmLog | null>(null);
+    const [timeRange, setTimeRange] = useState<TimeRange>("7");
+    const [activeTab, setActiveTab] = useState<"overview" | "trends" | "activity">("overview");
 
     useEffect(() => {
         fetchAnalytics();
-    }, []);
+    }, [timeRange]);
 
     async function fetchAnalytics() {
+        setLoading(true);
         try {
-            const res = await fetch("/api/analytics");
+            const res = await fetch(`/api/analytics?days=${timeRange}`);
             if (res.ok) {
                 const data = await res.json();
                 setLogs(data.logs || []);
-                setStats(data.stats || { today: 0, period: 0, total: 0, clicks: 0, successRate: 0, clickRate: 0, daily: [] });
+                setStats(data.stats || {
+                    today: 0, period: 0, total: 0, clicks: 0, successRate: 0, clickRate: 0,
+                    daily: [], hourly: [],
+                    thisMonth: { dms: 0, clicks: 0, success: 0, ctr: 0 },
+                    lastMonth: { dms: 0, clicks: 0, success: 0, ctr: 0 },
+                    monthGrowth: 0, monthlyTrend: [], topKeywords: []
+                });
             }
         } catch (error) {
             console.error("Error fetching analytics:", error);
@@ -75,6 +133,9 @@ export default function AnalyticsPage() {
     }
 
     const maxDailyCount = Math.max(...(stats.daily?.map(d => d.count) || [1]), 1);
+    const maxHourlyCount = Math.max(...(stats.hourly?.map(h => h.count) || [1]), 1);
+    const maxMonthlyCount = Math.max(...(stats.monthlyTrend?.map(m => m.dms) || [1]), 1);
+    const maxKeywordCount = Math.max(...(stats.topKeywords?.map(k => k.count) || [1]), 1);
 
     if (loading) {
         return (
@@ -85,8 +146,11 @@ export default function AnalyticsPage() {
         );
     }
 
+    const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
+    const lastMonthName = new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString('en-US', { month: 'long' });
+
     return (
-        <div className="space-y-10 pb-20">
+        <div className="space-y-8 pb-20">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
                 <div>
@@ -94,117 +158,385 @@ export default function AnalyticsPage() {
                     <p className="text-slate-400 font-medium">Real-time data from your automation tunnels.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="h-12 px-5 rounded-2xl bg-white border border-slate-100 font-bold text-slate-600 text-sm shadow-sm flex items-center gap-2 transition-all hover:border-primary/20 hover:shadow-md">
-                        <Calendar className="h-4 w-4" />
-                        Last 7 Days
-                    </button>
-                </div>
-            </div>
-
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <StatCard
-                    icon={<Activity className="h-5 w-5 text-blue-500" />}
-                    value={stats.today}
-                    label="Today's Connections"
-                    color="blue"
-                />
-                <StatCard
-                    icon={<MousePointer2 className="h-5 w-5 text-purple-500" />}
-                    value={stats.clicks}
-                    label="Total Clicks"
-                    color="purple"
-                />
-                <StatCard
-                    icon={<TrendingUp className="h-5 w-5 text-green-500" />}
-                    value={`${stats.successRate}%`}
-                    label="Success Rate"
-                    color="green"
-                />
-                <StatCard
-                    icon={<Percent className="h-5 w-5 text-orange-500" />}
-                    value={`${stats.clickRate}%`}
-                    label="Click Rate (CTR)"
-                    color="orange"
-                />
-            </div>
-
-            {/* Chart Section */}
-            <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm p-8 space-y-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Engagement Velocity</h3>
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Connections made over last 7 days</p>
+                    <div className="flex items-center bg-white border border-slate-100 rounded-2xl p-1 shadow-sm">
+                        {(["7", "14", "30"] as TimeRange[]).map((range) => (
+                            <button
+                                key={range}
+                                onClick={() => setTimeRange(range)}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                                    timeRange === range
+                                        ? "bg-primary text-white shadow-md"
+                                        : "text-slate-500 hover:text-slate-900"
+                                )}
+                            >
+                                {range}D
+                            </button>
+                        ))}
                     </div>
                 </div>
+            </div>
 
-                <div className="relative h-48 flex items-end justify-between gap-2 md:gap-4 px-2">
-                    {stats.daily.map((day, idx) => (
-                        <div key={idx} className="flex-1 flex flex-col items-center gap-3 group">
-                            <div className="relative w-full flex items-end justify-center">
-                                {/* Bar */}
-                                <div
-                                    className="w-full max-w-[40px] bg-slate-50 rounded-t-xl group-hover:bg-primary/10 transition-all duration-500 relative"
-                                    style={{ height: `${(day.count / maxDailyCount) * 160}px` }}
-                                >
-                                    {day.count > 0 && (
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-slate-100 pb-4">
+                {[
+                    { id: "overview", label: "Overview", icon: BarChart3 },
+                    { id: "trends", label: "Monthly Trends", icon: TrendingUp },
+                    { id: "activity", label: "Activity Log", icon: Activity }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={cn(
+                            "flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold transition-all",
+                            activeTab === tab.id
+                                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                                : "text-slate-500 hover:bg-slate-50"
+                        )}
+                    >
+                        <tab.icon className="h-4 w-4" />
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {activeTab === "overview" && (
+                <>
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <StatCard
+                            icon={<Activity className="h-5 w-5 text-blue-500" />}
+                            value={stats.today}
+                            label="Today's DMs"
+                            color="blue"
+                        />
+                        <StatCard
+                            icon={<MessageCircle className="h-5 w-5 text-indigo-500" />}
+                            value={stats.thisMonth.dms}
+                            label={`${currentMonthName} DMs`}
+                            color="indigo"
+                            change={stats.monthGrowth}
+                        />
+                        <StatCard
+                            icon={<MousePointer2 className="h-5 w-5 text-purple-500" />}
+                            value={stats.thisMonth.clicks}
+                            label={`${currentMonthName} Clicks`}
+                            color="purple"
+                        />
+                        <StatCard
+                            icon={<Percent className="h-5 w-5 text-green-500" />}
+                            value={`${stats.thisMonth.ctr}%`}
+                            label="This Month CTR"
+                            color="green"
+                        />
+                    </div>
+
+                    {/* Month Comparison */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <MonthCard
+                            title={currentMonthName}
+                            subtitle="Current Month"
+                            data={stats.thisMonth}
+                            isCurrent
+                        />
+                        <MonthCard
+                            title={lastMonthName}
+                            subtitle="Previous Month"
+                            data={stats.lastMonth}
+                        />
+                    </div>
+
+                    {/* Daily Chart */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm p-8 space-y-8">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Daily Engagement</h3>
+                                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Last {timeRange} days performance</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-2xl font-black text-slate-900">{stats.period}</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase">Total DMs</p>
+                            </div>
+                        </div>
+
+                        <div className="relative h-48 flex items-end justify-between gap-1 md:gap-2 px-2">
+                            {stats.daily.map((day, idx) => (
+                                <div key={idx} className="flex-1 flex flex-col items-center gap-3 group">
+                                    <div className="relative w-full flex items-end justify-center">
                                         <div
-                                            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary to-primary/60 rounded-t-xl shadow-lg shadow-primary/20 animate-in slide-in-from-bottom duration-1000"
-                                            style={{ height: '100%' }}
-                                        />
-                                    )}
-                                    {/* Tooltip on hover */}
-                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                        {day.count} DMs
+                                            className="w-full max-w-[32px] bg-slate-50 rounded-t-lg group-hover:bg-primary/10 transition-all duration-500 relative"
+                                            style={{ height: `${Math.max((day.count / maxDailyCount) * 160, 4)}px` }}
+                                        >
+                                            {day.count > 0 && (
+                                                <div
+                                                    className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary to-primary/60 rounded-t-lg shadow-lg shadow-primary/20"
+                                                    style={{ height: '100%' }}
+                                                />
+                                            )}
+                                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                                {day.count} DMs
+                                            </div>
+                                        </div>
                                     </div>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter text-center">
+                                        {day.date.split(' ')[1]}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Top Automations & Hourly */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Top Automations */}
+                        <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm p-8 space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                                    <Award className="h-5 w-5 text-amber-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Top Triggers</h3>
+                                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">This month's best performers</p>
                                 </div>
                             </div>
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter text-center">
-                                {day.date}
-                            </span>
+
+                            {stats.topKeywords.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">
+                                    <Target className="h-12 w-12 mx-auto mb-3 text-slate-200" />
+                                    <p className="font-bold">No data yet</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {stats.topKeywords.map((kw, idx) => (
+                                        <div key={kw.keyword} className="flex items-center gap-4">
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black",
+                                                idx === 0 ? "bg-amber-100 text-amber-700" :
+                                                    idx === 1 ? "bg-slate-200 text-slate-600" :
+                                                        idx === 2 ? "bg-orange-100 text-orange-700" :
+                                                            "bg-slate-100 text-slate-500"
+                                            )}>
+                                                #{idx + 1}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-sm font-bold text-slate-700 uppercase">{kw.keyword}</span>
+                                                    <span className="text-sm font-black text-slate-900">{kw.count}</span>
+                                                </div>
+                                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={cn(
+                                                            "h-full rounded-full transition-all",
+                                                            idx === 0 ? "bg-amber-500" :
+                                                                idx === 1 ? "bg-slate-400" :
+                                                                    idx === 2 ? "bg-orange-500" :
+                                                                        "bg-slate-300"
+                                                        )}
+                                                        style={{ width: `${(kw.count / maxKeywordCount) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    ))}
-                    {/* Zero Line */}
-                    <div className="absolute bottom-6 inset-x-0 h-px bg-slate-100 -z-10" />
+
+                        {/* Hourly Distribution */}
+                        <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm p-8 space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                    <Clock className="h-5 w-5 text-blue-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Today's Activity</h3>
+                                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Hourly distribution</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-end justify-between gap-0.5 h-32">
+                                {stats.hourly.map((hour, idx) => (
+                                    <div key={idx} className="flex-1 flex flex-col items-center group">
+                                        <div
+                                            className={cn(
+                                                "w-full max-w-[12px] rounded-t transition-all",
+                                                hour.count > 0 ? "bg-blue-500" : "bg-slate-100"
+                                            )}
+                                            style={{ height: `${Math.max((hour.count / maxHourlyCount) * 100, 2)}%` }}
+                                        />
+                                        {idx % 4 === 0 && (
+                                            <span className="text-[8px] text-slate-400 font-bold mt-1">{hour.hour}</span>
+                                        )}
+                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] font-bold py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                            {hour.count}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* All Time Stats */}
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                <BarChart3 className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black italic uppercase tracking-tighter">All Time Stats</h3>
+                                <p className="text-[11px] text-white/50 font-bold uppercase tracking-widest">Since you started</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div>
+                                <p className="text-4xl font-black">{stats.total.toLocaleString()}</p>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-1">Total DMs Sent</p>
+                            </div>
+                            <div>
+                                <p className="text-4xl font-black">{stats.clicks.toLocaleString()}</p>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-1">Total Clicks</p>
+                            </div>
+                            <div>
+                                <p className="text-4xl font-black">{stats.successRate}%</p>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-1">Delivery Rate</p>
+                            </div>
+                            <div>
+                                <p className="text-4xl font-black">{stats.clickRate}%</p>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-1">Overall CTR</p>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {activeTab === "trends" && (
+                <>
+                    {/* 6-Month Trend */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm p-8 space-y-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                                    <CalendarDays className="h-5 w-5 text-indigo-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">6-Month Overview</h3>
+                                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">DMs sent per month</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative h-64 flex items-end justify-between gap-4 px-4">
+                            {stats.monthlyTrend.map((month, idx) => (
+                                <div key={idx} className="flex-1 flex flex-col items-center gap-4 group">
+                                    <div className="relative w-full flex items-end justify-center">
+                                        <div
+                                            className="w-full max-w-[60px] bg-slate-50 rounded-t-2xl group-hover:bg-indigo-100 transition-all duration-500 relative"
+                                            style={{ height: `${Math.max((month.dms / maxMonthlyCount) * 200, 8)}px` }}
+                                        >
+                                            {month.dms > 0 && (
+                                                <div
+                                                    className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-2xl shadow-lg shadow-indigo-500/20"
+                                                    style={{ height: '100%' }}
+                                                />
+                                            )}
+                                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                                {month.dms.toLocaleString()} DMs • {month.ctr}% CTR
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-center">
+                                        <span className="text-xs font-black text-slate-700 uppercase">{month.month}</span>
+                                        <p className="text-lg font-black text-slate-900">{month.dms.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Monthly Details Table */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm overflow-hidden">
+                        <div className="p-8 border-b border-slate-100">
+                            <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Monthly Breakdown</h3>
+                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Detailed stats by month</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Month</th>
+                                        <th className="px-8 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">DMs Sent</th>
+                                        <th className="px-8 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Clicks</th>
+                                        <th className="px-8 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">CTR</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stats.monthlyTrend.slice().reverse().map((month, idx) => (
+                                        <tr key={idx} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-8 py-5">
+                                                <span className="font-bold text-slate-900">{month.fullMonth}</span>
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <span className="text-lg font-black text-slate-900">{month.dms.toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <span className="text-lg font-black text-purple-600">{month.clicks.toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <span className={cn(
+                                                    "inline-flex items-center px-3 py-1 rounded-lg text-sm font-black",
+                                                    month.ctr >= 10 ? "bg-green-100 text-green-700" :
+                                                        month.ctr >= 5 ? "bg-amber-100 text-amber-700" :
+                                                            "bg-slate-100 text-slate-600"
+                                                )}>
+                                                    {month.ctr}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {activeTab === "activity" && (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between px-1">
+                        <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 italic uppercase">
+                            <Activity className="h-5 w-5 text-primary" />
+                            Live Engagement Feed
+                        </h2>
+                        <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pr-2">Live</span>
+                        </div>
+                    </div>
+
+                    {logs.length === 0 ? (
+                        <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] py-32 text-center">
+                            <BarChart3 className="h-20 w-20 text-slate-100 mx-auto mb-6" />
+                            <p className="text-slate-400 text-lg font-bold">No activity recorded</p>
+                            <p className="text-slate-300 text-sm mt-1">Logs will appear here once your triggers start firing.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                            {logs.slice(0, visibleLogs).map((log) => (
+                                <ActivityRow key={log.id} log={log} onClick={() => setSelectedLog(log)} />
+                            ))}
+
+                            {visibleLogs < logs.length && (
+                                <button
+                                    onClick={() => setVisibleLogs(prev => prev + 15)}
+                                    className="w-full py-8 text-[11px] font-black text-slate-400 hover:text-primary uppercase tracking-[0.25em] transition-all bg-white border border-slate-50 rounded-[2.5rem] mt-4 hover:shadow-md"
+                                >
+                                    ↓ Load more ({logs.length - visibleLogs} remaining)
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="space-y-6">
-                <div className="flex items-center justify-between px-1">
-                    <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 italic uppercase">
-                        <Activity className="h-5 w-5 text-primary" />
-                        Live Engagement Feed
-                    </h2>
-                    <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pr-2">Live</span>
-                    </div>
-                </div>
-
-                {logs.length === 0 ? (
-                    <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] py-32 text-center">
-                        <BarChart3 className="h-20 w-20 text-slate-100 mx-auto mb-6" />
-                        <p className="text-slate-400 text-lg font-bold">No activity recorded</p>
-                        <p className="text-slate-300 text-sm mt-1">Logs will appear here once your triggers start firing.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                        {logs.slice(0, visibleLogs).map((log) => (
-                            <ActivityRow key={log.id} log={log} onClick={() => setSelectedLog(log)} />
-                        ))}
-
-                        {visibleLogs < logs.length && (
-                            <button
-                                onClick={() => setVisibleLogs(prev => prev + 15)}
-                                className="w-full py-8 text-[11px] font-black text-slate-400 hover:text-primary uppercase tracking-[0.25em] transition-all bg-white border border-slate-50 rounded-[2.5rem] mt-4 hover:shadow-md"
-                            >
-                                ↓ Load historical data
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
+            )}
 
             {/* Detail Modal */}
             {selectedLog && (
@@ -261,7 +593,7 @@ export default function AnalyticsPage() {
                                 {selectedLog.is_clicked && (
                                     <div className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-100 text-purple-700 rounded-2xl">
                                         <Zap className="h-4 w-4 fill-current" />
-                                        <span className="font-black text-xs uppercase tracking-widest italic">User clicked the DM button! 🔥</span>
+                                        <span className="font-black text-xs uppercase tracking-widest italic">User clicked the DM button!</span>
                                     </div>
                                 )}
                             </div>
@@ -280,12 +612,13 @@ export default function AnalyticsPage() {
     );
 }
 
-function StatCard({ icon, value, label, color }: { icon: React.ReactNode, value: string | number, label: string, color: string }) {
+function StatCard({ icon, value, label, color, change }: { icon: React.ReactNode, value: string | number, label: string, color: string, change?: number }) {
     const colorMap: Record<string, string> = {
         blue: "bg-blue-500/5 text-blue-500",
         purple: "bg-purple-500/5 text-purple-500",
         green: "bg-green-500/5 text-green-500",
         orange: "bg-orange-500/5 text-orange-500",
+        indigo: "bg-indigo-500/5 text-indigo-500",
     };
 
     return (
@@ -294,8 +627,58 @@ function StatCard({ icon, value, label, color }: { icon: React.ReactNode, value:
             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4", colorMap[color])}>
                 {icon}
             </div>
-            <p className="text-3xl font-black text-slate-900 tracking-tighter">{value}</p>
+            <div className="flex items-end gap-2">
+                <p className="text-3xl font-black text-slate-900 tracking-tighter">{value}</p>
+                {change !== undefined && change !== 0 && (
+                    <div className={cn(
+                        "flex items-center gap-0.5 text-xs font-bold mb-1",
+                        change > 0 ? "text-green-600" : "text-red-500"
+                    )}>
+                        {change > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                        {Math.abs(change)}%
+                    </div>
+                )}
+            </div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{label}</p>
+        </div>
+    );
+}
+
+function MonthCard({ title, subtitle, data, isCurrent }: { title: string, subtitle: string, data: MonthData, isCurrent?: boolean }) {
+    return (
+        <div className={cn(
+            "rounded-[2.5rem] p-8 border",
+            isCurrent
+                ? "bg-gradient-to-br from-primary/5 to-indigo-50 border-primary/20"
+                : "bg-white border-slate-100"
+        )}>
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h3 className="text-xl font-black text-slate-900">{title}</h3>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">{subtitle}</p>
+                </div>
+                {isCurrent && (
+                    <span className="px-3 py-1 bg-primary text-white text-[10px] font-black rounded-lg uppercase">Current</span>
+                )}
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+                <div>
+                    <p className="text-3xl font-black text-slate-900">{data.dms.toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">DMs Sent</p>
+                </div>
+                <div>
+                    <p className="text-3xl font-black text-purple-600">{data.clicks.toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Clicks</p>
+                </div>
+                <div>
+                    <p className="text-3xl font-black text-green-600">{data.success.toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Delivered</p>
+                </div>
+                <div>
+                    <p className="text-3xl font-black text-amber-600">{data.ctr}%</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">CTR</p>
+                </div>
+            </div>
         </div>
     );
 }
@@ -306,7 +689,6 @@ function ActivityRow({ log, onClick }: { log: DmLog, onClick?: () => void }) {
             onClick={onClick}
             className="flex items-center gap-5 p-5 bg-white rounded-[2rem] border border-slate-50 transition-all duration-300 hover:shadow-lg group cursor-pointer active:scale-[0.99] hover:border-primary/20"
         >
-            {/* User Profile Simulation */}
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 font-black text-lg shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform relative">
                 {log.instagram_username?.charAt(0).toUpperCase() || "?"}
                 {log.is_clicked && (
@@ -316,7 +698,6 @@ function ActivityRow({ log, onClick }: { log: DmLog, onClick?: () => void }) {
                 )}
             </div>
 
-            {/* Details & Status Container */}
             <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -334,7 +715,6 @@ function ActivityRow({ log, onClick }: { log: DmLog, onClick?: () => void }) {
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
-                    {/* Click Indicator */}
                     {log.is_clicked && (
                         <div className="flex items-center gap-1.5 px-2 py-1 bg-purple-50 text-purple-600 rounded-lg border border-purple-100">
                             <Zap className="h-3 w-3 fill-current" />
@@ -342,7 +722,6 @@ function ActivityRow({ log, onClick }: { log: DmLog, onClick?: () => void }) {
                         </div>
                     )}
 
-                    {/* Status Badge */}
                     <div className={cn(
                         "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all",
                         log.reply_sent ? "bg-green-50/50 border-green-100/50" : "bg-red-50/50 border-red-100/50"

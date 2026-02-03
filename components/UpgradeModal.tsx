@@ -49,7 +49,7 @@ export default function UpgradeModal({
 
     const handleUpgrade = () => {
         setLoading(true);
-        router.push("/pricing");
+        router.push("/dashboard/billing");
     };
 
     return (

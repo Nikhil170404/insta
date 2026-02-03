@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PLANS_ARRAY } from "@/lib/pricing";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Script from "next/script";
@@ -27,6 +27,22 @@ export default function PricingPage() {
     const router = useRouter();
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+    // Check if user is logged in and redirect to billing page
+    useEffect(() => {
+        fetch("/api/auth/session")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.user) {
+                    setIsLoggedIn(true);
+                    router.push("/dashboard/billing");
+                } else {
+                    setIsLoggedIn(false);
+                }
+            })
+            .catch(() => setIsLoggedIn(false));
+    }, [router]);
 
     const handlePayment = async (plan: any) => {
         // FREE plan - redirect to signin
@@ -162,7 +178,7 @@ export default function PricingPage() {
                         </div>
                         <div>
                             <p className="text-primary text-[10px] font-black uppercase tracking-widest mb-2">ReplyKaro 🚀</p>
-                            <p className="text-primary text-2xl font-black">₹149/mo</p>
+                            <p className="text-primary text-2xl font-black">₹99/mo</p>
                         </div>
                     </div>
                 </div>

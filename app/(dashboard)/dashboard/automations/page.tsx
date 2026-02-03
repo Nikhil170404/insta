@@ -585,8 +585,8 @@ export default function AutomationsPage() {
                     maxAllowed={limits.max}
                     nextPlan={{
                         name: "Starter Pack",
-                        price: "₹149/month",
-                        benefits: ["5 Automations", "100,000 DMs/month", "Story Automation", "Handle Viral Posts"]
+                        price: "₹99/month",
+                        benefits: ["10 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
                     }}
                 />
             )}

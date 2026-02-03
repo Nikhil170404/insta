@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
+import { UsageBar } from "./UsageBar";
 
 interface SidebarProps {
   user: SessionUser;
@@ -86,7 +87,10 @@ export function DashboardSidebar({ user }: SidebarProps) {
             </nav>
           </div>
 
-
+          {/* Usage Bar - Desktop */}
+          <div className="px-4 pb-4">
+            <UsageBar />
+          </div>
 
           {/* User Section */}
           <div className="border-t border-slate-50 p-6 bg-slate-50/30">
@@ -168,6 +172,11 @@ export function DashboardSidebar({ user }: SidebarProps) {
             );
           })}
         </nav>
+
+        {/* Usage Bar - Mobile */}
+        <div className="px-4 py-3 border-t border-slate-50">
+          <UsageBar compact />
+        </div>
 
         <div className="p-6 border-t border-slate-50 bg-slate-50/30">
           <div className="flex items-center gap-4 mb-4">

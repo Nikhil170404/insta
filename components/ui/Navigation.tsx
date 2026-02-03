@@ -40,7 +40,7 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
 
     const navLinks = [
         { name: "Features", href: "/#features", hide: hideFeatures },
-        { name: "Pricing", href: "/pricing" },
+        { name: "Pricing", href: isLoggedIn ? "/dashboard/billing" : "/pricing" },
         { name: "FAQ", href: "/faq" },
         { name: "About", href: "/about" },
     ];
@@ -101,23 +101,23 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
                                             Login
                                         </Button>
                                     </Link>
-                                    <Link href="/signin">
+                                    <Link href="/signin" className="hidden md:block">
                                         <Button className="bg-[#0f172a] text-white hover:bg-black rounded-2xl px-6 md:px-10 font-black text-[12px] uppercase tracking-widest h-11 md:h-12 transition-all active:scale-95 shadow-xl shadow-slate-200/50">
                                             Launch
                                         </Button>
                                     </Link>
                                 </>
                             )}
+
+                            {/* Mobile Menu Button - inside nav pill */}
+                            <button
+                                onClick={() => setIsMobileMenuOpen(true)}
+                                className="md:hidden w-11 h-11 flex items-center justify-center text-slate-600 hover:text-primary rounded-xl hover:bg-slate-50 active:scale-90 transition-all"
+                            >
+                                <Menu className="h-5 w-5" />
+                            </button>
                         </div>
                     </div>
-
-                    {/* Separate Mobile Menu Trigger Pod */}
-                    <button
-                        onClick={() => setIsMobileMenuOpen(true)}
-                        className="md:hidden w-12 h-12 flex items-center justify-center bg-white text-primary rounded-full active:scale-90 transition-all border border-slate-100 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] shrink-0"
-                    >
-                        <Menu className="h-5 w-5" />
-                    </button>
                 </div>
             </nav>
 
