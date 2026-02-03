@@ -62,6 +62,7 @@ export default function AutomationsPage() {
     const [loading, setLoading] = useState(true);
     const [limits, setLimits] = useState<PlanLimits | null>(null);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [totalDMsFromAnalytics, setTotalDMsFromAnalytics] = useState<number | null>(null);
 
     // Edit state
     const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
@@ -78,6 +79,7 @@ export default function AutomationsPage() {
 
     useEffect(() => {
         fetchAutomations();
+        fetchAnalytics();
     }, []);
 
     async function fetchAutomations() {
@@ -94,6 +96,18 @@ export default function AutomationsPage() {
             console.error("Error fetching automations:", error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function fetchAnalytics() {
+        try {
+            const res = await fetch("/api/analytics");
+            if (res.ok) {
+                const data = await res.json();
+                setTotalDMsFromAnalytics(data.stats?.total || 0);
+            }
+        } catch (error) {
+            console.error("Error fetching analytics:", error);
         }
     }
 
@@ -200,7 +214,8 @@ export default function AutomationsPage() {
     }
 
     const activeCount = automations.filter((a) => a.is_active).length;
-    const totalDMs = automations.reduce((sum, a) => sum + a.dm_sent_count, 0);
+    // Use analytics as single source of truth for DM count
+    const totalDMs = totalDMsFromAnalytics ?? automations.reduce((sum, a) => sum + a.dm_sent_count, 0);
 
     return (
         <div className="space-y-10">

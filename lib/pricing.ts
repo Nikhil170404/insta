@@ -8,7 +8,7 @@ export const PRICING_PLANS = {
         hindiDesc: "Bilkul free mein try karo",
         features: [
             "1 Instagram Account",
-            "1 Active Automation",
+            "3 Active Automations",
             "1,000 DMs/month",
             "⚡ Up to 200/hour (IG limit)",
             "Queue All Comments ✨",
@@ -17,7 +17,7 @@ export const PRICING_PLANS = {
         ],
         limits: {
             accounts: 1,
-            automations: 1,
+            automations: 3,
             dmsPerMonth: 1000,
             dmsPerHour: 200, // Instagram API limit per account
             queueEnabled: true,

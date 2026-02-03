@@ -5,6 +5,7 @@ import { Plus, Trash2, CheckCircle2, Instagram, AlertCircle, Crown, Loader2 } fr
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getPlanLimits } from "@/lib/pricing";
 
 interface Account {
     id: string;
@@ -18,6 +19,8 @@ interface Account {
 export default function AccountsPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
+    const [maxAccounts, setMaxAccounts] = useState(1);
+    const [planName, setPlanName] = useState("Free");
 
     useEffect(() => {
         async function fetchAccounts() {
@@ -26,6 +29,11 @@ export default function AccountsPage() {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.user) {
+                        // Get plan limits
+                        const limits = getPlanLimits(data.user.plan_type || "trial");
+                        setMaxAccounts(limits.accounts);
+                        setPlanName(limits.planName);
+
                         // Get DM count from analytics
                         let totalDmsSent = 0;
                         try {
@@ -59,7 +67,6 @@ export default function AccountsPage() {
         fetchAccounts();
     }, []);
 
-    const maxAccounts = 3; // Based on Growth plan
     const canAddMore = accounts.length < maxAccounts;
 
     if (loading) {
@@ -100,9 +107,9 @@ export default function AccountsPage() {
                     </div>
                     <div>
                         <p className="text-white font-bold">
-                            {accounts.length} of {maxAccounts} accounts used
+                            {accounts.length} of {maxAccounts} {maxAccounts === 1 ? "account" : "accounts"} used
                         </p>
-                        <p className="text-slate-400 text-sm">Upgrade to Pro for up to 10 accounts</p>
+                        <p className="text-slate-400 text-sm">{planName} • {maxAccounts < 3 ? "Upgrade for more accounts" : maxAccounts < 10 ? "Upgrade to Pro for 10 accounts" : "Maximum accounts"}</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
