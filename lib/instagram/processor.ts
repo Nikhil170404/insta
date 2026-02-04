@@ -517,19 +517,18 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             );
 
             if (isFollowing) {
-                // They are following! Send greeting with button (NOT direct link)
-                // They click button to get the actual link
-                logger.info("User verified as following, sending greeting", { senderIgsid });
+                // They are following! Send FINAL message with actual link
+                logger.info("User verified as following, sending final link", { senderIgsid });
 
                 const dmSent = await sendInstagramDM(
                     user.instagram_access_token,
                     instagramUserId,
                     null,
                     senderIgsid,
-                    automation.reply_message,
+                    automation.final_message || automation.reply_message,
                     automation.id,
-                    automation.button_text || "Get Access",
-                    undefined, // NO link_url - triggers quick_reply button flow
+                    automation.final_button_text || automation.button_text || "Open Link",
+                    automation.link_url, // Send actual link - creates single "Open Link" button
                     automation.media_thumbnail_url
                 );
 
