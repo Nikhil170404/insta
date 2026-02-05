@@ -215,18 +215,17 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 );
 
                 if (isFollowingNow) {
-                    logger.info("User is now following, sending greeting", { commenterUsername });
-                    // Send greeting message with button - NOT direct link
-                    // When they click button, CLICK_LINK_ handler will send the actual link
+                    logger.info("User is now following, sending direct link", { commenterUsername });
+                    // User is now following - send direct link (single Open Link button)
                     const greetingSent = await sendInstagramDM(
                         user.instagram_access_token,
                         instagramUserId,
                         commentId,
                         commenterId,
-                        automation.reply_message,
+                        automation.final_message || automation.reply_message,
                         automation.id,
-                        automation.button_text || "Get Access",
-                        undefined, // NO link_url - this triggers quick_reply button flow
+                        automation.final_button_text || automation.button_text || "Open Link",
+                        automation.link_url, // Direct link - single button experience for followers
                         automation.media_thumbnail_url
                     );
 
@@ -310,19 +309,19 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
                     return; // Stop here, don't send main message yet
                 } else {
-                    // User IS following on first comment - send greeting with button
-                    // NOT direct link - they click button to get the link
-                    logger.info("User already following, sending greeting", { commenterUsername });
+                    // User IS following on first comment - send direct link immediately
+                    // Followers get 1-step experience (no extra button click needed)
+                    logger.info("User already following, sending direct link", { commenterUsername });
 
                     const greetingSent = await sendInstagramDM(
                         user.instagram_access_token,
                         instagramUserId,
                         commentId,
                         commenterId,
-                        automation.reply_message,
+                        automation.final_message || automation.reply_message,
                         automation.id,
-                        automation.button_text || "Get Access",
-                        undefined, // NO link_url - triggers quick_reply button flow
+                        automation.final_button_text || automation.button_text || "Open Link",
+                        automation.link_url, // Direct link - single button for followers
                         automation.media_thumbnail_url
                     );
 
