@@ -35,16 +35,26 @@ export async function POST(req: Request) {
         // Bypass strict Supabase typing which is failing during build
         const supabase = getSupabaseAdmin() as any;
 
-        // 3 months expiration
+        // 1 month expiration for monthly billing
         const expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + 3);
+        expiresAt.setMonth(expiresAt.getMonth() + 1);
 
-        // Update user plan
+        // Determine plan type based on payment amount
+        // Starter: ₹79 (first month) or ₹99 (renewal)
+        // Pro: ₹299
+        const paymentAmount = amount || 0;
+        let planType = "starter"; // default to starter
+        if (paymentAmount >= 299) {
+            planType = "pro";
+        }
+
+        // Update user plan and store Razorpay reference
         const { error: userError } = await supabase
             .from("users")
             .update({
-                plan_type: "paid",
+                plan_type: planType,
                 plan_expires_at: expiresAt.toISOString(),
+                razorpay_customer_id: razorpay_payment_id, // Store payment reference
                 updated_at: new Date().toISOString()
             })
             .eq("id", session.id);

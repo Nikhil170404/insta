@@ -257,9 +257,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         automation.media_thumbnail_url,
                         `Hey ${commenterUsername}! 👀 Hmm, looks like you haven't followed yet. Please follow us first to unlock this!`
                     );
-                    if (cardSent) {
-                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-                    }
+                    // NOTE: Follow-gate messages don't count as "delivered" - only final link does
                     return;
                 }
             } else {
@@ -303,10 +301,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         user_is_following: false,
                     });
 
-                    if (cardSent) {
-                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-                    }
-
+                    // NOTE: Follow-gate messages don't count as "delivered" - only final link does
                     return; // Stop here, don't send main message yet
                 } else {
                     // User IS following on first comment - send direct link immediately
