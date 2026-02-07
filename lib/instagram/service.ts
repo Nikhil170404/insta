@@ -228,6 +228,15 @@ export async function sendFollowGateCard(
 
         const message = customMessage || "Hey! 👋 To unlock this, please follow us first!";
 
+        // Validate and build profile URL
+        if (!profileUsername || profileUsername.trim() === '') {
+            console.error("❌ Cannot build follow-gate: profileUsername is empty");
+            return false;
+        }
+        // Use /_u/ format to force open in Instagram app on mobile
+        const profileUrl = `https://www.instagram.com/_u/${profileUsername.trim()}/`;
+        console.log(`🔗 Follow-gate profile URL: ${profileUrl}`);
+
         // Build element - only include image_url if thumbnail exists
         const element: any = {
             title: "Follow & Get Access",
@@ -235,7 +244,7 @@ export async function sendFollowGateCard(
             buttons: [
                 {
                     type: "web_url",
-                    url: `https://instagram.com/${profileUsername}`,
+                    url: profileUrl,
                     title: "Follow & Get Access"
                 },
                 {

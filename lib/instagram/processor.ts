@@ -31,15 +31,18 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         // 2. Find the user (with caching)
         let user = await getCachedUser(instagramUserId);
-        if (!user) {
+
+        // If user not in cache OR user in cache is missing critical username (needed for follow-gate)
+        if (!user || !user.instagram_username) {
             const { data: dbUser } = await supabase
                 .from("users")
-                .select("id, instagram_access_token, instagram_user_id, plan_type")
+                .select("id, instagram_access_token, instagram_user_id, instagram_username, plan_type")
                 .eq("instagram_user_id", instagramUserId)
                 .single();
 
             if (!dbUser) return;
             user = dbUser;
+            // Update cache with fresh data including username
             await setCachedUser(instagramUserId, dbUser);
         }
 
@@ -271,57 +274,50 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 );
 
                 if (!isFollowing) {
-                    // Send ManyChat-style follow-gate CARD with two buttons:
-                    // 1. "Follow & Get Access" - links to profile
-                    // 2. "I'm Following ✓" - triggers postback verification
-                    const followGateMsg = automation.follow_gate_message ||
-                        `Hey ${commenterUsername}! 👋 To unlock this, please follow us first!`;
-
-                    const cardSent = await sendFollowGateCard(
-                        user.instagram_access_token,
-                        instagramUserId,
-                        commentId,
-                        commenterId,
-                        automation.id,
-                        user.instagram_username || '',
-                        automation.media_thumbnail_url,
-                        followGateMsg
-                    );
-
-                    // Log as follow-gate attempt (separate from placeholder - this is follow-gate specific)
-                    await supabase.from("dm_logs").insert({
-                        user_id: user.id,
-                        automation_id: automation.id,
-                        instagram_comment_id: `${commentId}_followgate`,
-                        instagram_user_id: commenterId,
-                        instagram_username: commenterUsername,
-                        keyword_matched: automation.trigger_keyword || "ANY",
-                        comment_text: commentText,
-                        reply_sent: cardSent,
-                        reply_sent_at: cardSent ? new Date().toISOString() : null,
-                        is_follow_gate: true,
-                        user_is_following: false,
-                    });
-
-                    if (cardSent) {
-                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-                    }
-
-                    return; // Stop here, don't send main message yet
-                } else {
-                    // User IS following on first comment - send direct link immediately
-                    // Followers get 1-step experience (no extra button click needed)
-                    logger.info("User already following, sending direct link", { commenterUsername });
+                    // Non-follower gets greeting message first (same as followers)
+                    // Follow-gate check happens when they click the button
+                    logger.info("User not following, sending greeting with button", { commenterUsername });
 
                     const greetingSent = await sendInstagramDM(
                         user.instagram_access_token,
                         instagramUserId,
                         commentId,
                         commenterId,
-                        automation.final_message || automation.reply_message,
+                        automation.reply_message,
                         automation.id,
-                        automation.final_button_text || automation.button_text || "Open Link",
-                        automation.link_url, // Direct link - single button for followers
+                        automation.button_text || "Get Link",
+                        undefined, // No direct link - follow check happens on button click
+                        automation.media_thumbnail_url
+                    );
+
+                    // Log as non-follower greeting (placeholder was already created in step 8b)
+                    await supabase.from("dm_logs")
+                        .update({
+                            reply_sent: greetingSent,
+                            reply_sent_at: greetingSent ? new Date().toISOString() : null,
+                            user_is_following: false,
+                        })
+                        .eq("instagram_comment_id", commentId);
+
+                    if (greetingSent) {
+                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    }
+
+                    return; // Stop here, follow-gate check happens on button click
+                } else {
+                    // User IS following on first comment - send greeting message with button
+                    // Same experience as non-followers but without follow-gate
+                    logger.info("User already following, sending greeting with button", { commenterUsername });
+
+                    const greetingSent = await sendInstagramDM(
+                        user.instagram_access_token,
+                        instagramUserId,
+                        commentId,
+                        commenterId,
+                        automation.reply_message,
+                        automation.id,
+                        automation.button_text || "Get Link",
+                        undefined, // No direct link - user must click button to get link (for click tracking)
                         automation.media_thumbnail_url
                     );
 
@@ -446,12 +442,77 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
 
             const { data: user } = await supabase
                 .from("users")
-                .select("instagram_access_token")
+                .select("id, instagram_access_token, instagram_username")
                 .eq("id", automation.user_id)
                 .single();
 
             if (!user) return;
 
+            // Check if follow-gate is required
+            if (automation.require_follow) {
+                const isFollowing = await checkIsFollowing(
+                    user.instagram_access_token,
+                    senderIgsid
+                );
+
+                if (!isFollowing) {
+                    // User is not following - send follow-gate card
+                    logger.info("User clicked but not following, sending follow-gate", { senderIgsid });
+
+                    const followGateMsg = automation.follow_gate_message ||
+                        `To unlock this, please follow us first! 👋`;
+
+                    const cardSent = await sendFollowGateCard(
+                        user.instagram_access_token,
+                        instagramUserId,
+                        null,
+                        senderIgsid,
+                        automation.id,
+                        user.instagram_username || '',
+                        automation.media_thumbnail_url,
+                        followGateMsg
+                    );
+
+                    if (cardSent) {
+                        await incrementAutomationCount(supabase, automation.id, "click_count");
+
+                        // Mark the ORIGINAL interaction (Greeting) as clicked
+                        const { data: latestLog } = await supabase
+                            .from("dm_logs")
+                            .select("id")
+                            .eq("instagram_user_id", senderIgsid)
+                            .eq("automation_id", automation.id)
+                            .order("created_at", { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+
+                        if (latestLog) {
+                            await supabase
+                                .from("dm_logs")
+                                .update({ is_clicked: true })
+                                .eq("id", latestLog.id);
+                        }
+
+                        // Log as follow-gate attempt
+                        await supabase.from("dm_logs").insert({
+                            user_id: user.id,
+                            automation_id: automation.id,
+                            instagram_comment_id: `${Date.now()}_followgate`,
+                            instagram_user_id: senderIgsid,
+                            instagram_username: "",
+                            keyword_matched: automation.trigger_keyword || "ANY",
+                            comment_text: "Button click - follow gate",
+                            reply_sent: true,
+                            reply_sent_at: new Date().toISOString(),
+                            is_follow_gate: true,
+                            user_is_following: false,
+                        });
+                    }
+                    return;
+                }
+            }
+
+            // User is following (or no follow-gate required) - send final link
             const dmSent = await sendInstagramDM(
                 user.instagram_access_token,
                 instagramUserId,
