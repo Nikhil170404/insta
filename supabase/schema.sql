@@ -316,3 +316,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_logs_unique_user_automation
 -- ============================================
 -- ALTER TABLE public.users DROP COLUMN IF EXISTS max_comments_per_day;
 
+
+-- ============================================
+-- MIGRATION: 2026-02-08 - Recurring Subscriptions
+-- ============================================
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS razorpay_subscription_id VARCHAR(255);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'inactive';
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS subscription_interval VARCHAR(20);
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id VARCHAR(255);
+

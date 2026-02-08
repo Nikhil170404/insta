@@ -23,7 +23,7 @@ export const PRICING_PLANS = {
             queueEnabled: true,
             priorityQueue: false,
         },
-        cta: "Start Free Forever",
+        cta: "Free Forever",
         popular: false,
         savings: null,
         badge: "FREE",

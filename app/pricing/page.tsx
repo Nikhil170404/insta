@@ -291,21 +291,25 @@ export default function PricingPage() {
                             </div>
 
                             <div className="mt-8">
-                                <Button
-                                    onClick={() => handlePayment(plan)}
-                                    disabled={loadingPlan === plan.name}
-                                    className={cn(
-                                        "w-full h-14 rounded-[1.5rem] font-black text-xs tracking-[0.05em] uppercase transition-all duration-500 gap-3 group/btn shadow-xl active:scale-95",
-                                        plan.popular
-                                            ? "bg-primary text-white hover:bg-primary/90 shadow-primary/25"
-                                            : plan.name === "Free Starter"
-                                                ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200"
+                                {plan.name === "Free Starter" ? (
+                                    <div className="w-full h-14 rounded-[1.5rem] font-black text-xs tracking-[0.05em] uppercase flex items-center justify-center gap-3 bg-slate-100 text-slate-400 cursor-not-allowed select-none">
+                                        Free Forever
+                                    </div>
+                                ) : (
+                                    <Button
+                                        onClick={() => handlePayment(plan)}
+                                        disabled={loadingPlan === plan.name}
+                                        className={cn(
+                                            "w-full h-14 rounded-[1.5rem] font-black text-xs tracking-[0.05em] uppercase transition-all duration-500 gap-3 group/btn shadow-xl active:scale-95",
+                                            plan.popular
+                                                ? "bg-primary text-white hover:bg-primary/90 shadow-primary/25"
                                                 : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
-                                    )}
-                                >
-                                    {loadingPlan === plan.name ? "Processing..." : plan.cta}
-                                    <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-2 transition-transform duration-500" />
-                                </Button>
+                                        )}
+                                    >
+                                        {loadingPlan === plan.name ? "Processing..." : plan.cta}
+                                        <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-2 transition-transform duration-500" />
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -329,11 +333,9 @@ export default function PricingPage() {
                     <p className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em] mb-4">
                         No credit card required
                     </p>
-                    <Link href="/signin">
-                        <Button variant="ghost" className="text-primary font-black text-lg gap-2 hover:bg-primary/5 px-8 h-14 rounded-full">
-                            Start FREE Forever <Zap className="h-5 w-5 fill-current" />
-                        </Button>
-                    </Link>
+                    <Button variant="ghost" disabled className="text-slate-400 font-black text-lg gap-2 cursor-not-allowed px-8 h-14 rounded-full bg-slate-100">
+                        Free Forever <Zap className="h-5 w-5 fill-current" />
+                    </Button>
                 </div>
             </main>
 
