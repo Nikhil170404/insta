@@ -12,12 +12,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Missing config" }, { status: 500 });
         }
 
-        // Verify Signature
+        // Verify Signature using timingSafeEqual to prevent timing attacks
         const hmac = crypto.createHmac("sha256", secret);
         hmac.update(text);
-        const digest = hmac.digest("hex");
+        const generatedSignature = Buffer.from(hmac.digest("hex"), 'utf-8');
+        const receivedSignature = Buffer.from(signature, 'utf-8');
 
-        if (digest !== signature) {
+        if (generatedSignature.length !== receivedSignature.length || !crypto.timingSafeEqual(generatedSignature, receivedSignature)) {
             return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
         }
 
@@ -33,19 +34,21 @@ export async function POST(req: Request) {
             const userId = notes?.userId;
 
             if (userId) {
-                // Calculate new expiry (30 days or yearly based on plan?)
-                // Access period logic:
-                // We should ideally fetch plan interval, but for now assuming monthly default or checking plan ID
-                // Simple logic: Add 30 days from now (or from current expiry if valid)
-
-                const now = new Date();
-                const currentExpiry = new Date(); // Need to fetch user to overlap? 
-                // Creating a new expiry date:
+                // Calculate new expiry (safe buffer logic)
                 const expiryDate = new Date();
-                expiryDate.setDate(expiryDate.getDate() + 32); // Give slightly more than 30 days buffer
+                expiryDate.setDate(expiryDate.getDate() + 32);
+
+                // Determine Plan Type from Notes
+                // notes.planName should be "Starter Pack" or "Pro Pack"
+                const planName = notes?.planName || "Starter Pack";
+                let planType = "starter";
+
+                if (planName === "Pro Pack") planType = "pro";
+                else if (planName === "Growth Pack") planType = "growth";
+                else if (planName === "Starter Pack") planType = "starter";
 
                 await (supabase.from("users") as any).update({
-                    plan_type: "paid", // or specific type based on plan ID checking
+                    plan_type: planType,
                     plan_expires_at: expiryDate.toISOString(),
                     razorpay_subscription_id: subscription.id,
                     subscription_status: "active",
@@ -64,6 +67,28 @@ export async function POST(req: Request) {
             }
         }
 
+        // Handle Subscription Halted (Payment failed multiple times)
+        else if (event.event === "subscription.halted") {
+            const subscription = payload.subscription.entity;
+            const userId = subscription.notes?.userId;
+            if (userId) {
+                await (supabase.from("users") as any).update({
+                    subscription_status: "halted"
+                }).eq("id", userId);
+            }
+        }
+
+        // Handle Subscription Completed (End of total count)
+        else if (event.event === "subscription.completed") {
+            const subscription = payload.subscription.entity;
+            const userId = subscription.notes?.userId;
+            if (userId) {
+                await (supabase.from("users") as any).update({
+                    subscription_status: "completed"
+                }).eq("id", userId);
+            }
+        }
+
         // Handle Subscription Cancelled
         else if (event.event === "subscription.cancelled") {
             const subscription = payload.subscription.entity;
@@ -75,6 +100,38 @@ export async function POST(req: Request) {
                 }).eq("id", userId);
                 // We do NOT expire the plan immediately. They keep access until plan_expires_at.
             }
+        }
+
+        // Handle Payment Failed
+        else if (event.event === "payment.failed") {
+            const payment = payload.payment.entity;
+            // payment.notes.userId might be present if it was a direct payment order, 
+            // but for subscriptions, we might need to look up via subscription_id if Razorpay doesn't send notes on payment entity for subscription charges.
+            // Trusted way: payload.payment.entity.notes.userId OR lookup subscription
+
+            // For now, simple logging if we can find user
+            // In many cases, payment.failed events for subscriptions CONTAIN the subscription_id
+            const subscriptionId = payment.order_id || payment.subscription_id;
+
+            // Try to log it in payments table matches
+            if (subscriptionId) {
+                // Here we might not strictly knwo the user_id without a lookup if notes are missing
+                // usage of 'razorpay_subscription_id' to find user could work
+
+                // For now, we will just log to console to avoid complex lookup in this MVP
+                console.log(`Payment failed for subscription/order ${subscriptionId}: ${payment.error_description}`);
+            }
+        }
+
+        // Handle Refund
+        else if (event.event === "refund.created") {
+            const refund = payload.refund.entity;
+            const paymentId = refund.payment_id;
+            console.log(`Refund created for payment ${paymentId}`);
+            // Update payment status if we have it?
+            await (supabase.from("payments") as any).update({
+                status: "refunded"
+            }).eq("razorpay_payment_id", paymentId);
         }
 
         return NextResponse.json({ received: true });

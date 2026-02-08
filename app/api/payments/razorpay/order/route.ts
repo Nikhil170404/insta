@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { razorpay } from "@/lib/razorpay";
 import { getSession } from "@/lib/auth/session";
+import { getPlanByName } from "@/lib/pricing";
 
 export async function POST(req: Request) {
     try {
@@ -9,10 +10,24 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { amount, planId } = await req.json();
+        const { planId, interval } = await req.json();
 
-        if (!amount || !planId) {
-            return NextResponse.json({ error: "Amount and Plan ID are required" }, { status: 400 });
+        // Server-side price lookup
+        const plan = getPlanByName(planId);
+
+        if (!plan) {
+            return NextResponse.json({ error: "Invalid Plan ID" }, { status: 400 });
+        }
+
+        let amount = 0;
+        if (interval === "yearly") {
+            amount = parseInt(plan.yearlyPrice || "0");
+        } else {
+            amount = parseInt(plan.price);
+        }
+
+        if (amount <= 0) {
+            return NextResponse.json({ error: "Invalid Plan Amount" }, { status: 400 });
         }
 
         const options = {
@@ -21,7 +36,8 @@ export async function POST(req: Request) {
             receipt: `receipt_${Date.now()}_${session.id.slice(0, 8)}`,
             notes: {
                 userId: session.id,
-                planId: planId,
+                planId: planId, // This is actually the plan NAME in our current logic (e.g. "Starter Pack")
+                interval: interval,
                 instagramUsername: session.instagram_username
             }
         };

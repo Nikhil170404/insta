@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { razorpay } from "@/lib/razorpay";
 
 export async function POST(req: Request) {
     try {
@@ -24,11 +25,13 @@ export async function POST(req: Request) {
         }
 
         // Verify signature
+        // Verify signature using timingSafeEqual
         const hmac = crypto.createHmac("sha256", secret);
         hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
-        const generated_signature = hmac.digest("hex");
+        const generatedSignature = Buffer.from(hmac.digest("hex"), 'utf-8');
+        const receivedSignature = Buffer.from(razorpay_signature, 'utf-8');
 
-        if (generated_signature !== razorpay_signature) {
+        if (generatedSignature.length !== receivedSignature.length || !crypto.timingSafeEqual(generatedSignature, receivedSignature)) {
             return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
         }
 
@@ -40,13 +43,25 @@ export async function POST(req: Request) {
         expiresAt.setMonth(expiresAt.getMonth() + 1);
 
         // Determine plan type based on payment amount
-        // Starter: ₹79 (first month) or ₹99 (renewal)
-        // Pro: ₹299
-        const paymentAmount = amount || 0;
-        let planType = "starter"; // default to starter
-        if (paymentAmount >= 299) {
-            planType = "pro";
+        // Fetch the order from Razorpay to get trusted details (Validation)
+        const order = await razorpay.orders.fetch(razorpay_order_id);
+
+        if (!order) {
+            return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
+
+        // Trust the NOTES from the server-created order, NOT the client body
+        const planName = order.notes?.planId; // stored as 'planId' in notes but implies name
+        const interval = order.notes?.interval;
+
+        // Map Plan Name to Plan Type (DB Enum)
+        let planType = "starter";
+        if (planName === "Pro Pack") planType = "pro";
+        else if (planName === "Growth Pack") planType = "growth";
+        else if (planName === "Starter Pack") planType = "starter";
+
+        // Verify amount matches (Optional but good)
+        // const expectedAmount = ... (omitted for brevity, trusting Razorpay order integrity)
 
         // Update user plan and store Razorpay reference
         const { error: userError } = await supabase

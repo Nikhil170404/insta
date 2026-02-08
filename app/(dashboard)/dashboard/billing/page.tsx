@@ -43,6 +43,7 @@ export default function BillingPage() {
                         if (type === "starter") setCurrentPlan("Starter Pack");
                         else if (type === "growth") setCurrentPlan("Growth Pack");
                         else if (type === "pro") setCurrentPlan("Pro Pack");
+                        else if (type === "paid") setCurrentPlan("Starter Pack"); // Fallback for legacy 'paid'
                         else setCurrentPlan("Free Starter");
                     }
                 }

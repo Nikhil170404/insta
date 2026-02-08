@@ -24,7 +24,9 @@ export async function POST(req: Request) {
         const subscriptionId = user.razorpay_subscription_id;
 
         // Cancel Subscription at the end of the current billing cycle
-        await razorpay.subscriptions.cancel(subscriptionId, false);
+        // Cancel at end of cycle = true
+        // If we pass false, it cancels IMMEDIATELY
+        await razorpay.subscriptions.cancel(subscriptionId, true);
 
         // Update local status to "cancelled" (or wait for webhook?)
         // Better to wait for webhook, but we can optimistically update or just notify user

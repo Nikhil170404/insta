@@ -21,11 +21,11 @@ export async function GET(request: NextRequest) {
 
         if (webhookError) console.error("Error cleaning up webhooks:", webhookError);
 
-        // 2. Delete old DM logs (Aggressive 7-day limit for free tier)
+        // 2. Delete old DM logs (Keep 60 days for monthly usage limits)
         const { count: logCount, error: logError } = await (supabase as any)
             .from('dm_logs')
             .delete({ count: 'exact' })
-            .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+            .lt('created_at', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString());
 
         if (logError) console.error("Error cleaning up logs:", logError);
 

@@ -274,12 +274,14 @@ ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.webhook_queue ENABLE ROW LEVEL SECURITY;
 
 -- Service role can do everything (used by our API)
-CREATE POLICY "Service role full access" ON public.users FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON public.keywords FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON public.dm_logs FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON public.payments FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON public.rate_limits FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON public.webhook_queue FOR ALL USING (true);
+-- Service role can do everything (used by our API)
+-- RESTRICTED TO service_role ONLY
+CREATE POLICY "Service role full access" ON public.users FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON public.keywords FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON public.dm_logs FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON public.payments FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON public.rate_limits FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON public.webhook_queue FOR ALL TO service_role USING (true);
 
 -- ============================================
 -- MIGRATION: 2025-01-28 - Add multi-step support

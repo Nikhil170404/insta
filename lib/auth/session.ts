@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "@/lib/supabase/types";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 
 // CRITICAL: Session secret must be set in environment
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
@@ -58,7 +59,33 @@ export async function getSession(): Promise<SessionUser | null> {
 
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    return payload as unknown as SessionUser;
+    const sessionUser = payload as unknown as SessionUser;
+
+    // Create a mutable copy
+    const updatedSessionUser: SessionUser = { ...sessionUser };
+
+    // P1 Fix: Fetch fresh plan details from DB
+    // This prevents "stale session" where user stays on old plan until JWT expires (7 days)
+    try {
+      const supabase = getSupabaseAdmin();
+
+      const { data: user } = await supabase
+        .from("users")
+        .select("plan_type, plan_expires_at, subscription_status")
+        .eq("id", sessionUser.id)
+        .single() as any;
+
+      if (user) {
+        // Override JWT data with fresh DB data
+        updatedSessionUser.plan_type = user.plan_type as any;
+        updatedSessionUser.plan_expires_at = user.plan_expires_at;
+      }
+    } catch (err) {
+      // Fallback to JWT data if DB fails (fail-open or log error)
+      console.error("Error refreshing session data:", err);
+    }
+
+    return updatedSessionUser;
   } catch {
     return null;
   }

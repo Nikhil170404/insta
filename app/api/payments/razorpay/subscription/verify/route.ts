@@ -1,8 +1,9 @@
-
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { getSession } from "@/lib/auth/session";
+import { razorpay } from "@/lib/razorpay";
+import { PLANS_ARRAY } from "@/lib/pricing";
 
 export async function POST(req: Request) {
     try {
@@ -27,30 +28,58 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
         }
 
-        // Verify Signature
-        // For subscriptions, the signature is created as:
-        // hmac_sha256(razorpay_payment_id + "|" + razorpay_subscription_id, secret)
-        const generated_signature = crypto
-            .createHmac("sha256", secret)
-            .update(razorpay_payment_id + "|" + razorpay_subscription_id)
-            .digest("hex");
+        // Verify Signature (Safe)
+        const generatedSignature = Buffer.from(
+            crypto
+                .createHmac("sha256", secret)
+                .update(razorpay_payment_id + "|" + razorpay_subscription_id)
+                .digest("hex"),
+            'utf-8'
+        );
+        const receivedSignature = Buffer.from(razorpay_signature, 'utf-8');
 
-        if (generated_signature !== razorpay_signature) {
+        if (generatedSignature.length !== receivedSignature.length || !crypto.timingSafeEqual(generatedSignature, receivedSignature)) {
             return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+        }
+
+        // Verify Ownership: Fetch subscription to check userId
+        const subscription = await razorpay.subscriptions.fetch(razorpay_subscription_id);
+
+        if (!subscription || subscription.notes?.userId !== session.id) {
+            return NextResponse.json({ error: "Subscription verification failed: Ownership mismatch" }, { status: 403 });
         }
 
         // Signature checks out. Update DB.
         const supabase = getSupabaseAdmin();
 
-        // Calculate expiry (approximate, webhook will correct it)
-        // Default 30 days buffer for now, webhook logic is better but this gives immediate access
+        // Determine Plan Interval & Type
+        // We already fetched 'subscription' above for ownership check
+        const planId = subscription.plan_id;
+        const notes = subscription.notes;
+
+        // Check if Yearly
+        const pricingPlan = PLANS_ARRAY.find((p: any) => p.monthlyPlanId === planId || p.yearlyPlanId === planId);
+
+        const isYearly = pricingPlan?.yearlyPlanId === planId;
+        const planName = pricingPlan?.name || notes?.planName || "Starter Pack";
+
+        let planType = "starter";
+        if (planName === "Pro Pack") planType = "pro";
+        else if (planName === "Growth Pack") planType = "growth";
+        else if (planName === "Starter Pack") planType = "starter";
+
+        // Calculate Expiry
         const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + 32);
+        if (isYearly) {
+            expiryDate.setDate(expiryDate.getDate() + 366); // Yearly + buffer
+        } else {
+            expiryDate.setDate(expiryDate.getDate() + 32); // Monthly + buffer
+        }
 
         await (supabase.from("users") as any).update({
             razorpay_subscription_id: razorpay_subscription_id,
             subscription_status: "active",
-            plan_type: "paid", // You might want to be more specific if possible, but 'paid' is safe
+            plan_type: planType,
             plan_expires_at: expiryDate.toISOString(),
             updated_at: new Date().toISOString()
         }).eq("id", session.id);
