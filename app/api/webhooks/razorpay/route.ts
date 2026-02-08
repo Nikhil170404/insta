@@ -82,7 +82,7 @@ export async function POST(req: Request) {
                     user_id: userId,
                     razorpay_payment_id: payment.id,
                     razorpay_subscription_id: subscription.id,
-                    amount: payment.amount / 100,
+                    amount: payment.amount, // Store raw amount in Paise
                     status: "paid",
                     currency: payment.currency
                 });
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
                         user_id: user.id,
                         razorpay_payment_id: payment.id,
                         razorpay_subscription_id: subscriptionId,
-                        amount: payment.amount / 100,
+                        amount: payment.amount, // Store raw amount in Paise
                         status: "failed",
                         currency: payment.currency || "INR"
                     });

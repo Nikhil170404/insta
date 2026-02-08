@@ -11,7 +11,12 @@ import {
     Coffee,
     Flame,
     Crown,
-    Star
+    Star,
+    RefreshCw,
+    CreditCard,
+    Loader2,
+    HelpCircle,
+    ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,8 +36,12 @@ export default function BillingPage() {
     const [userData, setUserData] = useState<any>(null);
     const [cancelling, setCancelling] = useState(false);
 
-    // Fetch user's current plan on mount
+    const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(true);
+
+    // Fetch data
     useEffect(() => {
+        // Fetch User Session
         fetch("/api/auth/session")
             .then(res => res.json())
             .then(data => {
@@ -43,12 +52,24 @@ export default function BillingPage() {
                         if (type === "starter") setCurrentPlan("Starter Pack");
                         else if (type === "growth") setCurrentPlan("Growth Pack");
                         else if (type === "pro") setCurrentPlan("Pro Pack");
-                        else if (type === "paid") setCurrentPlan("Starter Pack"); // Fallback for legacy 'paid'
+                        else if (type === "paid") setCurrentPlan("Starter Pack");
                         else setCurrentPlan("Free Starter");
                     }
                 }
             })
             .catch(err => console.error("Failed to fetch plan:", err));
+
+        // Fetch Payment History
+        fetch("/api/payments/razorpay/history")
+            .then(res => res.json())
+            .then(data => {
+                if (data?.payments) setPaymentHistory(data.payments);
+                setLoadingHistory(false);
+            })
+            .catch(err => {
+                console.error("Failed to fetch history:", err);
+                setLoadingHistory(false);
+            });
     }, []);
 
     const handleCancelSubscription = async () => {
@@ -72,7 +93,17 @@ export default function BillingPage() {
         }
     };
 
+    function getStatusBadge(status: string) {
+        switch (status?.toLowerCase()) {
+            case 'paid': return <Badge className="bg-emerald-100 text-emerald-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">Paid</Badge>;
+            case 'refunded': return <Badge className="bg-blue-100 text-blue-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">Refunded</Badge>;
+            case 'failed': return <Badge className="bg-rose-100 text-rose-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">Failed</Badge>;
+            default: return <Badge className="bg-slate-100 text-slate-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">{status}</Badge>;
+        }
+    }
+
     const handlePayment = async (plan: any) => {
+        // [Existing handlePayment code - keeping it same]
         if (plan.name === currentPlan) {
             toast.info("Yeh aapka current plan hai!");
             return;
@@ -126,8 +157,7 @@ export default function BillingPage() {
 
                         if (verifyRes.ok) {
                             toast.success("Payment Verified! plan upgraded.");
-                            router.refresh(); // Refresh server components
-                            // Force reload to ensure session is updated
+                            router.refresh();
                             setTimeout(() => window.location.reload(), 1000);
                         } else {
                             toast.error("Verification failed, but don't worry. Your plan will activate shortly.");
@@ -160,7 +190,6 @@ export default function BillingPage() {
         switch (name) {
             case "Free Starter": return <Gift className="h-6 w-6 text-emerald-600" />;
             case "Starter Pack": return <Coffee className="h-6 w-6 text-amber-600" />;
-
             case "Pro Pack": return <Crown className="h-6 w-6 text-purple-600" />;
             default: return <Star className="h-6 w-6 text-slate-600" />;
         }
@@ -174,7 +203,7 @@ export default function BillingPage() {
             />
 
             {/* Header */}
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <div className="text-center space-y-4 max-w-3xl mx-auto px-4">
                 <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full mb-4 mx-auto">
                     Manage Subscription
                 </Badge>
@@ -182,45 +211,105 @@ export default function BillingPage() {
                     Billing & Plans
                 </h1>
 
-                {userData?.subscription_status === "active" ? (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-8 max-w-2xl mx-auto mt-8">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="h-12 w-12 rounded-2xl bg-emerald-100 flex items-center justify-center">
-                                <ShieldCheck className="h-6 w-6 text-emerald-600" />
-                            </div>
-                            <div className="text-left">
-                                <p className="text-sm font-bold text-emerald-600 uppercase tracking-wider">Active Subscription</p>
-                                <h3 className="text-2xl font-black text-slate-900">{currentPlan}</h3>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mb-8">
-                            <div className="bg-white p-4 rounded-2xl border border-emerald-100/50">
-                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Status</p>
-                                <div className="flex items-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="font-black text-slate-700">Active</span>
+                {(["active", "cancelled"].includes(userData?.subscription_status || "") || ["starter", "pro", "growth", "paid"].includes(userData?.plan_type?.toLowerCase() || "")) ? (
+                    <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 md:p-10 max-w-3xl mx-auto mt-10 shadow-2xl shadow-slate-200/50">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                            <div className="flex items-center gap-6">
+                                <div className="h-16 w-16 rounded-3xl bg-slate-900 flex items-center justify-center text-white shadow-xl rotate-3">
+                                    <Crown className="h-8 w-8" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.25em] mb-1">
+                                        {userData?.subscription_status === "cancelled" ? "Cancelled Membership" : "Active Membership"}
+                                    </p>
+                                    <h3 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{currentPlan}</h3>
                                 </div>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl border border-emerald-100/50">
-                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Next Billing</p>
-                                <span className="font-black text-slate-700">
-                                    {userData.plan_expires_at ? new Date(userData.plan_expires_at).toLocaleDateString() : "N/A"}
+                            <div className="flex flex-col items-end">
+                                {userData?.subscription_status === "cancelled" ? (
+                                    <Badge className="bg-rose-50 text-rose-500 border-2 border-rose-100 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mb-2 text-center">Pending Cancellation</Badge>
+                                ) : (
+                                    <Badge className="bg-emerald-50 text-emerald-600 border-2 border-emerald-100 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mb-2">Verified Active</Badge>
+                                )}
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    {userData?.subscription_status === "cancelled" ? "Access will be revoked on expiry" : "Next billing cycle sync active"}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                    <RefreshCw className="h-3 w-3 text-emerald-400" /> Subscription Status
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    {userData?.subscription_status === "cancelled" ? (
+                                        <>
+                                            <div className="h-2 w-2 rounded-full bg-rose-400" />
+                                            <span className="font-black text-slate-700 tracking-tight text-sm">Finishing Cycle</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_#10b981] animate-pulse" />
+                                            <span className="font-black text-slate-700 tracking-tight">Active & Healthy</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                    <ShieldCheck className="h-3 w-3 text-primary" /> Cycle Refresh
+                                </p>
+                                <span className="font-black text-slate-700 tracking-tight">
+                                    {userData.plan_expires_at ? new Date(userData.plan_expires_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : "Manual Refresh"}
                                 </span>
                             </div>
                         </div>
-                        <Button
-                            onClick={handleCancelSubscription}
-                            disabled={cancelling}
-                            variant="outline"
-                            className="w-full border-2 border-rose-100 text-rose-500 hover:bg-rose-50 hover:text-rose-600 font-bold"
-                        >
-                            {cancelling ? "Cancelling..." : "Cancel Subscription"}
-                        </Button>
+
+                        <div className="mt-8 flex flex-col gap-4">
+                            {userData?.subscription_status !== "cancelled" && (
+                                <div className="space-y-4">
+                                    <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 flex gap-3 items-start">
+                                        <div className="p-2 bg-rose-100/50 rounded-xl text-rose-500 mt-0.5">
+                                            <ShieldAlert className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] font-black text-rose-600 uppercase tracking-widest leading-none mb-1.5">No-Refund Policy</p>
+                                            <p className="text-[10px] text-rose-500/80 font-bold leading-relaxed">
+                                                Cancellations are effective at the end of the current cycle. We do not provide refunds for any unused time or partial periods.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        onClick={handleCancelSubscription}
+                                        disabled={cancelling}
+                                        className="w-full h-14 rounded-2xl bg-white border-2 border-slate-100 text-slate-400 hover:text-rose-500 hover:border-rose-100 hover:bg-rose-50/10 font-black text-[10px] uppercase tracking-[0.2em] transition-all"
+                                    >
+                                        {cancelling ? "Processing..." : "Cancel Subscription"}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ) : (
-                    <p className="text-slate-500 text-lg font-medium leading-relaxed">
-                        Upgrade to unlocking full automation potential.
-                    </p>
+                    <div className="max-w-2xl mx-auto space-y-6 mt-10">
+                        <p className="text-slate-500 text-lg font-medium leading-relaxed">
+                            {userData?.plan_type === 'expired'
+                                ? "Oops! Your plan has expired. Re-energize your system to resume automation."
+                                : "You are currently exploring ReplyKaro. Upgrade to a power-node to unlock full automation potential."}
+                        </p>
+                        <div className="flex justify-center flex-wrap gap-4">
+                            <Badge className="bg-slate-100 text-slate-600 border-none px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest">
+                                Status: {userData?.plan_type?.toUpperCase() || "TRIAL"}
+                            </Badge>
+                            {userData?.plan_expires_at && (
+                                <Badge className="bg-rose-50 text-rose-500 border-none px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest">
+                                    Reset at: {new Date(userData.plan_expires_at).toLocaleDateString()}
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -378,6 +467,69 @@ export default function BillingPage() {
                         </div>
                     );
                 })}
+            </div>
+
+            {/* Payment History Section */}
+            <div className="max-w-7xl mx-auto px-4 pt-10">
+                <div className="bg-white rounded-[2.5rem] border-2 border-slate-50 overflow-hidden shadow-sm">
+                    <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Payment History</h2>
+                            <p className="text-[10px] font-black text-slate-400 mt-1 uppercase tracking-widest">Your recent signals & transactions</p>
+                        </div>
+                        <CreditCard className="h-6 w-6 text-slate-200" />
+                    </div>
+
+                    <div className="overflow-x-auto overflow-y-hidden">
+                        {loadingHistory ? (
+                            <div className="p-20 flex flex-col items-center justify-center space-y-4">
+                                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Syncing History Data...</p>
+                            </div>
+                        ) : paymentHistory.length === 0 ? (
+                            <div className="p-20 flex flex-col items-center justify-center text-center">
+                                <div className="h-16 w-16 rounded-3xl bg-slate-50 flex items-center justify-center mb-4">
+                                    <HelpCircle className="h-8 w-8 text-slate-200" />
+                                </div>
+                                <h3 className="text-lg font-black text-slate-900 tracking-tight">No signals detected</h3>
+                                <p className="text-xs font-bold text-slate-400 max-w-xs mt-1 uppercase tracking-wider leading-relaxed">Upgrade your plan to see your first transactions here.</p>
+                            </div>
+                        ) : (
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-slate-50/50">
+                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Signal Date</th>
+                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment ID</th>
+                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {paymentHistory.map((payment: any) => (
+                                        <tr key={payment.id} className="hover:bg-slate-50/30 transition-colors group">
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                <p className="font-black text-slate-900 text-sm italic tracking-tight">{new Date(payment.created_at).toLocaleDateString()}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                            </td>
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                <code className="text-[10px] bg-slate-100/80 text-slate-600 px-3 py-1.5 rounded-xl font-mono border border-slate-200/50">
+                                                    {payment.razorpay_payment_id}
+                                                </code>
+                                            </td>
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                <p className="font-black text-slate-900 tracking-tight text-base">₹{payment.amount / 100}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{payment.currency}</p>
+                                            </td>
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                {getStatusBadge(payment.status)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Trust Badges */}

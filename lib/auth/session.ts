@@ -20,6 +20,7 @@ export interface SessionUser {
   profile_picture_url?: string;
   created_at: string;
   plan_expires_at?: string;
+  subscription_status?: string;
 }
 
 export async function createSession(user: User): Promise<string> {
@@ -88,6 +89,7 @@ export async function getSession(): Promise<SessionUser | null> {
         // Override JWT data with fresh DB data
         updatedSessionUser.plan_type = user.plan_type as any;
         updatedSessionUser.plan_expires_at = user.plan_expires_at;
+        updatedSessionUser.subscription_status = user.subscription_status;
 
         // Cache for 5 minutes
         await redis.set(cacheKey, updatedSessionUser, { ex: 300 });

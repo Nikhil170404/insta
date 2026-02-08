@@ -85,8 +85,8 @@ export async function POST(req: Request) {
         if (userError) throw userError;
 
         // Log payment
-        // FIX: Ensure amount is valid. Use body amount or fetch from order (in paise)
-        const finalAmount = amount || (order.amount ? (order.amount as any) / 100 : 0);
+        // FIX: Ensure amount is valid. Use raw amount from order (in paise)
+        const finalAmount = Number(order.amount);
 
         if (finalAmount <= 0) {
             console.error("Invalid payment amount detected:", finalAmount);
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
                 razorpay_payment_id,
                 razorpay_order_id,
                 razorpay_signature,
-                amount: finalAmount,
+                amount: order.amount, // Store raw amount in Paise (smallest unit)
                 currency: order.currency || "INR",
                 status: "paid"
             });
