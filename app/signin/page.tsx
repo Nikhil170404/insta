@@ -57,7 +57,7 @@ export default async function SignInPage() {
                 <ShieldCheck className="h-4 w-4" /> Meta Verified
               </div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                <Sparkles className="h-4 w-4" /> 7-Day Trial
+                <Sparkles className="h-4 w-4" /> Free Forever
               </div>
             </div>
           </div>

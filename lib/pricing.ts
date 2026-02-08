@@ -142,7 +142,7 @@ export function getPlanLimits(planType: string): {
 } {
     const planMap: Record<string, typeof PRICING_PLANS.FREE.limits & { planName: string }> = {
         free: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" },
-        trial: { ...PRICING_PLANS.FREE.limits, planName: "Free Trial" },
+        trial: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" }, // Fallback for legacy
         starter: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" },
         pro: { ...PRICING_PLANS.PRO.limits, planName: "Pro Pack" },
         paid: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" }, // Default paid to Starter

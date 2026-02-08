@@ -129,10 +129,7 @@ export async function GET(request: NextRequest) {
       user = updatedUser as User;
     } else {
       console.log("Creating new user record...");
-      // Create new user with 7-day trial
-      const trialExpiresAt = new Date();
-      trialExpiresAt.setDate(trialExpiresAt.getDate() + 7);
-
+      // Create new user with Free plan (no expiry)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: newUser, error: insertError } = await (supabase as any)
         .from("users")
@@ -140,9 +137,9 @@ export async function GET(request: NextRequest) {
           instagram_user_id: instagramUserId,
           instagram_username: profile.username,
           instagram_access_token: accessToken,
-          instagram_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-          plan_type: "trial",
-          plan_expires_at: trialExpiresAt.toISOString(),
+          instagram_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days
+          plan_type: "free",
+          plan_expires_at: null, // No expiry for free tier
           profile_picture_url: profilePictureUrl, // SAVE PROFILE PIC
         })
         .select()

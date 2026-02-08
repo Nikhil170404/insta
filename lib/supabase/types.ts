@@ -47,7 +47,7 @@ export type Database = {
           instagram_username?: string;
           instagram_access_token?: string;
           instagram_token_expires_at?: string;
-          plan_type?: "trial" | "paid" | "expired";
+          plan_type: "free" | "trial" | "paid" | "expired";
           plan_expires_at?: string | null;
           razorpay_customer_id?: string | null;
           razorpay_subscription_id?: string | null;

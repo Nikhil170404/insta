@@ -50,8 +50,8 @@ const FAQS = [
         icon: <CreditCard className="h-5 w-5" />,
         questions: [
             {
-                q: "What happens after the 7-day trial?",
-                a: "After 7 days, your automations will pause unless you upgrade to one of our India-first plans (Starter, Growth, or Pro). No hidden charges, aap jab chahe cancel kar sakte hain."
+                q: "Is there a free trial?",
+                a: "No, because we offer a 'Free Forever' plan! You can use ReplyKaro for free as long as you like. Upgrade only when you need more power."
             },
             {
                 q: "Can I upgrade or downgrade my plan?",
@@ -59,7 +59,7 @@ const FAQS = [
             },
             {
                 q: "What is the refund policy?",
-                a: "We have a strict no-refund policy. You can cancel anytime to stop future billing, but previous payments are final. You will keep access until your current billing cycle ends."
+                a: "We have a strict no-refund policy. Since we offer a Free Forever plan, we encourage you to try everything before you buy. Cancellations stop future billing, but previous payments are final."
             }
         ]
     }

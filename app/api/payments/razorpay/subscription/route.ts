@@ -41,6 +41,16 @@ export async function POST(req: Request) {
             }
         });
 
+        // Store subscription ID in DB immediately
+        const { getSupabaseAdmin } = require("@/lib/supabase/client");
+        const supabase = getSupabaseAdmin();
+
+        await supabase.from("users").update({
+            razorpay_subscription_id: subscription.id,
+            subscription_status: "created", // Initial state
+            subscription_interval: plan.period
+        }).eq("id", session.id);
+
         return NextResponse.json({
             subscriptionId: subscription.id,
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID

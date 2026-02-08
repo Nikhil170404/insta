@@ -112,9 +112,29 @@ export default function BillingPage() {
                 description: `Upgrade to ${plan.name} (${billingInterval})`,
                 image: "/logo.png",
                 handler: async function (response: any) {
-                    toast.success("Payment Successful! Plan upgraded.");
-                    router.refresh();
-                    setTimeout(() => window.location.reload(), 1500);
+                    try {
+                        const verifyRes = await fetch("/api/payments/razorpay/subscription/verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_subscription_id: response.razorpay_subscription_id,
+                                razorpay_signature: response.razorpay_signature
+                            })
+                        });
+
+                        if (verifyRes.ok) {
+                            toast.success("Payment Verified! plan upgraded.");
+                            router.refresh(); // Refresh server components
+                            // Force reload to ensure session is updated
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            toast.error("Verification failed, but don't worry. Your plan will activate shortly.");
+                        }
+                    } catch (err) {
+                        console.error("Verification fetch error", err);
+                        toast.error("Verification error. Please check status later.");
+                    }
                 },
                 prefill: { name: "", email: "", contact: "" },
                 theme: { color: "#000000" },

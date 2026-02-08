@@ -116,7 +116,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
                 <div className="flex flex-col gap-1 mt-0.5">
                   <span className={cn(
                     "text-[10px] uppercase font-black px-1.5 py-0.5 rounded-md w-fit",
-                    user.plan_type === "trial" ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"
+                    user.plan_type === "trial" || user.plan_type === "free" ? "bg-green-100 text-green-700" : "bg-primary/10 text-primary"
                   )}>
                     {user.plan_type}
                   </span>

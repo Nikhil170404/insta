@@ -85,9 +85,9 @@ export default function TermsPage() {
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">6. Subscription and Payments</h2>
-            <h3 className="text-lg font-medium mb-2">6.1 Trial Period</h3>
+            <h3 className="text-lg font-medium mb-2">6.1 Free Plan</h3>
             <p className="text-gray-600 mb-4">
-              New users receive a 7-day free trial with limited features. No payment is required for the trial period.
+              New users start on a Free Forever plan with limited features. This plan has no time limit and requires no payment information.
             </p>
 
             <h3 className="text-lg font-medium mb-2">6.2 Paid Subscriptions</h3>
@@ -103,7 +103,7 @@ export default function TermsPage() {
               <li>Payments are recurring and automatically renew at the end of each billing cycle</li>
               <li>You may cancel your subscription at any time to stop future billing</li>
               <li>Cancellation takes effect at the end of the current billing period</li>
-              <li><strong>Strict No Refund Policy:</strong> No refunds are provided for partial months, unused services, or accidental renewals</li>
+              <li><strong>Strict No Refund Policy:</strong> Since we offer a comprehensive Free Plan to test all core features, no refunds are provided for partial months, unused services, or accidental renewals.</li>
             </ul>
           </section>
 

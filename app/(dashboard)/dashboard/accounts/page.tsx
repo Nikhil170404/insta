@@ -30,7 +30,7 @@ export default function AccountsPage() {
                     const data = await res.json();
                     if (data.user) {
                         // Get plan limits
-                        const limits = getPlanLimits(data.user.plan_type || "trial");
+                        const limits = getPlanLimits(data.user.plan_type || "free");
                         setMaxAccounts(limits.accounts);
                         setPlanName(limits.planName);
 
