@@ -20,6 +20,9 @@ export type Database = {
           plan_type: "trial" | "paid" | "expired";
           plan_expires_at: string | null;
           razorpay_customer_id: string | null;
+          razorpay_subscription_id: string | null;
+          subscription_status: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
+          subscription_interval: "monthly" | "yearly" | null;
           created_at: string;
           updated_at: string;
         };
@@ -32,6 +35,9 @@ export type Database = {
           plan_type?: "trial" | "paid" | "expired";
           plan_expires_at?: string | null;
           razorpay_customer_id?: string | null;
+          razorpay_subscription_id?: string | null;
+          subscription_status?: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
+          subscription_interval?: "monthly" | "yearly" | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -44,6 +50,9 @@ export type Database = {
           plan_type?: "trial" | "paid" | "expired";
           plan_expires_at?: string | null;
           razorpay_customer_id?: string | null;
+          razorpay_subscription_id?: string | null;
+          subscription_status?: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
+          subscription_interval?: "monthly" | "yearly" | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -193,6 +202,7 @@ export type Database = {
           razorpay_payment_id: string;
           razorpay_order_id: string | null;
           razorpay_signature: string | null;
+          razorpay_subscription_id: string | null;
           amount: number;
           currency: string;
           status: "created" | "paid" | "failed";
@@ -204,6 +214,7 @@ export type Database = {
           razorpay_payment_id: string;
           razorpay_order_id?: string | null;
           razorpay_signature?: string | null;
+          razorpay_subscription_id?: string | null;
           amount: number;
           currency?: string;
           status?: "created" | "paid" | "failed";
@@ -215,6 +226,7 @@ export type Database = {
           razorpay_payment_id?: string;
           razorpay_order_id?: string | null;
           razorpay_signature?: string | null;
+          razorpay_subscription_id?: string | null;
           amount?: number;
           currency?: string;
           status?: "created" | "paid" | "failed";

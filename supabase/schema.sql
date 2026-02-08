@@ -23,6 +23,9 @@ CREATE TABLE public.users (
 
   -- Payment
   razorpay_customer_id VARCHAR(255),
+  razorpay_subscription_id VARCHAR(255),
+  subscription_status VARCHAR(50) DEFAULT 'inactive', -- active, halted, cancelled, completed
+  subscription_interval VARCHAR(20), -- monthly, yearly
 
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -141,6 +144,7 @@ CREATE TABLE public.payments (
   razorpay_payment_id VARCHAR(255) UNIQUE NOT NULL,
   razorpay_order_id VARCHAR(255),
   razorpay_signature VARCHAR(255),
+  razorpay_subscription_id VARCHAR(255),
 
   amount INTEGER NOT NULL,
   currency VARCHAR(3) DEFAULT 'INR',

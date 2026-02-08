@@ -26,13 +26,16 @@ export const PRICING_PLANS = {
         cta: "Start Free Forever",
         popular: false,
         savings: null,
-        badge: "FREE"
+        badge: "FREE",
+        monthlyPlanId: null,
+        yearlyPlanId: null,
+        yearlyPrice: null
     },
 
     STARTER: {
         name: "Starter Pack",
         price: "99",
-        upfront: "79",
+        upfront: "0",
         duration: "Monthly",
         description: "Perfect for growing creators",
         hindiDesc: "Naye creators ke liye perfect",
@@ -55,16 +58,19 @@ export const PRICING_PLANS = {
             queueEnabled: true,
             priorityQueue: false,
         },
-        cta: "Upgrade to Starter",
+        cta: "Start Monthly Plan",
         popular: false,
-        savings: "renews @ ₹99/mo",
-        badge: "Most Affordable"
+        savings: "Get 2 months free with Yearly",
+        badge: "Most Affordable",
+        monthlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_MONTHLY,
+        yearlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_YEARLY,
+        yearlyPrice: "999"
     },
 
     PRO: {
         name: "Pro Pack",
         price: "299",
-        upfront: "299",
+        upfront: "0",
         duration: "Monthly",
         description: "Scale your engagement",
         hindiDesc: "Pro creators aur teams ke liye",
@@ -89,10 +95,13 @@ export const PRICING_PLANS = {
             queueEnabled: true,
             priorityQueue: true,
         },
-        cta: "Go Pro Unlimited",
+        cta: "Start Pro Plan",
         popular: true,
-        savings: "Best Value",
-        badge: "Most Popular"
+        savings: "Best Value - Save 16%",
+        badge: "Most Popular",
+        monthlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_MONTHLY,
+        yearlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_YEARLY,
+        yearlyPrice: "2999"
     }
 };
 

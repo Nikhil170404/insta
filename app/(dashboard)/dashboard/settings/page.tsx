@@ -156,7 +156,7 @@ export default function SettingsPage() {
                             <div className="space-y-4">
                                 {[
                                     { id: "dm", name: "DM Sent Alerts", desc: "Push notification when a bot replies to a comment." },
-                                    { id: "billing", name: "Billing Signals", desc: "Critical updates regarding your subscription status." },
+                                    { id: "billing", name: "Billing Signals", desc: "Critical updates regarding your plan access status." },
                                     { id: "security", name: "Access Logs", desc: "Notify me of any remote login attempts." },
                                 ].map((item) => (
                                     <div key={item.id} className="flex items-center justify-between p-6 bg-slate-50/50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-md transition-all group">

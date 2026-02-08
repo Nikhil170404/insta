@@ -56,6 +56,10 @@ const FAQS = [
             {
                 q: "Can I upgrade or downgrade my plan?",
                 a: "Bilkul! You can change your plan anytime from the billing dashboard. The changes will be prorated automatically."
+            },
+            {
+                q: "What is the refund policy?",
+                a: "We have a strict no-refund policy. You can cancel anytime to stop future billing, but previous payments are final. You will keep access until your current billing cycle ends."
             }
         ]
     }

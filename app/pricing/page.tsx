@@ -44,6 +44,8 @@ export default function PricingPage() {
             .catch(() => setIsLoggedIn(false));
     }, [router]);
 
+    const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
+
     const handlePayment = async (plan: any) => {
         // FREE plan - redirect to signin
         if (plan.price === "0") {
@@ -51,16 +53,21 @@ export default function PricingPage() {
             return;
         }
 
-        console.log("Initializing payment for plan:", plan.name);
+        console.log("Initializing subscription for plan:", plan.name, billingInterval);
         try {
             setLoadingPlan(plan.name);
 
-            const response = await fetch("/api/payments/razorpay/order", {
+            const planId = billingInterval === "yearly" ? plan.yearlyPlanId : plan.monthlyPlanId;
+            if (!planId) {
+                toast.error("Plan configuration missing for this interval");
+                return;
+            }
+
+            const response = await fetch("/api/payments/razorpay/subscription", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    amount: parseInt(plan.upfront.replace(/,/g, "")),
-                    planId: plan.name
+                    planId: planId
                 }),
             });
 
@@ -71,40 +78,22 @@ export default function PricingPage() {
                 return;
             }
 
-            const order = await response.json();
-            if (order.error) throw new Error(order.error);
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
 
             const options = {
                 key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-                amount: order.amount,
-                currency: order.currency,
+                subscription_id: data.subscriptionId,
                 name: "ReplyKaro",
-                description: `Upgrade to ${plan.name}`,
+                description: `Upgrade to ${plan.name} (${billingInterval})`,
                 image: "/logo.png",
-                order_id: order.id,
                 handler: async function (response: any) {
-                    try {
-                        const verifyRes = await fetch("/api/payments/razorpay/verify", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                razorpay_order_id: response.razorpay_order_id,
-                                razorpay_payment_id: response.razorpay_payment_id,
-                                razorpay_signature: response.razorpay_signature,
-                                amount: parseInt(plan.upfront.replace(/,/g, ""))
-                            }),
-                        });
+                    // Subscription success is largely handled by webhook, but we can verify/redirect
+                    toast.success("Subscription Successful! Aapka plan active ho gaya hai.");
+                    router.push("/dashboard");
 
-                        const result = await verifyRes.json();
-                        if (result.success) {
-                            toast.success("Payment Successful! Aapka plan update ho gaya hai.");
-                            router.push("/dashboard");
-                        } else {
-                            throw new Error(result.error || "Verification failed");
-                        }
-                    } catch (err: any) {
-                        toast.error(err.message || "Payment verification fail ho gaya");
-                    }
+                    // Optional: Call verify endpoint if we want immediate verification, 
+                    // but usually webhooks handle it better for subscriptions.
                 },
                 prefill: { name: "", email: "", contact: "" },
                 theme: { color: "#000000" },
@@ -165,6 +154,37 @@ export default function PricingPage() {
                     </p>
                 </div>
 
+                {/* Billing Toggle */}
+                <div className="flex justify-center mb-12 relative z-10">
+                    <div className="bg-white p-1.5 rounded-full border border-slate-100 flex items-center shadow-lg shadow-slate-200/50">
+                        <button
+                            onClick={() => setBillingInterval("monthly")}
+                            className={cn(
+                                "px-6 py-2.5 rounded-full text-sm font-black transition-all duration-300",
+                                billingInterval === "monthly"
+                                    ? "bg-slate-900 text-white shadow-md"
+                                    : "text-slate-500 hover:text-slate-900"
+                            )}
+                        >
+                            Monthly
+                        </button>
+                        <button
+                            onClick={() => setBillingInterval("yearly")}
+                            className={cn(
+                                "px-6 py-2.5 rounded-full text-sm font-black transition-all duration-300 flex items-center gap-2",
+                                billingInterval === "yearly"
+                                    ? "bg-primary text-white shadow-md shadow-primary/20"
+                                    : "text-slate-500 hover:text-slate-900"
+                            )}
+                        >
+                            Yearly
+                            <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 border-none text-[9px] px-1.5 py-0">
+                                -16%
+                            </Badge>
+                        </button>
+                    </div>
+                </div>
+
                 {/* Comparison Banner */}
                 <div className="max-w-4xl mx-auto mb-10 md:mb-16 bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl md:rounded-[2rem] p-4 md:p-8 relative z-10">
                     <div className="grid grid-cols-3 gap-2 md:gap-4 text-center">
@@ -178,7 +198,7 @@ export default function PricingPage() {
                         </div>
                         <div>
                             <p className="text-primary text-[8px] md:text-[10px] font-black uppercase tracking-wider md:tracking-widest mb-1 md:mb-2">ReplyKaro 🚀</p>
-                            <p className="text-primary text-base md:text-2xl font-black">₹79<span className="text-[10px] md:text-sm">/mo</span></p>
+                            <p className="text-primary text-base md:text-2xl font-black">₹79<span className="text-[10px] md:text-sm">/30 days</span></p>
                         </div>
                     </div>
                 </div>
@@ -227,12 +247,22 @@ export default function PricingPage() {
                                 <div className="py-2">
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-4xl font-black text-slate-900 tracking-tighter">
-                                            {plan.price === "0" ? "FREE" : `₹${plan.upfront}`}
+                                            {plan.price === "0"
+                                                ? "FREE"
+                                                : billingInterval === "yearly" && plan.yearlyPrice
+                                                    ? `₹${Math.round(parseInt(plan.yearlyPrice) / 12)}` // Show effective monthly price
+                                                    : `₹${plan.price}`
+                                            }
                                         </span>
                                         {plan.price !== "0" && (
                                             <span className="text-slate-400 font-bold text-sm">/ mo</span>
                                         )}
                                     </div>
+                                    {billingInterval === "yearly" && plan.yearlyPrice && (
+                                        <div className="text-xs font-bold text-slate-400 mt-1">
+                                            Billed ₹{plan.yearlyPrice} yearly
+                                        </div>
+                                    )}
                                     {plan.savings && (
                                         <Badge variant="outline" className="mt-2 text-emerald-600 bg-emerald-50 border-emerald-100 font-black text-[9px] rounded-lg px-2 py-0.5 uppercase tracking-tight">
                                             {plan.savings}

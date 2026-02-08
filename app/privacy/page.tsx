@@ -70,7 +70,7 @@ export default function PrivacyPolicyPage() {
               <li><strong>Provide Our Service:</strong> Enable Instagram DM automation based on your configured triggers</li>
               <li><strong>Send Automated Messages:</strong> Detect keywords in comments and send pre-written DMs</li>
               <li><strong>Analytics & Reporting:</strong> Show you statistics about your automations (DMs sent, engagement rates)</li>
-              <li><strong>Process Payments:</strong> Handle subscription billing through Razorpay</li>
+              <li><strong>Process Payments:</strong> Handle payment processing through Razorpay</li>
               <li><strong>Customer Support:</strong> Respond to your questions and provide technical assistance</li>
               <li><strong>Service Communications:</strong> Send important updates about service changes or security</li>
               <li><strong>Improve Our Service:</strong> Analyze usage patterns to enhance features and user experience</li>

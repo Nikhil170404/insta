@@ -100,10 +100,10 @@ export default function TermsPage() {
 
             <h3 className="text-lg font-medium mb-2">6.3 Cancellation and Refunds</h3>
             <ul className="list-disc pl-6 text-gray-600 mb-4">
-              <li>You may cancel your subscription at any time</li>
+              <li>Payments are recurring and automatically renew at the end of each billing cycle</li>
+              <li>You may cancel your subscription at any time to stop future billing</li>
               <li>Cancellation takes effect at the end of the current billing period</li>
-              <li>No refunds are provided for partial months or unused services</li>
-              <li>We reserve the right to offer refunds at our discretion</li>
+              <li><strong>Strict No Refund Policy:</strong> No refunds are provided for partial months, unused services, or accidental renewals</li>
             </ul>
           </section>
 
