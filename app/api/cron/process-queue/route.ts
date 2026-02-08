@@ -13,7 +13,10 @@ export const maxDuration = 60; // 60 seconds timeout
 export async function GET(request: Request) {
     // Verify cron secret (security)
     const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const validSecrets = [process.env.CRON_SECRET, process.env.EXTERNAL_CRON_SECRET].filter(Boolean);
+    const isAuthorized = validSecrets.some(secret => authHeader === `Bearer ${secret}`);
+
+    if (!isAuthorized) {
         console.warn("⚠️ Unauthorized cron attempt blocked");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

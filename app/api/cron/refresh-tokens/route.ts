@@ -5,7 +5,10 @@ import { refreshLongLivedToken } from "@/lib/instagram/config";
 export async function GET(request: Request) {
     try {
         const authHeader = request.headers.get("authorization");
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        const validSecrets = [process.env.CRON_SECRET, process.env.EXTERNAL_CRON_SECRET].filter(Boolean);
+        const isAuthorized = validSecrets.some(secret => authHeader === `Bearer ${secret}`);
+
+        if (!isAuthorized) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

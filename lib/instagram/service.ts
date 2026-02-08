@@ -435,20 +435,17 @@ export async function recordFollowEvent(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function incrementAutomationCount(supabase: any, automationId: string, field: string) {
     try {
-        const { data } = await supabase
-            .from("automations")
-            .select(field)
-            .eq("id", automationId)
-            .single();
+        const { error } = await supabase.rpc('increment_automation_stats', {
+            p_automation_id: automationId,
+            p_increment_sent: field === 'dm_sent_count' ? 1 : 0,
+            p_increment_failed: field === 'dm_failed_count' ? 1 : 0,
+            p_increment_comment: field === 'comment_count' ? 1 : 0
+        });
 
-        if (data) {
-            const newCount = (data[field] || 0) + 1;
-            await supabase
-                .from("automations")
-                .update({ [field]: newCount })
-                .eq("id", automationId);
+        if (error) {
+            console.error(`Error incrementing ${field} via RPC:`, error);
         }
     } catch (error) {
-        console.error(`Error incrementing ${field}:`, error);
+        console.error(`Exception incrementing ${field}:`, error);
     }
 }
