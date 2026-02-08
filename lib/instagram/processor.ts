@@ -479,7 +479,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                         // Mark the ORIGINAL interaction (Greeting) as clicked
                         const { data: latestLog } = await supabase
                             .from("dm_logs")
-                            .select("id")
+                            .select("id, instagram_username")
                             .eq("instagram_user_id", senderIgsid)
                             .eq("automation_id", automation.id)
                             .order("created_at", { ascending: false })
@@ -494,12 +494,15 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                         }
 
                         // Log as follow-gate attempt
+                        // Use username from previous log if available
+                        const username = latestLog?.instagram_username || "";
+
                         await supabase.from("dm_logs").insert({
                             user_id: user.id,
                             automation_id: automation.id,
                             instagram_comment_id: `${Date.now()}_followgate`,
                             instagram_user_id: senderIgsid,
-                            instagram_username: "",
+                            instagram_username: username,
                             keyword_matched: automation.trigger_keyword || "ANY",
                             comment_text: "Button click - follow gate",
                             reply_sent: true,
