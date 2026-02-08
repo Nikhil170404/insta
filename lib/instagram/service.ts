@@ -80,16 +80,6 @@ export async function sendInstagramDM(
         // Small delay to simulate thinking
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // 3. TAG AS HUMAN AGENT (Required for Meta App Review / Automated DMs)
-        await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                recipient: recipient,
-                tag: "HUMAN_AGENT"
-            }),
-        });
-
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let body: any;
 
@@ -101,10 +91,6 @@ export async function sendInstagramDM(
             const element: any = {
                 title: buttonText || "Click to View",
                 subtitle: message.substring(0, 80),
-                default_action: {
-                    type: "web_url",
-                    url: linkUrl
-                },
                 buttons: [
                     {
                         type: "web_url",
@@ -127,7 +113,8 @@ export async function sendInstagramDM(
                             elements: [element]
                         }
                     }
-                }
+                },
+                tag: "HUMAN_AGENT"
             };
         } else if (buttonText && automationId && !linkUrl) {
             // Greeting card with postback button (no direct link)
@@ -160,14 +147,16 @@ export async function sendInstagramDM(
                             elements: [element]
                         }
                     }
-                }
+                },
+                tag: "HUMAN_AGENT"
             };
         } else {
             // Fallback to plain text if no button needed
             console.log("📝 Sending Plain Text Message");
             body = {
                 recipient: recipient,
-                message: { text: message }
+                message: { text: message },
+                tag: "HUMAN_AGENT"
             };
         }
 
