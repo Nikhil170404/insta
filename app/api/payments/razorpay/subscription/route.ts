@@ -3,9 +3,16 @@ import { razorpay } from "@/lib/razorpay";
 import { getSession } from "@/lib/auth/session";
 import { PLANS_ARRAY } from "@/lib/pricing";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { ratelimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
     try {
+        const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
+        const { success } = await ratelimit.limit(ip);
+        if (!success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+
         const session = await getSession();
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -64,9 +71,9 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("Razorpay Subscription Error:", error);
+        // P1 Fix: Don't leak error messages
         return NextResponse.json({
-            error: "Subscription creation failed",
-            details: error.message
+            error: "Subscription creation failed"
         }, { status: 500 });
     }
 }

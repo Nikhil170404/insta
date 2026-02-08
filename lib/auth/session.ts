@@ -16,7 +16,7 @@ export interface SessionUser {
   id: string;
   instagram_user_id: string;
   instagram_username: string;
-  plan_type: "free" | "trial" | "paid" | "expired";
+  plan_type: "free" | "trial" | "starter" | "pro" | "growth" | "paid" | "expired";
   profile_picture_url?: string;
   created_at: string;
   plan_expires_at?: string;
@@ -64,9 +64,18 @@ export async function getSession(): Promise<SessionUser | null> {
     // Create a mutable copy
     const updatedSessionUser: SessionUser = { ...sessionUser };
 
-    // P1 Fix: Fetch fresh plan details from DB
-    // This prevents "stale session" where user stays on old plan until JWT expires (7 days)
+    // P1 Fix: Fetch fresh plan details from DB with Caching (Scale Fix)
+    const cacheKey = `session_user:${sessionUser.id}`;
+
     try {
+      // @ts-ignore
+      const { Redis: redisInstance } = await import("../redis") as any;
+      const redis = redisInstance;
+
+      // Try cache
+      const cached = await (redis as any).get(cacheKey);
+      if (cached) return cached as SessionUser;
+
       const supabase = getSupabaseAdmin();
 
       const { data: user } = await supabase
@@ -79,9 +88,12 @@ export async function getSession(): Promise<SessionUser | null> {
         // Override JWT data with fresh DB data
         updatedSessionUser.plan_type = user.plan_type as any;
         updatedSessionUser.plan_expires_at = user.plan_expires_at;
+
+        // Cache for 5 minutes
+        await redis.set(cacheKey, updatedSessionUser, { ex: 300 });
       }
     } catch (err) {
-      // Fallback to JWT data if DB fails (fail-open or log error)
+      // Fallback to JWT data if Redis/DB fails
       console.error("Error refreshing session data:", err);
     }
 

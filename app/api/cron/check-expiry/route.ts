@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 
 export async function GET(req: Request) {
-    // Verify Cron Secret (Optional but recommended)
-    // const authHeader = req.headers.get("authorization");
-    // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    //     return new NextResponse("Unauthorized", { status: 401 });
-    // }
+    // P0 Fix: Verify Cron Secret
+    const authHeader = req.headers.get("authorization");
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        return new NextResponse("Unauthorized", { status: 401 });
+    }
 
     try {
         const supabase = getSupabaseAdmin();
@@ -15,11 +15,11 @@ export async function GET(req: Request) {
         // Find expired users
         // plan_type is NOT 'free' or 'trial' (already handled or valid)
         // plan_expires_at is in the past
-        const { data: expiredUsers, error: fetchError } = await supabase
-            .from("users")
+        const { data: expiredUsers, error: fetchError } = await (supabase
+            .from("users") as any)
             .select("id, instagram_username, plan_type")
             .in("plan_type", ["starter", "growth", "pro", "paid"])
-            .lt("plan_expires_at", now) as any;
+            .lt("plan_expires_at", now);
 
         if (fetchError) throw fetchError;
 
@@ -46,12 +46,12 @@ export async function GET(req: Request) {
 
         return NextResponse.json({
             success: true,
-            downgraded_count: expiredUsers.length,
-            users: expiredUsers.map((u: any) => u.instagram_username)
+            downgraded_count: expiredUsers.length
         });
 
     } catch (error: any) {
         console.error("Cron Expiry Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        // P1 Fix: Don't leak error messages
+        return NextResponse.json({ error: "Operation failed" }, { status: 500 });
     }
 }

@@ -34,9 +34,31 @@ export async function POST(req: Request) {
             const userId = notes?.userId;
 
             if (userId) {
+                // IDEMPOTENCY CHECK: Check if this payment ID already exists
+                const { data: existingPayment } = await supabase
+                    .from("payments")
+                    .select("id")
+                    .eq("razorpay_payment_id", payment.id)
+                    .single();
+
+                if (existingPayment) {
+                    console.log(`Payment ${payment.id} already processed. Skipping.`);
+                    return NextResponse.json({ received: true });
+                }
+
                 // Calculate new expiry (safe buffer logic)
                 const expiryDate = new Date();
-                expiryDate.setDate(expiryDate.getDate() + 32);
+
+                // Check subscription period
+                // Razorpay 'period' can be 'daily', 'weekly', 'monthly', 'yearly'
+                // Defaults to monthly logic if not yearly
+                if (subscription.period === 'yearly') {
+                    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+                    // Add buffer of 5 days
+                    expiryDate.setDate(expiryDate.getDate() + 5);
+                } else {
+                    expiryDate.setDate(expiryDate.getDate() + 32);
+                }
 
                 // Determine Plan Type from Notes
                 // notes.planName should be "Starter Pack" or "Pro Pack"
@@ -64,6 +86,20 @@ export async function POST(req: Request) {
                     status: "paid",
                     currency: payment.currency
                 });
+
+                // Send Receipt Email
+                try {
+                    const { sendReceiptEmail } = await import("@/lib/notifications/email");
+                    // Fetch user email
+                    const { data: user } = await supabase.from("users").select("email").eq("id", userId).single() as any;
+
+                    if (user?.email) {
+                        const amountFormatted = (payment.amount / 100).toFixed(2);
+                        await sendReceiptEmail(user.email, planName, amountFormatted, new Date().toDateString());
+                    }
+                } catch (emailError) {
+                    console.error("Failed to send receipt email:", emailError);
+                }
             }
         }
 
@@ -115,10 +151,23 @@ export async function POST(req: Request) {
 
             // Try to log it in payments table matches
             if (subscriptionId) {
-                // Here we might not strictly knwo the user_id without a lookup if notes are missing
-                // usage of 'razorpay_subscription_id' to find user could work
+                // Fetch user from razorpay_subscription_id if notes are missing
+                const { data: user } = await (supabase.from("users") as any)
+                    .select("id")
+                    .eq("razorpay_subscription_id", subscriptionId)
+                    .single();
 
-                // For now, we will just log to console to avoid complex lookup in this MVP
+                if (user) {
+                    await (supabase.from("payments") as any).insert({
+                        user_id: user.id,
+                        razorpay_payment_id: payment.id,
+                        razorpay_subscription_id: subscriptionId,
+                        amount: payment.amount / 100,
+                        status: "failed",
+                        currency: payment.currency || "INR"
+                    });
+                }
+
                 console.log(`Payment failed for subscription/order ${subscriptionId}: ${payment.error_description}`);
             }
         }
@@ -129,6 +178,7 @@ export async function POST(req: Request) {
             const paymentId = refund.payment_id;
             console.log(`Refund created for payment ${paymentId}`);
             // Update payment status if we have it?
+            // Note: DB constraint updated to allow 'refunded'
             await (supabase.from("payments") as any).update({
                 status: "refunded"
             }).eq("razorpay_payment_id", paymentId);
@@ -138,6 +188,7 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("Webhook Error:", error);
+        // P1 Fix: Don't leak error messages
         return NextResponse.json({ error: "Webhook failed" }, { status: 500 });
     }
 }

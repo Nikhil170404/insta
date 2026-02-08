@@ -327,3 +327,11 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS subscription_interval VARCHAR(20);
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id VARCHAR(255);
 
+-- Add missing constraints
+ALTER TABLE public.users ADD CONSTRAINT valid_subscription_status CHECK (subscription_status IN ('inactive', 'active', 'halted', 'cancelled', 'completed', 'expired'));
+ALTER TABLE public.users ADD CONSTRAINT valid_subscription_interval CHECK (subscription_interval IN ('monthly', 'yearly') OR subscription_interval IS NULL);
+-- Update payments status check to allow 'refunded' (not added yet in file earlier)
+ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS valid_status;
+ALTER TABLE public.payments ADD CONSTRAINT valid_status CHECK (status IN ('created', 'paid', 'failed', 'refunded'));
+
+

@@ -2,9 +2,16 @@ import { NextResponse } from "next/server";
 import { razorpay } from "@/lib/razorpay";
 import { getSession } from "@/lib/auth/session";
 import { getPlanByName } from "@/lib/pricing";
+import { ratelimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
     try {
+        const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
+        const { success } = await ratelimit.limit(ip);
+        if (!success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+
         const session = await getSession();
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,6 +54,7 @@ export async function POST(req: Request) {
         return NextResponse.json(order);
     } catch (error: any) {
         console.error("Razorpay Order Error:", error);
-        return NextResponse.json({ error: error.message || "Failed to create order" }, { status: 500 });
+        // P1 Fix: Don't leak error messages
+        return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
     }
 }

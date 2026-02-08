@@ -47,11 +47,11 @@ export async function smartRateLimit(
 
     // Check current usage
     const hourStart = new Date(now);
-    hourStart.setMinutes(0, 0, 0);
+    hourStart.setUTCMinutes(0, 0, 0); // Use UTC for consistent windows (#129)
 
     const monthStart = new Date(now);
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
 
     // Count DMs sent in current windows
     const { count: hourlyCount } = await (supabase as any)

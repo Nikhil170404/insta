@@ -3,9 +3,16 @@ import crypto from "crypto";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { razorpay } from "@/lib/razorpay";
+import { ratelimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
     try {
+        const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
+        const { success } = await ratelimit.limit(ip);
+        if (!success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+
         const session = await getSession();
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,11 +45,6 @@ export async function POST(req: Request) {
         // Bypass strict Supabase typing which is failing during build
         const supabase = getSupabaseAdmin() as any;
 
-        // 1 month expiration for monthly billing
-        const expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
-
-        // Determine plan type based on payment amount
         // Fetch the order from Razorpay to get trusted details (Validation)
         const order = await razorpay.orders.fetch(razorpay_order_id);
 
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
         }
 
         // Trust the NOTES from the server-created order, NOT the client body
-        const planName = order.notes?.planId; // stored as 'planId' in notes but implies name
+        const planName = order.notes?.planId; // stored as 'planId' in notes
         const interval = order.notes?.interval;
 
         // Map Plan Name to Plan Type (DB Enum)
@@ -60,16 +62,22 @@ export async function POST(req: Request) {
         else if (planName === "Growth Pack") planType = "growth";
         else if (planName === "Starter Pack") planType = "starter";
 
-        // Verify amount matches (Optional but good)
-        // const expectedAmount = ... (omitted for brevity, trusting Razorpay order integrity)
+        // Determine expiration based on interval
+        const expiresAt = new Date();
+        if (interval === "yearly") {
+            expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        } else {
+            expiresAt.setMonth(expiresAt.getMonth() + 1);
+        }
 
-        // Update user plan and store Razorpay reference
-        const { error: userError } = await supabase
-            .from("users")
+        // Update user plan
+        // FIX: Do NOT overwrite razorpay_customer_id with razorpay_payment_id
+        const { error: userError } = await (supabase
+            .from("users") as any)
             .update({
                 plan_type: planType,
                 plan_expires_at: expiresAt.toISOString(),
-                razorpay_customer_id: razorpay_payment_id, // Store payment reference
+                // razorpay_customer_id: order.customer_id, // If we had it, but don't overwrite with payment_id
                 updated_at: new Date().toISOString()
             })
             .eq("id", session.id);
@@ -77,15 +85,22 @@ export async function POST(req: Request) {
         if (userError) throw userError;
 
         // Log payment
-        const { error: paymentError } = await supabase
-            .from("payments")
+        // FIX: Ensure amount is valid. Use body amount or fetch from order (in paise)
+        const finalAmount = amount || (order.amount ? (order.amount as any) / 100 : 0);
+
+        if (finalAmount <= 0) {
+            console.error("Invalid payment amount detected:", finalAmount);
+        }
+
+        const { error: paymentError } = await (supabase
+            .from("payments") as any)
             .insert({
                 user_id: session.id,
                 razorpay_payment_id,
                 razorpay_order_id,
                 razorpay_signature,
-                amount: amount || 0,
-                currency: "INR",
+                amount: finalAmount,
+                currency: order.currency || "INR",
                 status: "paid"
             });
 
@@ -94,9 +109,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("Razorpay Verification Error:", error);
+        // P1 Fix: Don't leak error details
         return NextResponse.json({
-            error: "Verification failed",
-            details: error.message
+            error: "Verification failed"
         }, { status: 500 });
     }
 }
