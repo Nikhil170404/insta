@@ -16,7 +16,7 @@ export interface SessionUser {
   id: string;
   instagram_user_id: string;
   instagram_username: string;
-  plan_type: "free" | "trial" | "starter" | "pro" | "growth" | "paid" | "expired";
+  plan_type: "free" | "starter" | "pro" | "expired";
   profile_picture_url?: string;
   created_at: string;
   plan_expires_at?: string;

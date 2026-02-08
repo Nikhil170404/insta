@@ -17,9 +17,10 @@ export type Database = {
           instagram_access_token: string;
           instagram_token_expires_at: string;
           profile_picture_url: string | null;
-          plan_type: "trial" | "paid" | "expired";
+          email: string | null;
+          plan_type: "free" | "starter" | "pro" | "expired";
           plan_expires_at: string | null;
-          razorpay_customer_id: string | null;
+
           razorpay_subscription_id: string | null;
           subscription_status: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
           subscription_interval: "monthly" | "yearly" | null;
@@ -32,9 +33,10 @@ export type Database = {
           instagram_username: string;
           instagram_access_token: string;
           instagram_token_expires_at: string;
-          plan_type?: "trial" | "paid" | "expired";
+          email?: string | null;
+          plan_type?: "free" | "starter" | "pro" | "expired";
           plan_expires_at?: string | null;
-          razorpay_customer_id?: string | null;
+
           razorpay_subscription_id?: string | null;
           subscription_status?: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
           subscription_interval?: "monthly" | "yearly" | null;
@@ -47,9 +49,10 @@ export type Database = {
           instagram_username?: string;
           instagram_access_token?: string;
           instagram_token_expires_at?: string;
-          plan_type: "free" | "trial" | "paid" | "expired";
+          email?: string | null;
+          plan_type: "free" | "starter" | "pro" | "expired";
           plan_expires_at?: string | null;
-          razorpay_customer_id?: string | null;
+
           razorpay_subscription_id?: string | null;
           subscription_status?: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
           subscription_interval?: "monthly" | "yearly" | null;
@@ -294,6 +297,76 @@ export type Database = {
           created_at?: string;
         };
       };
+      subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          razorpay_subscription_id: string;
+          plan_id: string;
+          status: string;
+          current_period_start: string | null;
+          current_period_end: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          razorpay_subscription_id: string;
+          plan_id: string;
+          status: string;
+          current_period_start?: string | null;
+          current_period_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          razorpay_subscription_id?: string;
+          plan_id?: string;
+          status?: string;
+          current_period_start?: string | null;
+          current_period_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      invoices: {
+        Row: {
+          id: string;
+          user_id: string;
+          payment_id: string | null;
+          invoice_number: string | null;
+          amount: number;
+          currency: string;
+          tax_amount: number;
+          billing_details: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          payment_id?: string | null;
+          invoice_number?: string | null;
+          amount: number;
+          currency?: string;
+          tax_amount?: number;
+          billing_details?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          payment_id?: string | null;
+          invoice_number?: string | null;
+          amount?: number;
+          currency?: string;
+          tax_amount?: number;
+          billing_details?: Json | null;
+          created_at?: string;
+        };
+      };
     };
     Functions: {
       increment_rate_limit: {
@@ -314,3 +387,5 @@ export type Keyword = Database["public"]["Tables"]["keywords"]["Row"];
 export type Automation = Database["public"]["Tables"]["automations"]["Row"];
 export type DmLog = Database["public"]["Tables"]["dm_logs"]["Row"];
 export type Payment = Database["public"]["Tables"]["payments"]["Row"];
+export type Subscription = Database["public"]["Tables"]["subscriptions"]["Row"];
+export type Invoice = Database["public"]["Tables"]["invoices"]["Row"];

@@ -20,6 +20,9 @@ CREATE TABLE public.users (
   -- Plan details
   plan_type VARCHAR(20) DEFAULT 'trial',
   plan_expires_at TIMESTAMPTZ,
+  
+  -- Contact
+  email VARCHAR(255),
 
   -- Payment
   razorpay_customer_id VARCHAR(255),
@@ -331,7 +334,111 @@ ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS razorpay_subscription_id VA
 ALTER TABLE public.users ADD CONSTRAINT valid_subscription_status CHECK (subscription_status IN ('inactive', 'active', 'halted', 'cancelled', 'completed', 'expired'));
 ALTER TABLE public.users ADD CONSTRAINT valid_subscription_interval CHECK (subscription_interval IN ('monthly', 'yearly') OR subscription_interval IS NULL);
 -- Update payments status check to allow 'refunded' (not added yet in file earlier)
-ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS valid_status;
 ALTER TABLE public.payments ADD CONSTRAINT valid_status CHECK (status IN ('created', 'paid', 'failed', 'refunded'));
+
+-- ============================================
+-- MIGRATION: 2026-02-09 - Add Email Column
+-- ============================================
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+
+
+-- ============================================
+-- MIGRATION: 2026-02-09 - Add Subscriptions & Invoices
+-- ============================================
+
+-- Create subscriptions table
+CREATE TABLE IF NOT EXISTS public.subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  razorpay_subscription_id VARCHAR(255) NOT NULL,
+  plan_id VARCHAR(255) NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create invoices table
+CREATE TABLE IF NOT EXISTS public.invoices (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  payment_id UUID REFERENCES public.payments(id) ON DELETE SET NULL,
+  invoice_number VARCHAR(255),
+  amount INTEGER NOT NULL,
+  currency VARCHAR(3) DEFAULT 'INR',
+  tax_amount INTEGER DEFAULT 0,
+  billing_details JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON public.subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_razorpay_id ON public.subscriptions(razorpay_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_user_id ON public.invoices(user_id);
+
+
+-- ============================================
+-- MIGRATION: 2026-02-09 - Fix Expiry Index
+-- ============================================
+
+-- Drop the restricted index
+DROP INDEX IF EXISTS public.idx_users_plan_expires;
+
+-- Create new index covering all paid/active plan types
+CREATE INDEX IF NOT EXISTS idx_users_plan_expires ON public.users(plan_expires_at) 
+WHERE plan_type IN ('starter', 'growth', 'pro', 'agency', 'paid');
+
+
+-- ============================================
+-- MIGRATION: 2026-02-09 - Cleanup Plan Types
+-- ============================================
+
+-- Migrate existing 'paid' and 'growth' users to 'starter'
+UPDATE public.users 
+SET plan_type = 'starter' 
+WHERE plan_type IN ('paid', 'growth');
+
+-- Migrate 'trial' users to 'free'
+UPDATE public.users 
+SET plan_type = 'free' 
+WHERE plan_type = 'trial';
+
+-- Update the check constraint to only allow valid plans
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS valid_plan;
+ALTER TABLE public.users ADD CONSTRAINT valid_plan CHECK (plan_type IN ('free', 'starter', 'pro', 'expired'));
+
+
+-- ============================================
+-- MIGRATION: 2026-02-09 - Drop Unused Column
+-- ============================================
+
+-- Drop unused razorpay_customer_id column
+ALTER TABLE public.users DROP COLUMN IF EXISTS razorpay_customer_id;
+
+
+-- ============================================
+-- MIGRATION: 2026-02-09 - Add Webhook Logs
+-- ============================================
+
+-- Create webhook_events table
+CREATE TABLE IF NOT EXISTS public.webhook_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  payload JSONB NOT NULL,
+  status VARCHAR(50) DEFAULT 'received', -- received, processed, failed
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_webhook_events_event_id ON public.webhook_events(event_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_created_at ON public.webhook_events(created_at);
+
+
+
+
 
 

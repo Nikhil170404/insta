@@ -40,7 +40,7 @@ export default async function DashboardPage() {
 
       {/* Plan Status - Premium Slim Banner */}
       {/* Plan Status - Premium Slim Banner */}
-      {(session.plan_type === "free" || session.plan_type === "trial") && (
+      {session.plan_type === "free" && (
         <div className="relative overflow-hidden bg-slate-900 rounded-[2.5rem] p-8 group transition-all duration-700 hover:shadow-2xl hover:shadow-primary/20 border border-white/5">
           {/* Animated Background Blobs */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -mr-48 -mt-48 group-hover:scale-125 transition-transform duration-1000" />

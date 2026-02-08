@@ -18,7 +18,7 @@ export async function GET(req: Request) {
         const { data: expiredUsers, error: fetchError } = await (supabase
             .from("users") as any)
             .select("id, instagram_username, plan_type")
-            .in("plan_type", ["starter", "growth", "pro", "paid"])
+            .in("plan_type", ["starter", "pro"])
             .lt("plan_expires_at", now);
 
         if (fetchError) throw fetchError;

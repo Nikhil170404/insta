@@ -55,7 +55,7 @@ export type UpdateAutomationInput = z.infer<typeof updateAutomationSchema>;
 // User Schemas
 // ==========================================
 
-export const planTypeSchema = z.enum(["trial", "free", "starter", "pro", "growth", "paid", "expired"]);
+export const planTypeSchema = z.enum(["free", "starter", "pro", "expired"]);
 
 export const userProfileSchema = z.object({
   instagram_username: z.string().min(1).max(30),

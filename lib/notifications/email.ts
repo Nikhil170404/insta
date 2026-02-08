@@ -10,7 +10,7 @@ export async function sendReceiptEmail(email: string, planName: string, amount: 
 
     try {
         await resend.emails.send({
-            from: 'ReplyKaro <billing@replykaro.com>', // Or a verified domain
+            from: 'ReplyKaro <replykaro1704@gmail.com>',
             to: email,
             subject: `Payment Receipt for ${planName}`,
             html: `
@@ -33,7 +33,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
 
     try {
         await resend.emails.send({
-            from: 'ReplyKaro <onboarding@replykaro.com>',
+            from: 'ReplyKaro <replykaro1704@gmail.com>',
             to: email,
             subject: 'Welcome to ReplyKaro!',
             html: `
@@ -52,7 +52,7 @@ export async function sendExpiryWarningEmail(email: string, expiryDate: string) 
 
     try {
         await resend.emails.send({
-            from: 'ReplyKaro <billing@replykaro.com>',
+            from: 'ReplyKaro <replykaro1704@gmail.com>',
             to: email,
             subject: 'Your ReplyKaro Subscription is Expiring Soon',
             html: `
@@ -63,5 +63,27 @@ export async function sendExpiryWarningEmail(email: string, expiryDate: string) 
         });
     } catch (error) {
         console.error("Failed to send expiry warning email:", error);
+    }
+}
+
+export async function sendPaymentFailedEmail(email: string, planName: string, retryLink: string) {
+    if (!process.env.RESEND_API_KEY) return;
+
+    try {
+        await resend.emails.send({
+            from: 'ReplyKaro <replykaro1704@gmail.com>',
+            to: email,
+            subject: 'Action Required: Payment Failed',
+            html: `
+                <h1>Payment Failed</h1>
+                <p>We were unable to process the payment for your <strong>${planName}</strong> subscription.</p>
+                <p>To avoid service interruption, please update your payment method or retry the payment.</p>
+                <p><a href="${retryLink}">Update Payment Method</a></p>
+                <br/>
+                <p>If you have already updated your payment method, please ignore this email.</p>
+            `
+        });
+    } catch (error) {
+        console.error("Failed to send payment failed email:", error);
     }
 }

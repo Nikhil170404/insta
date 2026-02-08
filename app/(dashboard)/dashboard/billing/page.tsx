@@ -38,6 +38,8 @@ export default function BillingPage() {
 
     const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
 
     // Fetch data
     useEffect(() => {
@@ -50,27 +52,38 @@ export default function BillingPage() {
                     if (data.user.plan_type) {
                         const type = data.user.plan_type.toLowerCase();
                         if (type === "starter") setCurrentPlan("Starter Pack");
-                        else if (type === "growth") setCurrentPlan("Growth Pack");
                         else if (type === "pro") setCurrentPlan("Pro Pack");
-                        else if (type === "paid") setCurrentPlan("Starter Pack");
                         else setCurrentPlan("Free Starter");
                     }
                 }
             })
             .catch(err => console.error("Failed to fetch plan:", err));
 
-        // Fetch Payment History
-        fetch("/api/payments/razorpay/history")
+        // Fetch Payment History (Initial)
+        fetchHistory(1);
+    }, []);
+
+    const fetchHistory = (pageNum: number) => {
+        setLoadingHistory(pageNum === 1);
+        fetch(`/api/payments/razorpay/history?page=${pageNum}&limit=5`)
             .then(res => res.json())
             .then(data => {
-                if (data?.payments) setPaymentHistory(data.payments);
+                if (data?.payments) {
+                    if (pageNum === 1) setPaymentHistory(data.payments);
+                    else setPaymentHistory(prev => [...prev, ...data.payments]);
+
+                    if (data.pagination) {
+                        setHasMore(data.pagination.page < data.pagination.totalPages);
+                    }
+                    setPage(pageNum);
+                }
                 setLoadingHistory(false);
             })
             .catch(err => {
                 console.error("Failed to fetch history:", err);
                 setLoadingHistory(false);
             });
-    }, []);
+    };
 
     const handleCancelSubscription = async () => {
         if (!confirm("Are you sure you want to cancel? You will lose access at the end of the billing cycle.")) return;
@@ -95,7 +108,6 @@ export default function BillingPage() {
 
     function getStatusBadge(status: string) {
         switch (status?.toLowerCase()) {
-            case 'paid': return <Badge className="bg-emerald-100 text-emerald-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">Paid</Badge>;
             case 'refunded': return <Badge className="bg-blue-100 text-blue-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">Refunded</Badge>;
             case 'failed': return <Badge className="bg-rose-100 text-rose-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">Failed</Badge>;
             default: return <Badge className="bg-slate-100 text-slate-700 border-none px-2 py-0.5 rounded-lg text-[10px] font-black uppercase">{status}</Badge>;
@@ -211,7 +223,7 @@ export default function BillingPage() {
                     Billing & Plans
                 </h1>
 
-                {(["active", "cancelled"].includes(userData?.subscription_status || "") || ["starter", "pro", "growth", "paid"].includes(userData?.plan_type?.toLowerCase() || "")) ? (
+                {(["active", "cancelled"].includes(userData?.subscription_status || "") || ["starter", "pro"].includes(userData?.plan_type?.toLowerCase() || "")) ? (
                     <div className="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 md:p-10 max-w-3xl mx-auto mt-10 shadow-2xl shadow-slate-200/50">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                             <div className="flex items-center gap-6">
@@ -261,7 +273,7 @@ export default function BillingPage() {
                                     <ShieldCheck className="h-3 w-3 text-primary" /> Cycle Refresh
                                 </p>
                                 <span className="font-black text-slate-700 tracking-tight">
-                                    {userData.plan_expires_at ? new Date(userData.plan_expires_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : "Manual Refresh"}
+                                    {userData?.plan_expires_at ? new Date(userData.plan_expires_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : "Manual Refresh"}
                                 </span>
                             </div>
                         </div>
@@ -305,7 +317,7 @@ export default function BillingPage() {
                             </Badge>
                             {userData?.plan_expires_at && (
                                 <Badge className="bg-rose-50 text-rose-500 border-none px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest">
-                                    Reset at: {new Date(userData.plan_expires_at).toLocaleDateString()}
+                                    Reset at: {new Date(userData?.plan_expires_at).toLocaleDateString()}
                                 </Badge>
                             )}
                         </div>
@@ -481,7 +493,7 @@ export default function BillingPage() {
                     </div>
 
                     <div className="overflow-x-auto overflow-y-hidden">
-                        {loadingHistory ? (
+                        {loadingHistory && page === 1 ? (
                             <div className="p-20 flex flex-col items-center justify-center space-y-4">
                                 <Loader2 className="h-8 w-8 text-primary animate-spin" />
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Syncing History Data...</p>
@@ -495,38 +507,52 @@ export default function BillingPage() {
                                 <p className="text-xs font-bold text-slate-400 max-w-xs mt-1 uppercase tracking-wider leading-relaxed">Upgrade your plan to see your first transactions here.</p>
                             </div>
                         ) : (
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-slate-50/50">
-                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Signal Date</th>
-                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment ID</th>
-                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
-                                        <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {paymentHistory.map((payment: any) => (
-                                        <tr key={payment.id} className="hover:bg-slate-50/30 transition-colors group">
-                                            <td className="px-8 py-6 whitespace-nowrap">
-                                                <p className="font-black text-slate-900 text-sm italic tracking-tight">{new Date(payment.created_at).toLocaleDateString()}</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                            </td>
-                                            <td className="px-8 py-6 whitespace-nowrap">
-                                                <code className="text-[10px] bg-slate-100/80 text-slate-600 px-3 py-1.5 rounded-xl font-mono border border-slate-200/50">
-                                                    {payment.razorpay_payment_id}
-                                                </code>
-                                            </td>
-                                            <td className="px-8 py-6 whitespace-nowrap">
-                                                <p className="font-black text-slate-900 tracking-tight text-base">₹{payment.amount / 100}</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{payment.currency}</p>
-                                            </td>
-                                            <td className="px-8 py-6 whitespace-nowrap">
-                                                {getStatusBadge(payment.status)}
-                                            </td>
+                            <>
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-slate-50/50">
+                                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Signal Date</th>
+                                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment ID</th>
+                                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                                            <th className="px-8 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {paymentHistory.map((payment: any) => (
+                                            <tr key={payment.id} className="hover:bg-slate-50/30 transition-colors group">
+                                                <td className="px-8 py-6 whitespace-nowrap">
+                                                    <p className="font-black text-slate-900 text-sm italic tracking-tight">{new Date(payment.created_at).toLocaleDateString()}</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                </td>
+                                                <td className="px-8 py-6 whitespace-nowrap">
+                                                    <code className="text-[10px] bg-slate-100/80 text-slate-600 px-3 py-1.5 rounded-xl font-mono border border-slate-200/50">
+                                                        {payment.razorpay_payment_id}
+                                                    </code>
+                                                </td>
+                                                <td className="px-8 py-6 whitespace-nowrap">
+                                                    <p className="font-black text-slate-900 tracking-tight text-base">₹{payment.amount / 100}</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{payment.currency}</p>
+                                                </td>
+                                                <td className="px-8 py-6 whitespace-nowrap">
+                                                    {getStatusBadge(payment.status)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {hasMore && (
+                                    <div className="p-4 flex justify-center border-t border-slate-50">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => fetchHistory(page + 1)}
+                                            className="text-xs font-bold text-slate-500 hover:text-primary uppercase tracking-wider"
+                                            disabled={loadingHistory}
+                                        >
+                                            {loadingHistory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load More Activity"}
+                                        </Button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

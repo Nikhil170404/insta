@@ -65,13 +65,13 @@ export async function POST(req: Request) {
 
         let planType = "starter";
         if (planName === "Pro Pack") planType = "pro";
-        else if (planName === "Growth Pack") planType = "growth";
         else if (planName === "Starter Pack") planType = "starter";
 
         // Calculate Expiry
         const expiryDate = new Date();
         if (isYearly) {
-            expiryDate.setDate(expiryDate.getDate() + 366); // Yearly + buffer
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+            expiryDate.setDate(expiryDate.getDate() + 5); // Yearly + buffer
         } else {
             expiryDate.setDate(expiryDate.getDate() + 32); // Monthly + buffer
         }
@@ -84,21 +84,48 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString()
         }).eq("id", session.id);
 
+        // Fetch payment details to get exact amount and currency
+        let paymentAmount = 0;
+        let paymentCurrency = "INR";
+
+        try {
+            const payment = await razorpay.payments.fetch(razorpay_payment_id);
+            if (payment) {
+                paymentAmount = Number(payment.amount); // Amount in paise
+                paymentCurrency = payment.currency;
+            }
+        } catch (fetchError) {
+            console.error("Error fetching payment details:", fetchError);
+            // Fallback to 0 if fetch fails, but log it. 
+            // Ideally we should probably fail, but let's not block the user activation if signature was valid.
+        }
+
         // Also log the payment
         await (supabase.from("payments") as any).insert({
             user_id: session.id,
             razorpay_payment_id: razorpay_payment_id,
             razorpay_subscription_id: razorpay_subscription_id,
-            amount: 0, // We might not know the exact amount here easily without fetching, can leave 0 or fetch from API. 
-            // Webhook will update it accurately.
+            amount: paymentAmount,
             status: "paid",
-            currency: "INR" // Assumption
+            currency: paymentCurrency
         });
 
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
         console.error("Verification Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Verification failed" }, { status: 500 });
+    } finally {
+        // Invalidate cache so UI updates immediately
+        // We need session to be available, or pass userId if we have it
+        try {
+            const session = await getSession();
+            if (session?.id) {
+                const { invalidateSessionCache } = await import("@/lib/auth/cache");
+                await invalidateSessionCache(session.id);
+            }
+        } catch (e) {
+            console.error("Cache invalidation failed in verify:", e);
+        }
     }
 }

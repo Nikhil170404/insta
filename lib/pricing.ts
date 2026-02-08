@@ -121,10 +121,8 @@ export function getPlanByType(type: string) {
 export function hasFeature(planType: string, feature: string): boolean {
     const featureMap: Record<string, string[]> = {
         free: ["follow_gate", "basic_automation", "queue"],
-        trial: ["follow_gate", "basic_automation", "queue"],
         starter: ["follow_gate", "story_automation", "basic_analytics", "queue", "viral_handling"],
         pro: ["follow_gate", "story_automation", "detailed_analytics", "queue", "priority_queue", "viral_handling"],
-        paid: ["follow_gate", "story_automation", "detailed_analytics", "queue", "priority_queue", "viral_handling"],
     };
 
     return featureMap[planType.toLowerCase()]?.includes(feature) || false;
@@ -142,10 +140,8 @@ export function getPlanLimits(planType: string): {
 } {
     const planMap: Record<string, typeof PRICING_PLANS.FREE.limits & { planName: string }> = {
         free: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" },
-        trial: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" }, // Fallback for legacy
         starter: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" },
         pro: { ...PRICING_PLANS.PRO.limits, planName: "Pro Pack" },
-        paid: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" }, // Default paid to Starter
     };
 
     return planMap[planType?.toLowerCase()] || planMap.free;
@@ -175,17 +171,7 @@ export function getUpgradeSuggestion(planType: string): {
             nextPlanPrice: "₹99/month",
             benefits: ["10 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
         },
-        trial: {
-            nextPlan: "Starter Pack",
-            nextPlanPrice: "₹99/month",
-            benefits: ["10 Automations", "50,000 DMs/month", "Story Automation", "Handle Viral Posts"]
-        },
         starter: {
-            nextPlan: "Pro Pack",
-            nextPlanPrice: "₹299/month",
-            benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Detailed Analytics"]
-        },
-        paid: {
             nextPlan: "Pro Pack",
             nextPlanPrice: "₹299/month",
             benefits: ["Unlimited Automations", "Unlimited DMs", "Priority Support", "Detailed Analytics"]

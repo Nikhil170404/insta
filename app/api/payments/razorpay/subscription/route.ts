@@ -13,9 +13,34 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Too many requests" }, { status: 429 });
         }
 
+
         const session = await getSession();
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Check for existing active subscription to prevent duplicates
+        const supabase = getSupabaseAdmin();
+        const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("plan_type, plan_expires_at")
+            .eq("id", session.id)
+            .single() as { data: any, error: any };
+
+        if (userError) {
+            console.error("Error checking user subscription status:", userError);
+            return NextResponse.json({ error: "Failed to verify account status" }, { status: 500 });
+        }
+
+        const activePlans = ['starter', 'growth', 'pro', 'agency', 'paid'];
+        const isActive = activePlans.includes(userData.plan_type) &&
+            userData.plan_expires_at &&
+            new Date(userData.plan_expires_at) > new Date();
+
+        if (isActive) {
+            return NextResponse.json({
+                error: "You already have an active subscription. Please cancel your current plan first."
+            }, { status: 400 });
         }
 
         const body = await req.json();
@@ -55,8 +80,9 @@ export async function POST(req: Request) {
             }
         });
 
+
         // Store subscription ID in DB immediately
-        const supabase = getSupabaseAdmin();
+        // supabase instance already created above
 
         await (supabase.from("users") as any).update({
             razorpay_subscription_id: subscription.id,

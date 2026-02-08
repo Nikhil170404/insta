@@ -10,15 +10,31 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // Rate Limiting
+        try {
+            const { ratelimit } = await import("@/lib/ratelimit");
+            const { success } = await ratelimit.limit(`cancel_sub_${session.id}`);
+            if (!success) {
+                return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+            }
+        } catch (e) {
+            console.error("Rate limit error:", e);
+            // Continue if rate limit fails (fail-open or fail-closed? Fail-open is better for UX, but let's log it)
+        }
+
         const supabase = getSupabaseAdmin();
         const { data: user } = await supabase
             .from("users")
-            .select("razorpay_subscription_id")
+            .select("razorpay_subscription_id, subscription_status")
             .eq("id", session.id)
-            .single() as { data: { razorpay_subscription_id: string | null } | null, error: any };
+            .single() as { data: { razorpay_subscription_id: string | null, subscription_status: string | null } | null, error: any };
 
         if (!user || !user.razorpay_subscription_id) {
             return NextResponse.json({ error: "No active subscription found" }, { status: 400 });
+        }
+
+        if (user.subscription_status === "cancelled") {
+            return NextResponse.json({ error: "Subscription is already cancelled" }, { status: 400 });
         }
 
         const subscriptionId = user.razorpay_subscription_id;
@@ -39,13 +55,15 @@ export async function POST(req: Request) {
             subscription_status: "cancelled"
         }).eq("id", session.id);
 
+        const { invalidateSessionCache } = await import("@/lib/auth/cache");
+        await invalidateSessionCache(session.id);
+
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
         console.error("Subscription Cancellation Error:", error);
         return NextResponse.json({
-            error: "Cancellation failed",
-            details: error.message
+            error: "Cancellation failed"
         }, { status: 500 });
     }
 }

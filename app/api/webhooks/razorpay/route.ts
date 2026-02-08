@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { invalidateSessionCache } from "@/lib/auth/cache";
 
 export async function POST(req: Request) {
     try {
@@ -25,6 +26,16 @@ export async function POST(req: Request) {
         const event = JSON.parse(text);
         const { payload } = event;
         const supabase = getSupabaseAdmin();
+
+        // Log Webhook Event
+        const { error: logError } = await (supabase.from("webhook_events") as any).insert({
+            event_id: event.id,
+            event_type: event.event,
+            payload: event,
+            status: 'received'
+        });
+
+        if (logError) console.error("Failed to log webhook event:", logError);
 
         // Handle Subscription Charged
         if (event.event === "subscription.charged") {
@@ -66,7 +77,6 @@ export async function POST(req: Request) {
                 let planType = "starter";
 
                 if (planName === "Pro Pack") planType = "pro";
-                else if (planName === "Growth Pack") planType = "growth";
                 else if (planName === "Starter Pack") planType = "starter";
 
                 await (supabase.from("users") as any).update({
@@ -100,6 +110,8 @@ export async function POST(req: Request) {
                 } catch (emailError) {
                     console.error("Failed to send receipt email:", emailError);
                 }
+
+                await invalidateSessionCache(userId);
             }
         }
 
@@ -111,6 +123,20 @@ export async function POST(req: Request) {
                 await (supabase.from("users") as any).update({
                     subscription_status: "halted"
                 }).eq("id", userId);
+                await invalidateSessionCache(userId);
+
+                // Send Dunning Email
+                try {
+                    const { sendPaymentFailedEmail } = await import("@/lib/notifications/email");
+                    const { data: user } = await supabase.from("users").select("email, plan_type").eq("id", userId).single() as any;
+                    if (user?.email) {
+                        // Retry link could be the billing page
+                        const retryLink = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`;
+                        await sendPaymentFailedEmail(user.email, user.plan_type || "Subscription", retryLink);
+                    }
+                } catch (e) {
+                    console.error("Failed to send dunning email:", e);
+                }
             }
         }
 
@@ -122,6 +148,7 @@ export async function POST(req: Request) {
                 await (supabase.from("users") as any).update({
                     subscription_status: "completed"
                 }).eq("id", userId);
+                await invalidateSessionCache(userId);
             }
         }
 
@@ -135,6 +162,7 @@ export async function POST(req: Request) {
                     subscription_status: "cancelled"
                 }).eq("id", userId);
                 // We do NOT expire the plan immediately. They keep access until plan_expires_at.
+                await invalidateSessionCache(userId);
             }
         }
 
@@ -166,6 +194,22 @@ export async function POST(req: Request) {
                         status: "failed",
                         currency: payment.currency || "INR"
                     });
+
+                    // Send Failed Payment Email
+                    try {
+                        const { sendPaymentFailedEmail } = await import("@/lib/notifications/email");
+                        if (user.email) { // existing user object might not have email depending on query above, verify schema
+                            // fetch email if needed
+                            const { data: fullUser } = await supabase.from("users").select("email, plan_type").eq("id", user.id).single() as any;
+
+                            if (fullUser?.email) {
+                                const retryLink = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`;
+                                await sendPaymentFailedEmail(fullUser.email, fullUser.plan_type || "Subscription", retryLink);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to send payment failed email:", e);
+                    }
                 }
 
                 console.log(`Payment failed for subscription/order ${subscriptionId}: ${payment.error_description}`);
