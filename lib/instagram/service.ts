@@ -80,12 +80,31 @@ export async function sendInstagramDM(
         // Small delay to simulate thinking
         await new Promise(resolve => setTimeout(resolve, 1500));
 
+        // 3. TAG AS HUMAN AGENT (Required for Meta App Review / Automated DMs)
+        // Send as SEPARATE request so if it fails (permission issue), the main message still sends!
+        try {
+            await fetch(baseUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    recipient: recipient,
+                    tag: "HUMAN_AGENT"
+                }),
+            });
+        } catch (e) {
+            console.error("⚠️ Failed to tag as HUMAN_AGENT (non-fatal):", e);
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let body: any;
 
+        // Validated URL
+        const validatedLinkUrl = ensureUrlProtocol(linkUrl);
+
         // Use Generic Templates (Structured Cards) for a premium feel
-        if (linkUrl && (buttonText || thumbnailUrl)) {
+        if (validatedLinkUrl && (buttonText || thumbnailUrl)) {
             console.log("💎 Sending Structured Template (Card with Link)");
+            console.log(`🔗 URL: ${validatedLinkUrl}`);
 
             // Build element - only include image_url if thumbnail exists
             const element: any = {
@@ -94,7 +113,7 @@ export async function sendInstagramDM(
                 buttons: [
                     {
                         type: "web_url",
-                        url: linkUrl,
+                        url: validatedLinkUrl,
                         title: (buttonText || "Open Link").substring(0, 20)
                     }
                 ]
@@ -113,8 +132,7 @@ export async function sendInstagramDM(
                             elements: [element]
                         }
                     }
-                },
-                tag: "HUMAN_AGENT"
+                }
             };
         } else if (buttonText && automationId && !linkUrl) {
             // Greeting card with postback button (no direct link)
@@ -147,16 +165,14 @@ export async function sendInstagramDM(
                             elements: [element]
                         }
                     }
-                },
-                tag: "HUMAN_AGENT"
+                }
             };
         } else {
             // Fallback to plain text if no button needed
             console.log("📝 Sending Plain Text Message");
             body = {
                 recipient: recipient,
-                message: { text: message },
-                tag: "HUMAN_AGENT"
+                message: { text: message }
             };
         }
 
@@ -327,6 +343,30 @@ export function getUniqueMessage(message: string): string {
     const variations = ["📬", "✨", "✅", "💬", "🚀", "📥", "💌", "🌟", "🔥", "💎"];
     const randomVariation = variations[Math.floor(Math.random() * variations.length)];
     return `${message} ${randomVariation}`;
+}
+
+/**
+ * Ensure URL has a protocol (https://) AND extract from text if needed
+ * Fixes issue where users copy "Title https://link" into the URL field
+ */
+function ensureUrlProtocol(url: string | undefined): string | undefined {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (trimmed.length === 0) return undefined;
+
+    // 1. Scan for a valid http/https URL inside the string
+    // This handles: "Site Title https://example.com" -> extracts "https://example.com"
+    const urlMatch = trimmed.match(/(https?:\/\/[^\s]+)/);
+    if (urlMatch) {
+        return urlMatch[0];
+    }
+
+    // 2. If no protocol found, assume it is a domain (e.g. "google.com")
+    if (!/^https?:\/\//i.test(trimmed)) {
+        return `https://${trimmed}`;
+    }
+
+    return trimmed;
 }
 
 /**
