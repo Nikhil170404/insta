@@ -197,7 +197,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <Link href="/signin" className="w-full sm:w-auto">
                 <Button className="w-full h-16 px-12 rounded-[2rem] bg-white text-slate-900 hover:bg-slate-100 font-black text-[15px] uppercase tracking-widest shadow-2xl flex items-center justify-center gap-4 group transition-all active:scale-95">
-                  Start 7-Day test drive
+                  Start for Free
                   <ChevronRight className="h-5 w-5 group-hover:translate-x-1" />
                 </Button>
               </Link>

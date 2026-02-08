@@ -352,25 +352,27 @@ export default function BillingPage() {
                             </div>
 
                             <div className="mt-6">
-                                <Button
-                                    onClick={() => handlePayment(plan)}
-                                    disabled={loadingPlan === plan.name || isCurrentPlan}
-                                    className={cn(
-                                        "w-full h-12 rounded-2xl font-black text-xs tracking-tight transition-all duration-300 gap-2 group/btn shadow-lg",
-                                        isCurrentPlan
-                                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-none cursor-default opacity-100"
-                                            : plan.popular
-                                                ? "bg-primary text-white hover:bg-primary/90 shadow-primary/20"
-                                                : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
-                                    )}
-                                >
-                                    {isCurrentPlan
-                                        ? "Current Plan"
-                                        : loadingPlan === plan.name
-                                            ? "Processing..."
-                                            : plan.cta}
-                                    {!isCurrentPlan && <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />}
-                                </Button>
+                                {plan.name !== "Free Starter" && (
+                                    <Button
+                                        onClick={() => handlePayment(plan)}
+                                        disabled={loadingPlan === plan.name || isCurrentPlan}
+                                        className={cn(
+                                            "w-full h-12 rounded-2xl font-black text-xs tracking-tight transition-all duration-300 gap-2 group/btn shadow-lg",
+                                            isCurrentPlan
+                                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-none cursor-default opacity-100"
+                                                : plan.popular
+                                                    ? "bg-primary text-white hover:bg-primary/90 shadow-primary/20"
+                                                    : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200"
+                                        )}
+                                    >
+                                        {isCurrentPlan
+                                            ? "Current Plan"
+                                            : loadingPlan === plan.name
+                                                ? "Processing..."
+                                                : plan.cta}
+                                        {!isCurrentPlan && <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />}
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     );
