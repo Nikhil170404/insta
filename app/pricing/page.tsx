@@ -291,11 +291,7 @@ export default function PricingPage() {
                             </div>
 
                             <div className="mt-8">
-                                {plan.name === "Free Starter" ? (
-                                    <div className="w-full h-14 rounded-[1.5rem] font-black text-xs tracking-[0.05em] uppercase flex items-center justify-center gap-3 bg-slate-100 text-slate-400 cursor-not-allowed select-none">
-                                        Free Forever
-                                    </div>
-                                ) : (
+                                {plan.name !== "Free Starter" && (
                                     <Button
                                         onClick={() => handlePayment(plan)}
                                         disabled={loadingPlan === plan.name}
