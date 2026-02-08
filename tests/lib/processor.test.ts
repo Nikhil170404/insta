@@ -82,6 +82,7 @@ describe('processor.ts', () => {
             id: 'user_uuid_123',
             instagram_access_token: 'mock_token',
             instagram_user_id: 'owner_123',
+            instagram_username: 'testowner',
             plan_type: 'starter'
         };
 
