@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         const supabase = getSupabaseAdmin();
         const { data: userData, error: userError } = await supabase
             .from("users")
-            .select("plan_type, plan_expires_at")
+            .select("plan_type, plan_expires_at, subscription_status, razorpay_subscription_id")
             .eq("id", session.id)
             .single() as { data: any, error: any };
 
@@ -48,6 +48,23 @@ export async function POST(req: Request) {
 
         if (!planId) {
             return NextResponse.json({ error: "Plan ID is required" }, { status: 400 });
+        }
+
+        // Check for existing PENDING subscription to reuse
+        if (userData.subscription_status === 'created' && userData.razorpay_subscription_id) {
+            try {
+                const existingSub = await razorpay.subscriptions.fetch(userData.razorpay_subscription_id);
+                // If it's the same plan and still in created state, return it
+                if (existingSub.status === 'created' && existingSub.plan_id === planId) {
+                    console.log(`Reusing existing pending subscription: ${existingSub.id}`);
+                    return NextResponse.json({
+                        subscriptionId: existingSub.id,
+                        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+                    });
+                }
+            } catch (e) {
+                console.warn("Failed to fetch existing pending subscription, creating new one.", e);
+            }
         }
 
         // Fetch Plan details to determine total_count

@@ -4,10 +4,12 @@ import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { invalidateSessionCache } from "@/lib/auth/cache";
 
 export async function POST(req: Request) {
+    let eventLogId: string | null = null;
+
     try {
         const text = await req.text();
         const signature = req.headers.get("x-razorpay-signature");
-        const secret = process.env.RAZORPAY_KEY_SECRET; // Or dedicated webhook secret if configured
+        const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
 
         if (!secret || !signature) {
             return NextResponse.json({ error: "Missing config" }, { status: 500 });
@@ -28,12 +30,14 @@ export async function POST(req: Request) {
         const supabase = getSupabaseAdmin();
 
         // Log Webhook Event
-        const { error: logError } = await (supabase.from("webhook_events") as any).insert({
+        const { data: insertedEvent, error: logError } = await (supabase.from("webhook_events") as any).insert({
             event_id: event.id,
             event_type: event.event,
             payload: event,
             status: 'received'
-        });
+        }).select("id").single();
+
+        if (insertedEvent) eventLogId = insertedEvent.id;
 
         if (logError) console.error("Failed to log webhook event:", logError);
 
@@ -68,7 +72,7 @@ export async function POST(req: Request) {
                     // Add buffer of 5 days
                     expiryDate.setDate(expiryDate.getDate() + 5);
                 } else {
-                    expiryDate.setDate(expiryDate.getDate() + 32);
+                    expiryDate.setDate(expiryDate.getDate() + 35); // Monthly + 5 days buffer
                 }
 
                 // Determine Plan Type from Notes
@@ -112,6 +116,66 @@ export async function POST(req: Request) {
                 }
 
                 await invalidateSessionCache(userId);
+
+                // --- NEW: Populate Subscriptions & Invoices Table ---
+                try {
+                    // Upsert Subscription
+                    const currentStart = subscription.current_start ? new Date(subscription.current_start * 1000).toISOString() : new Date().toISOString();
+                    const currentEnd = subscription.current_end ? new Date(subscription.current_end * 1000).toISOString() : expiryDate.toISOString();
+
+                    const { data: existingSub } = await (supabase.from("subscriptions") as any).select("id").eq("razorpay_subscription_id", subscription.id).single();
+
+                    if (existingSub) {
+                        await (supabase.from("subscriptions") as any).update({
+                            status: "active",
+                            current_period_start: currentStart,
+                            current_period_end: currentEnd,
+                            updated_at: new Date().toISOString()
+                        }).eq("id", existingSub.id);
+                    } else {
+                        await (supabase.from("subscriptions") as any).insert({
+                            user_id: userId,
+                            razorpay_subscription_id: subscription.id,
+                            plan_id: subscription.plan_id,
+                            status: "active",
+                            current_period_start: currentStart,
+                            current_period_end: currentEnd,
+                            updated_at: new Date().toISOString()
+                        });
+                    }
+
+                    // Insert Invoice
+                    // Generate Invoice Number: INV-YYYYMM-RANDOM
+                    const dateStr = new Date().toISOString().slice(0, 7).replace(/-/g, ""); // YYYYMM
+                    const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+                    const invoiceNumber = `INV-${dateStr}-${randomSuffix}`;
+
+                    // Need to link to the payment record we just created.
+                    // We can query it by razorpay_payment_id
+                    const { data: paymentRecord } = await (supabase.from("payments") as any)
+                        .select("id")
+                        .eq("razorpay_payment_id", payment.id)
+                        .single();
+
+                    await (supabase.from("invoices") as any).insert({
+                        user_id: userId,
+                        payment_id: paymentRecord?.id, // Link if found
+                        invoice_number: invoiceNumber,
+                        amount: payment.amount,
+                        currency: payment.currency,
+                        tax_amount: payment.tax || 0,
+                        billing_details: {
+                            name: notes?.name, // If captured
+                            email: notes?.email, // If captured
+                            address: notes?.address // If captured
+                        },
+                        created_at: new Date().toISOString()
+                    });
+
+                } catch (infraError) {
+                    console.error("Failed to populate sub/invoice tables:", infraError);
+                    // Don't fail the webhook response for this secondary data
+                }
             }
         }
 
@@ -124,6 +188,17 @@ export async function POST(req: Request) {
                     subscription_status: "halted"
                 }).eq("id", userId);
                 await invalidateSessionCache(userId);
+
+                // Update Subscription Status in Table
+                try {
+                    await (supabase.from("subscriptions") as any).update({
+                        status: "halted",
+                        updated_at: new Date().toISOString()
+                    }).eq("razorpay_subscription_id", subscription.id);
+                } catch (e) {
+                    console.error("Failed to update subscription status (halted):", e);
+                }
+
 
                 // Send Dunning Email
                 try {
@@ -149,6 +224,16 @@ export async function POST(req: Request) {
                     subscription_status: "completed"
                 }).eq("id", userId);
                 await invalidateSessionCache(userId);
+
+                // Update Subscription Status in Table
+                try {
+                    await (supabase.from("subscriptions") as any).update({
+                        status: "completed",
+                        updated_at: new Date().toISOString()
+                    }).eq("razorpay_subscription_id", subscription.id);
+                } catch (e) {
+                    console.error("Failed to update subscription status (completed):", e);
+                }
             }
         }
 
@@ -163,6 +248,16 @@ export async function POST(req: Request) {
                 }).eq("id", userId);
                 // We do NOT expire the plan immediately. They keep access until plan_expires_at.
                 await invalidateSessionCache(userId);
+
+                // Update Subscription Status in Table
+                try {
+                    await (supabase.from("subscriptions") as any).update({
+                        status: "cancelled",
+                        updated_at: new Date().toISOString()
+                    }).eq("razorpay_subscription_id", subscription.id);
+                } catch (e) {
+                    console.error("Failed to update subscription status (cancelled):", e);
+                }
             }
         }
 
@@ -228,10 +323,23 @@ export async function POST(req: Request) {
             }).eq("razorpay_payment_id", paymentId);
         }
 
+        if (eventLogId) {
+            await (supabase.from("webhook_events") as any).update({ status: 'processed' }).eq('id', eventLogId);
+        }
+
         return NextResponse.json({ received: true });
 
     } catch (error: any) {
         console.error("Webhook Error:", error);
+
+        if (eventLogId) {
+            const supabase = getSupabaseAdmin();
+            await (supabase.from("webhook_events") as any).update({
+                status: 'failed',
+                // we might add an error_message column if it exists, otherwise just fail status is good enough
+            }).eq('id', eventLogId);
+        }
+
         // P1 Fix: Don't leak error messages
         return NextResponse.json({ error: "Webhook failed" }, { status: 500 });
     }

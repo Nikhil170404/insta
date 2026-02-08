@@ -73,16 +73,8 @@ export async function POST(req: Request) {
             expiryDate.setFullYear(expiryDate.getFullYear() + 1);
             expiryDate.setDate(expiryDate.getDate() + 5); // Yearly + buffer
         } else {
-            expiryDate.setDate(expiryDate.getDate() + 32); // Monthly + buffer
+            expiryDate.setDate(expiryDate.getDate() + 35); // Monthly + 5 days buffer
         }
-
-        await (supabase.from("users") as any).update({
-            razorpay_subscription_id: razorpay_subscription_id,
-            subscription_status: "active",
-            plan_type: planType,
-            plan_expires_at: expiryDate.toISOString(),
-            updated_at: new Date().toISOString()
-        }).eq("id", session.id);
 
         // Fetch payment details to get exact amount and currency
         let paymentAmount = 0;
@@ -96,19 +88,33 @@ export async function POST(req: Request) {
             }
         } catch (fetchError) {
             console.error("Error fetching payment details:", fetchError);
-            // Fallback to 0 if fetch fails, but log it. 
+            // Fallback to 0 if fetch fails, but log it.
             // Ideally we should probably fail, but let's not block the user activation if signature was valid.
         }
 
-        // Also log the payment
-        await (supabase.from("payments") as any).insert({
-            user_id: session.id,
-            razorpay_payment_id: razorpay_payment_id,
-            razorpay_subscription_id: razorpay_subscription_id,
-            amount: paymentAmount,
-            status: "paid",
-            currency: paymentCurrency
+        // --- ATOMIC DB UPDATE (RPC) ---
+        const currentStart = subscription.current_start ? new Date(subscription.current_start * 1000).toISOString() : new Date().toISOString();
+        const currentEnd = subscription.current_end ? new Date(subscription.current_end * 1000).toISOString() : expiryDate.toISOString();
+
+        const { error: rpcError } = await (supabase.rpc as any)("verify_subscription_payment", {
+            p_user_id: session.id,
+            p_razorpay_payment_id: razorpay_payment_id,
+            p_razorpay_subscription_id: razorpay_subscription_id,
+            p_plan_type: planType,
+            p_plan_expires_at: expiryDate.toISOString(),
+            p_payment_amount: paymentAmount,
+            p_payment_currency: paymentCurrency,
+            p_payment_status: "paid",
+            p_subscription_status: "active",
+            p_current_period_start: currentStart,
+            p_current_period_end: currentEnd,
+            p_plan_id: planId
         });
+
+        if (rpcError) {
+            console.error("RPC Error in verify:", rpcError);
+            return NextResponse.json({ error: "Database update failed" }, { status: 500 });
+        }
 
         return NextResponse.json({ success: true });
 

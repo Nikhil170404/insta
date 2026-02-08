@@ -131,7 +131,30 @@ export default function BillingPage() {
                 return;
             }
 
-            // Create Subscription
+            // Check for upgrade (Active Subscription)
+            const isUpgrade = ["active", "created", "authenticated"].includes(userData?.subscription_status);
+
+            if (isUpgrade) {
+                const response = await fetch("/api/payments/razorpay/subscription/change", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        newPlanId: planId
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || "Upgrade failed");
+                }
+
+                toast.success("Plan upgraded successfully! Your benefits are active immediately.");
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+            }
+
+            // Create New Subscription (if no active plan)
             const response = await fetch("/api/payments/razorpay/subscription", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

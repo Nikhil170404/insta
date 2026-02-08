@@ -21,6 +21,7 @@ export interface SessionUser {
   created_at: string;
   plan_expires_at?: string;
   subscription_status?: string;
+  email?: string | null;
 }
 
 export async function createSession(user: User): Promise<string> {
@@ -32,6 +33,7 @@ export async function createSession(user: User): Promise<string> {
     profile_picture_url: user.profile_picture_url,
     created_at: user.created_at,
     plan_expires_at: user.plan_expires_at,
+    email: user.email,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -81,7 +83,7 @@ export async function getSession(): Promise<SessionUser | null> {
 
       const { data: user } = await supabase
         .from("users")
-        .select("plan_type, plan_expires_at, subscription_status")
+        .select("plan_type, plan_expires_at, subscription_status, email")
         .eq("id", sessionUser.id)
         .single() as any;
 
@@ -90,6 +92,7 @@ export async function getSession(): Promise<SessionUser | null> {
         updatedSessionUser.plan_type = user.plan_type as any;
         updatedSessionUser.plan_expires_at = user.plan_expires_at;
         updatedSessionUser.subscription_status = user.subscription_status;
+        updatedSessionUser.email = user.email;
 
         // Cache for 5 minutes
         await redis.set(cacheKey, updatedSessionUser, { ex: 300 });
