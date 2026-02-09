@@ -104,11 +104,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
         }
     }
 
-    async function loadMore() {
-        if (!nextCursor || loadingMore) return;
-        setLoadingMore(true);
-        await fetchData(nextCursor);
-    }
+
 
     function getAutomationForMedia(mediaId: string) {
         return automations.find((a) => a.media_id === mediaId);
@@ -429,21 +425,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                         {nextCursor && (
                             <div className="pt-10 flex flex-col items-center gap-4">
                                 <div className="flex items-center gap-4">
-                                    <Button
-                                        onClick={loadMore}
-                                        disabled={loadingMore}
-                                        variant="outline"
-                                        className="h-14 px-8 rounded-3xl bg-white border-slate-100 text-slate-900 font-bold hover:bg-slate-50 shadow-sm gap-3 group"
-                                    >
-                                        {loadingMore ? (
-                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                        ) : (
-                                            <>
-                                                Explore More
-                                                <ChevronDown className="h-5 w-5 text-slate-400 group-hover:translate-y-0.5 transition-transform" />
-                                            </>
-                                        )}
-                                    </Button>
+
 
                                     <Button
                                         onClick={fetchAll}
