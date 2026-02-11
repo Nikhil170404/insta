@@ -59,7 +59,7 @@ export default function PricingPage() {
 
             const planId = billingInterval === "yearly" ? plan.yearlyPlanId : plan.monthlyPlanId;
             if (!planId) {
-                toast.error("Plan configuration missing for this interval");
+                toast.error("Plan details unavailable for this interval");
                 return;
             }
 
@@ -109,7 +109,7 @@ export default function PricingPage() {
 
         } catch (error: any) {
             console.error("Payment error:", error);
-            toast.error(error.message || "Payment initialize nahi ho paaya");
+            toast.error(error.message || "Payment failed to start. Please try again.");
         } finally {
             setLoadingPlan(null);
         }

@@ -127,7 +127,7 @@ export default function BillingPage() {
 
             const planId = billingInterval === "yearly" ? plan.yearlyPlanId : plan.monthlyPlanId;
             if (!planId) {
-                toast.error("Plan configuration missing for this interval");
+                toast.error("Plan details unavailable for this interval");
                 return;
             }
 

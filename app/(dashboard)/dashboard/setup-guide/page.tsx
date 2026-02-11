@@ -51,7 +51,7 @@ export default function SetupGuidePage() {
                         <div className="p-5 bg-rose-50/50 rounded-2xl border border-rose-100 flex gap-4">
                             <AlertCircle className="h-5 w-5 text-rose-500 flex-shrink-0 mt-0.5" />
                             <p className="text-xs font-medium text-slate-600 leading-relaxed">
-                                Instagram Graph API requires a linked Facebook Page to track comment webhooks. If this bridge is missing, <span className="font-bold text-rose-600">automations will not fire.</span>
+                                Instagram Graph API requires a linked Facebook Page to receive real-time updates. If this bridge is missing, <span className="font-bold text-rose-600">automations will not fire.</span>
                             </p>
                         </div>
 
@@ -59,7 +59,7 @@ export default function SetupGuidePage() {
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Synchronization Sequence</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <a href="https://facebook.com/pages/create" target="_blank" className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary hover:bg-white transition-all group/card">
-                                    <p className="font-bold text-sm text-slate-900">1. Initialize Page</p>
+                                    <p className="font-bold text-sm text-slate-900">1. Connect Page</p>
                                     <p className="text-[10px] text-slate-400 font-medium mt-1">Create a Facebook Business asset if you don't have one.</p>
                                 </a>
                                 <a href="https://business.facebook.com" target="_blank" className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary hover:bg-white transition-all">

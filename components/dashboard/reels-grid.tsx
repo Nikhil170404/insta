@@ -372,13 +372,13 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                         <div className="space-y-3 md:space-y-4">
                                                             <div className="flex items-center justify-between border-b border-white/10 pb-2.5 md:pb-3 text-left">
                                                                 <div className="flex flex-col">
-                                                                    <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-widest mb-0.5">Frequency Trigger</p>
+                                                                    <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-widest mb-0.5">Keyword</p>
                                                                     <p className="text-[10px] md:text-[11px] font-black text-white leading-tight truncate max-w-[80px] md:max-w-[110px]">
-                                                                        {automation.trigger_type === "any" ? "ANY_SIGNAL" : `"${automation.trigger_keyword}"`}
+                                                                        {automation.trigger_type === "any" ? "Any Post" : `"${automation.trigger_keyword}"`}
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-widest mb-0.5">Relayed</p>
+                                                                    <p className="text-[7px] md:text-[8px] font-black text-white/50 uppercase tracking-widest mb-0.5">Sent</p>
                                                                     <p className="text-sm md:text-base font-black text-primary leading-tight">{automation.dm_sent_count}</p>
                                                                 </div>
                                                             </div>
@@ -387,7 +387,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                                 <button
                                                                     onClick={() => { setEditingAutomation(automation); setSelectedMedia(item); setShowWizard(true); }}
                                                                     className="h-8 md:h-10 rounded-lg md:rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center transition-all group/edit"
-                                                                    title="Edit Logic"
+                                                                    title="Edit Reply"
                                                                 >
                                                                     <Edit3 className="h-3.5 w-3.5 md:h-4 md:w-4 transition-transform group-hover/edit:scale-110" />
                                                                 </button>
@@ -402,16 +402,16 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                                     )}
                                                                 >
                                                                     {automation.is_active ? (
-                                                                        <><X className="h-3 w-3 md:h-3.5 md:w-3.5" /> Stop</>
+                                                                        <><X className="h-3 w-3 md:h-3.5 md:w-3.5" /> Deactivate</>
                                                                     ) : (
-                                                                        <><Zap className="h-3 w-3 md:h-3.5 md:w-3.5 fill-current" /> Ignite</>
+                                                                        <><Zap className="h-3 w-3 md:h-3.5 md:w-3.5 fill-current" /> Activate</>
                                                                     )}
                                                                 </button>
 
                                                                 <button
                                                                     onClick={() => deleteAutomation(automation.id)}
                                                                     className="h-8 md:h-10 rounded-lg md:rounded-xl bg-rose-500/20 hover:bg-rose-500 border border-rose-500/20 text-rose-400 hover:text-white flex items-center justify-center transition-all group/del"
-                                                                    title="Erase Node"
+                                                                    title="Delete Reply"
                                                                 >
                                                                     <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4 transition-transform group-hover/del:rotate-12" />
                                                                 </button>
@@ -423,7 +423,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
 
                                             <div className="absolute bottom-4 left-4 right-4 z-10 transition-transform duration-500 group-hover:-translate-y-1">
                                                 <p className="text-[11px] text-white/90 font-bold leading-relaxed line-clamp-1 italic">
-                                                    {item.caption || "Untitled Content Node"}
+                                                    {item.caption || "Untitled Post"}
                                                 </p>
                                             </div>
                                         </div>
