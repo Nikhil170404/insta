@@ -208,7 +208,7 @@ export default function AutomationsPage() {
         return (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-slate-400 font-bold text-sm tracking-widest uppercase tracking-widest">Loading flows...</p>
+                <p className="text-slate-400 font-bold text-sm tracking-widest uppercase tracking-widest">Loading replies...</p>
             </div>
         );
     }
@@ -222,13 +222,13 @@ export default function AutomationsPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Active Flows</h1>
-                    <p className="text-slate-400 font-medium">Manage and optimize your conversion tunnels.</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Active Replies</h1>
+                    <p className="text-slate-400 font-medium">Manage your auto-replies and comments.</p>
                 </div>
                 <Link href="/dashboard" className="w-full md:w-auto">
                     <Button className="w-full md:w-auto h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold shadow-xl shadow-primary/20 gap-3 group">
                         <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
-                        Create New Automation
+                        New Reply
                     </Button>
                 </Link>
             </div>
@@ -239,14 +239,14 @@ export default function AutomationsPage() {
                     <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
                     <Zap className="h-6 w-6 text-slate-300 mb-4" />
                     <p className="text-3xl font-black text-slate-900 tracking-tight">{automations.length}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Flows</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Replies</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -mr-8 -mt-8 blur-2xl group-hover:scale-110 transition-transform" />
                     <CheckCircle2 className="h-6 w-6 text-green-300 mb-4" />
                     <p className="text-3xl font-black text-slate-900 tracking-tight">{activeCount}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Currently Active</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Active</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden group col-span-2">
@@ -254,7 +254,7 @@ export default function AutomationsPage() {
                     <TrendingUp className="h-6 w-6 text-primary/40 mb-4" />
                     <div className="flex items-baseline gap-2">
                         <p className="text-4xl font-black text-slate-900 tracking-tighter">{totalDMs}</p>
-                        <span className="text-xs font-black text-primary bg-primary/10 rounded-lg px-2 py-1 uppercase tracking-widest">Global Reach</span>
+                        <span className="text-xs font-black text-primary bg-primary/10 rounded-lg px-2 py-1 uppercase tracking-widest">Total Sent</span>
                     </div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total Responses Sent</p>
                 </div>
@@ -309,12 +309,12 @@ export default function AutomationsPage() {
                 <div className="flex items-center justify-between px-1">
                     <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
                         <LayoutGrid className="h-5 w-5 text-primary" />
-                        Flow Portfolio
+                        Your Replies
                     </h2>
                     <div className="flex items-center gap-2">
                         <div className="relative group hidden md:block">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <input type="text" placeholder="Search flows..." className="h-10 pl-11 pr-4 bg-slate-100/50 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary w-48" />
+                            <input type="text" placeholder="Search..." className="h-10 pl-11 pr-4 bg-slate-100/50 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary w-48" />
                         </div>
                     </div>
                 </div>
@@ -322,10 +322,10 @@ export default function AutomationsPage() {
                 {automations.length === 0 ? (
                     <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] py-32 text-center group">
                         <Zap className="h-20 w-20 text-slate-100 mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
-                        <p className="text-slate-400 text-lg font-bold">Your tunnel is empty</p>
-                        <p className="text-slate-300 text-sm mt-1 max-w-sm mx-auto">Create an automation to start turning your comments into revenue automatically.</p>
+                        <p className="text-slate-400 text-lg font-bold">No replies yet</p>
+                        <p className="text-slate-300 text-sm mt-1 max-w-sm mx-auto">Create a reply to start engaging with your audience.</p>
                         <Link href="/dashboard" className="mt-8 inline-block">
-                            <Button className="h-12 px-8 rounded-2xl bg-slate-900 text-white font-bold text-sm">Automate a Post</Button>
+                            <Button className="h-12 px-8 rounded-2xl bg-slate-900 text-white font-bold text-sm">Create Reply</Button>
                         </Link>
                     </div>
                 ) : (
@@ -364,7 +364,7 @@ export default function AutomationsPage() {
 
                                     <div className="space-y-1">
                                         <h3 className="text-sm font-bold text-slate-900 truncate pr-10">
-                                            {automation.media_caption || "Untitled Automation Flow"}
+                                            {automation.media_caption || "Untitled Reply"}
                                         </h3>
                                         <p className="text-xs font-medium text-slate-400 line-clamp-1 italic">
                                             "{automation.reply_message}"
@@ -388,7 +388,7 @@ export default function AutomationsPage() {
                                     <button
                                         onClick={() => openEditModal(automation)}
                                         className="h-12 w-12 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-primary rounded-2xl flex items-center justify-center transition-all active:scale-95"
-                                        title="Configure Flow"
+                                        title="Edit Reply"
                                     >
                                         <Edit2 className="h-5 w-5" />
                                     </button>
@@ -405,7 +405,7 @@ export default function AutomationsPage() {
                                     <button
                                         onClick={() => deleteAutomation(automation.id)}
                                         className="h-12 w-12 bg-rose-50 hover:bg-rose-100 text-rose-400 hover:text-rose-500 rounded-2xl flex items-center justify-center transition-all active:scale-95"
-                                        title="Remove Flow"
+                                        title="Remove Reply"
                                     >
                                         <Trash2 className="h-5 w-5" />
                                     </button>
@@ -423,7 +423,7 @@ export default function AutomationsPage() {
                     <div className="relative w-full h-[100dvh] md:h-auto md:max-h-[90vh] md:max-w-xl bg-white md:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-50">
                             <div>
-                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Configure Flow</h2>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Edit Reply</h2>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 flex items-center gap-1.5 italic">
                                     Update your automation settings
                                 </p>
@@ -448,7 +448,7 @@ export default function AutomationsPage() {
                             {/* Inputs */}
                             <div className="space-y-6">
                                 <div>
-                                    <label className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-3 block px-1">Flow Trigger</label>
+                                    <label className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-3 block px-1">Trigger</label>
                                     <div className="grid grid-cols-3 gap-3">
                                         <button
                                             onClick={() => setEditTriggerType("any")}
@@ -487,7 +487,7 @@ export default function AutomationsPage() {
                                 )}
 
                                 <div>
-                                    <label className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-3 block px-1">Greeting Message</label>
+                                    <label className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-3 block px-1">Reply Message</label>
                                     <textarea
                                         value={editReplyMessage}
                                         onChange={(e) => setEditReplyMessage(e.target.value)}
@@ -500,7 +500,7 @@ export default function AutomationsPage() {
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -mr-12 -mt-12" />
                                     <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-[0.25em]">
                                         <Zap className="h-3 w-3 fill-current" />
-                                        Interactive Action
+                                        Action
                                     </div>
                                     <div className="space-y-4">
                                         <div className="space-y-1.5 px-1">

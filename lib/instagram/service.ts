@@ -106,18 +106,19 @@ export async function sendInstagramDM(
             console.log("💎 Sending Structured Template (Card with Link)");
             console.log(`🔗 URL: ${validatedLinkUrl}`);
 
-            // Build element - only include image_url if thumbnail exists
+            // Build element - EXPLICITLY creating a SINGLE button array
+            const singleButton = {
+                type: "web_url",
+                url: validatedLinkUrl,
+                title: (buttonText || "Open Link").substring(0, 20)
+            };
+
             const element: any = {
                 title: buttonText || "Click to View",
                 subtitle: message.substring(0, 80),
-                buttons: [
-                    {
-                        type: "web_url",
-                        url: validatedLinkUrl,
-                        title: (buttonText || "Open Link").substring(0, 20)
-                    }
-                ]
+                buttons: [singleButton] // STRICT single button
             };
+
             if (thumbnailUrl) {
                 element.image_url = thumbnailUrl;
             }
@@ -139,18 +140,19 @@ export async function sendInstagramDM(
             // User clicks button → triggers CLICK_LINK_ handler → sends actual link
             console.log("💬 Sending Greeting Card with Postback Button");
 
-            // Build element - only include image_url if thumbnail exists
+            // Build element - EXPLICITLY creating a SINGLE postback button
+            const postbackButton = {
+                type: "postback",
+                title: buttonText.substring(0, 20),
+                payload: `CLICK_LINK_${automationId}`
+            };
+
             const element: any = {
                 title: message.substring(0, 80) || "You have a message!",
                 subtitle: "Tap below to continue ✨",
-                buttons: [
-                    {
-                        type: "postback",
-                        title: buttonText.substring(0, 20),
-                        payload: `CLICK_LINK_${automationId}`
-                    }
-                ]
+                buttons: [postbackButton] // STRICT single button
             };
+
             if (thumbnailUrl) {
                 element.image_url = thumbnailUrl;
             }

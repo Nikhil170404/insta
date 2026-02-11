@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
                 trigger_type: trigger_type || "keyword",
                 reply_message,
                 comment_reply: body.comment_reply || null,
+                comment_reply_templates: body.comment_reply_templates || null,
                 button_text: body.button_text || null,
                 link_url: body.link_url || null,
                 require_follow: require_follow || false,

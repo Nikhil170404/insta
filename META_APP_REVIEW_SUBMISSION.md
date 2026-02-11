@@ -38,11 +38,12 @@ When a user comments "LINK" on a creator's reel, they automatically receive a DM
 2. Navigate to Dashboard → **Comment Manager**
 3. Select any post with existing comments
 4. **Reply** to a comment with "Thank you for your feedback!"
-5. **Edit** the reply to say "Thanks! Check our latest reel 🎬"
-6. **Delete** the reply — confirm deletion
-7. Open Instagram (native app/web) → Go to the same post → Confirm reply is gone
-8. **Hide** another comment → Verify it shows as hidden in the dashboard
-9. **Unhide** the comment → Verify it reappears
+5. **Delete** your reply — confirm deletion
+6. Open Instagram (native app/web) → Go to the same post → Confirm reply is gone
+7. **Hide** another comment → Verify it shows as hidden in the dashboard
+8. **Unhide** the comment → Verify it reappears
+
+*Note: The Instagram Graph API does not support editing comments. We use Hide/Delete for moderation.*
 
 ## Screencast Video
 [Upload to YouTube/Vimeo - 5-7 minute walkthrough]
@@ -50,7 +51,7 @@ When a user comments "LINK" on a creator's reel, they automatically receive a DM
 - Show connected account in dashboard
 - Create automation + trigger from second account
 - Show DM delivery
-- **Comment Manager demo**: Reply → Edit → Delete → Verify in native Instagram
+- **Comment Manager demo**: Reply → hide/unhide → Delete → Verify in native Instagram
 
 ## Privacy Policy URL
 https://replykaro.com/privacy

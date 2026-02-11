@@ -18,12 +18,12 @@ export default async function DashboardPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-slate-100 rounded-full shadow-sm">
             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-              Live Station: @{session.instagram_username}
+              Active Account: @{session.instagram_username}
             </span>
           </div>
           <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter leading-[0.85]">
-            Automated <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-indigo-600">Engagement Engine.</span>
+            Instagram <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-indigo-600">Auto-Reply System.</span>
           </h1>
         </div>
 
@@ -32,8 +32,8 @@ export default async function DashboardPage() {
             <TrendingUp className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Engagement Velocity</p>
-            <p className="text-lg font-black text-slate-900 tracking-tight">Live Connections</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Engagement Rate</p>
+            <p className="text-lg font-black text-slate-900 tracking-tight">Active Chats</p>
           </div>
         </div>
       </div>
@@ -53,17 +53,17 @@ export default async function DashboardPage() {
               </div>
               <div className="space-y-1 text-center lg:text-left">
                 <h3 className="text-xl font-black text-white tracking-tight">
-                  Unlock Premium Features
+                  Upgrade to Pro
                 </h3>
                 <p className="text-slate-400 font-medium text-sm leading-relaxed max-w-md">
-                  Upgrade to <span className="text-white font-bold italic">Starter</span> and unlock powerful <span className="text-primary font-bold">Story Automation</span> + Priority Support.
+                  Get <span className="text-white font-bold italic">Starter Plan</span> to unlock <span className="text-primary font-bold">Story Automation</span> & remove limits.
                 </p>
               </div>
             </div>
 
             <Link href="/dashboard/billing" className="w-full lg:w-auto">
               <Button className="w-full lg:h-14 h-12 px-10 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-[13px] uppercase tracking-widest shadow-xl shadow-primary/30 gap-3 group/btn transition-all active:scale-95">
-                Upgrade Engine
+                Upgrade Plan
                 <Zap className="h-4 w-4 fill-white transition-transform group-hover/btn:scale-125" />
               </Button>
             </Link>
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
               <Zap className="h-5 w-5 fill-current" />
             </div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Active Engagement Flows
+              Active Automations
             </h2>
           </div>
         </div>

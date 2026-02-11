@@ -128,8 +128,12 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
         if (!selectedMedia) return;
         setSaving(true);
         try {
-            const res = await fetch("/api/automations", {
-                method: "POST",
+            const isUpdate = !!data.id;
+            const url = isUpdate ? `/api/automations/${data.id}` : "/api/automations";
+            const method = isUpdate ? "PUT" : "POST";
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...data,
@@ -143,11 +147,17 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
 
             if (res.ok) {
                 const result = await res.json();
-                setAutomations([result.automation, ...automations]);
+                if (isUpdate) {
+                    setAutomations(automations.map(a => a.id === result.automation.id ? result.automation : a));
+                } else {
+                    setAutomations([result.automation, ...automations]);
+                }
                 setShowWizard(false);
+                setEditingAutomation(null);
+                setSelectedMedia(null);
             } else {
                 const error = await res.json();
-                alert(error.error || "Failed to create automation");
+                alert(error.error || "Failed to save automation");
             }
         } catch (error) {
             console.error("Error creating automation:", error);
@@ -242,7 +252,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                     <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/5 rounded-full -mr-6 -mt-6 blur-xl group-hover:scale-110 transition-transform" />
                     <Zap className="h-3.5 w-3.5 text-green-300 mb-1.5 md:mb-2" />
                     <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">{activeAutomationsCount}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Active Flows</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Active Replies</p>
                 </div>
 
                 <div className="bg-white p-3.5 md:p-4 rounded-2xl md:rounded-3xl border border-slate-50 shadow-sm relative overflow-hidden group col-span-2 lg:col-span-2">
@@ -356,7 +366,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                             <div className="w-10 h-10 md:w-12 md:h-12 bg-primary text-white rounded-xl md:rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center transform group-hover/btn:scale-110 transition-transform duration-500 group-hover/btn:rotate-90">
                                                                 <Plus className="h-5 w-5 md:h-6 md:w-6" />
                                                             </div>
-                                                            <span className="text-white text-[9px] md:text-[10px] font-black tracking-[0.2em] uppercase">Initialize Tunnel</span>
+                                                            <span className="text-white text-[9px] md:text-[10px] font-black tracking-[0.2em] uppercase">Create Reply</span>
                                                         </button>
                                                     ) : (
                                                         <div className="space-y-3 md:space-y-4">
@@ -375,7 +385,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
 
                                                             <div className="grid grid-cols-4 gap-1.5 md:gap-2">
                                                                 <button
-                                                                    onClick={() => { setEditingAutomation(automation); setShowWizard(true); }}
+                                                                    onClick={() => { setEditingAutomation(automation); setSelectedMedia(item); setShowWizard(true); }}
                                                                     className="h-8 md:h-10 rounded-lg md:rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center transition-all group/edit"
                                                                     title="Edit Logic"
                                                                 >

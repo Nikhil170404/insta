@@ -102,6 +102,7 @@ export type Database = {
           trigger_type: "keyword" | "any";
           reply_message: string;
           comment_reply: string | null;
+          comment_reply_templates: string[] | null;
           button_text: string | null;
           link_url: string | null;
           require_follow: boolean;
@@ -124,6 +125,7 @@ export type Database = {
           trigger_type?: "keyword" | "any";
           reply_message: string;
           comment_reply?: string | null;
+          comment_reply_templates?: string[] | null;
           button_text?: string | null;
           link_url?: string | null;
           require_follow?: boolean;
@@ -146,6 +148,7 @@ export type Database = {
           trigger_type?: "keyword" | "any";
           reply_message?: string;
           comment_reply?: string | null;
+          comment_reply_templates?: string[] | null;
           button_text?: string | null;
           link_url?: string | null;
           require_follow?: boolean;

@@ -91,7 +91,7 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
                             ) : isLoggedIn ? (
                                 <Link href="/dashboard">
                                     <Button className="bg-primary text-white hover:bg-primary/90 rounded-xl sm:rounded-2xl px-4 sm:px-6 md:px-8 font-black text-[10px] sm:text-[11px] md:text-[13px] uppercase tracking-widest glow-primary h-9 sm:h-11 transition-all active:scale-95">
-                                        Engine
+                                        Dashboard
                                     </Button>
                                 </Link>
                             ) : (

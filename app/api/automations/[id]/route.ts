@@ -51,6 +51,7 @@ export async function PUT(
         if (trigger_keyword !== undefined) updateData.trigger_keyword = (trigger_type === "any" || trigger_type === "story_reply") ? null : trigger_keyword;
         if (reply_message !== undefined) updateData.reply_message = reply_message;
         if (comment_reply !== undefined) updateData.comment_reply = comment_reply;
+        if (body.comment_reply_templates !== undefined) updateData.comment_reply_templates = body.comment_reply_templates;
         if (button_text !== undefined) updateData.button_text = button_text;
         if (link_url !== undefined) updateData.link_url = link_url;
         if (require_follow !== undefined) updateData.require_follow = require_follow;

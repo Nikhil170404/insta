@@ -30,12 +30,12 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: "Automation Engine", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Create Automation", href: "/dashboard", icon: LayoutDashboard },
   { name: "My Automations", href: "/dashboard/automations", icon: Zap },
-  { name: "Comment Manager", href: "/dashboard/comments", icon: MessageSquare },
-  { name: "Engagement Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Growth Plans", href: "/dashboard/billing", icon: CreditCard },
-  { name: "Engine Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Comments", href: "/dashboard/comments", icon: MessageSquare },
+  { name: "Insights", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function DashboardSidebar({ user }: SidebarProps) {
@@ -226,7 +226,17 @@ function getPlanDateText(user: SessionUser): string {
   if (user.created_at) {
     const createdDate = new Date(user.created_at);
     const dayOfMonth = createdDate.getDate();
-    return `Resets on ${dayOfMonth}${getOrdinal(dayOfMonth)}`;
+
+    // Calculate NEXT reset date
+    const now = new Date();
+    let nextReset = new Date(now.getFullYear(), now.getMonth(), dayOfMonth);
+
+    // If we passed the reset day this month, move to next month
+    if (now.getDate() >= dayOfMonth) {
+      nextReset = new Date(now.getFullYear(), now.getMonth() + 1, dayOfMonth);
+    }
+
+    return `Resets on ${nextReset.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   }
 
   return "";

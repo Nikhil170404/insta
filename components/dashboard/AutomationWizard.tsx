@@ -12,7 +12,9 @@ import {
     Check,
     Smartphone,
     Info,
-    Users
+    Users,
+    Trash2,
+    Shuffle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +48,24 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
         initialData ? (initialData.trigger_type === "any" ? "any" : "keyword") : "keyword"
     );
     const [keywords, setKeywords] = useState(initialData?.trigger_keyword || "");
-    const [replyToComments, setReplyToComments] = useState(!!initialData?.comment_reply);
+    const [replyToComments, setReplyToComments] = useState(!!initialData?.comment_reply || !!(initialData?.comment_reply_templates?.length));
+
+    // Comment reply templates
+    const defaultTemplates = [
+        "Check your DMs! 📬",
+        "Just sent you a message! 💌",
+        "Sent! Check your inbox 🔥",
+        "DM sent! Go check it out ✨",
+        "You've got mail! 📩",
+    ];
+    const [commentReplyTemplates, setCommentReplyTemplates] = useState<string[]>(
+        initialData?.comment_reply_templates?.length
+            ? initialData.comment_reply_templates
+            : initialData?.comment_reply
+                ? [initialData.comment_reply]
+                : ["Check your DMs! 📬"]
+    );
+    const [newReplyTemplate, setNewReplyTemplate] = useState("");
 
     const [openingDM, setOpeningDM] = useState(initialData?.reply_message || "Hey! Thanks for being part of my community 😊\n\nClick below and I'll send you the details in just a sec ✨");
     const [buttonText, setButtonText] = useState(initialData?.button_text || "Show me more");
@@ -69,7 +88,8 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
             trigger_type: triggerType === "story" ? "story_reply" : (matchingType === "any" ? "any" : "keyword"),
             trigger_keyword: triggerType === "story" ? null : keywords,
             reply_message: openingDM,
-            comment_reply: replyToComments && triggerType !== "story" ? (initialData?.comment_reply || "Check your DMs! 📬") : null,
+            comment_reply: replyToComments && triggerType !== "story" && commentReplyTemplates.length > 0 ? commentReplyTemplates[0] : null,
+            comment_reply_templates: replyToComments && triggerType !== "story" ? commentReplyTemplates : null,
             button_text: buttonText,
             link_url: linkUrl,
             final_message: finalDM,
@@ -240,22 +260,112 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                     </button>
                                 </div>
 
-                                <div className="flex items-center justify-between p-6 bg-slate-50/50 rounded-3xl border border-slate-100 group transition-all">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
-                                            <MessageSquare className="h-5 w-5" />
+                                <div className={cn(
+                                    "rounded-[32px] border transition-all overflow-hidden",
+                                    replyToComments ? "border-primary/30 bg-primary/5" : "border-slate-100 bg-slate-50/50"
+                                )}>
+                                    <div className="flex items-center justify-between p-6 group">
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-xl shadow-sm flex items-center justify-center transition-colors",
+                                                replyToComments ? "bg-primary text-white" : "bg-white text-slate-400 group-hover:text-primary"
+                                            )}>
+                                                <MessageSquare className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold">Public reply to comments</p>
+                                                <p className="text-[11px] text-slate-400 font-medium">Randomly picks from your templates</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold">Public reply to comments</p>
-                                            <p className="text-[11px] text-slate-400 font-medium">Boosts your engagement automatically</p>
-                                        </div>
+                                        <button
+                                            onClick={() => setReplyToComments(!replyToComments)}
+                                            className={cn("w-12 h-6.5 rounded-full transition-all flex items-center px-1", replyToComments ? "bg-primary" : "bg-slate-200")}
+                                        >
+                                            <div className={cn("w-[18px] h-[18px] bg-white rounded-full shadow transition-all", replyToComments ? "translate-x-[20px]" : "translate-x-0")} />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => setReplyToComments(!replyToComments)}
-                                        className={cn("w-12 h-6.5 rounded-full transition-all flex items-center px-1", replyToComments ? "bg-primary" : "bg-slate-200")}
-                                    >
-                                        <div className={cn("w-[18px] h-[18px] bg-white rounded-full shadow transition-all", replyToComments ? "translate-x-[20px]" : "translate-x-0")} />
-                                    </button>
+
+                                    {/* Reply Templates Section */}
+                                    {replyToComments && (
+                                        <div className="px-6 pb-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            {/* Templates List */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                        <Shuffle className="h-3 w-3" />
+                                                        Reply Templates ({commentReplyTemplates.length})
+                                                    </p>
+                                                    <span className="text-[10px] text-slate-400 font-medium">Random pick per reply</span>
+                                                </div>
+
+                                                {commentReplyTemplates.map((template, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2 group/item">
+                                                        <div className="flex-1 px-4 py-2.5 bg-white rounded-xl border border-slate-100 text-sm font-medium text-slate-700 flex items-center gap-2">
+                                                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0">
+                                                                {idx + 1}
+                                                            </span>
+                                                            {template}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setCommentReplyTemplates(prev => prev.filter((_, i) => i !== idx))}
+                                                            className="w-8 h-8 rounded-lg hover:bg-rose-50 flex items-center justify-center text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover/item:opacity-100"
+                                                            title="Remove"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Add Custom Template */}
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newReplyTemplate}
+                                                    onChange={(e) => setNewReplyTemplate(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter" && newReplyTemplate.trim()) {
+                                                            setCommentReplyTemplates(prev => [...prev, newReplyTemplate.trim()]);
+                                                            setNewReplyTemplate("");
+                                                        }
+                                                    }}
+                                                    placeholder="Type a reply template..."
+                                                    className="flex-1 h-10 px-4 bg-white rounded-xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-primary text-sm font-medium placeholder:text-slate-400"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        if (newReplyTemplate.trim()) {
+                                                            setCommentReplyTemplates(prev => [...prev, newReplyTemplate.trim()]);
+                                                            setNewReplyTemplate("");
+                                                        }
+                                                    }}
+                                                    disabled={!newReplyTemplate.trim()}
+                                                    className="h-10 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-black shadow-sm shadow-primary/20 transition-all disabled:opacity-40 flex items-center gap-1.5"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" /> Add
+                                                </button>
+                                            </div>
+
+                                            {/* Quick Add Suggestions */}
+                                            <div className="space-y-1.5">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Add</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {defaultTemplates
+                                                        .filter(t => !commentReplyTemplates.includes(t))
+                                                        .map(suggestion => (
+                                                            <button
+                                                                key={suggestion}
+                                                                onClick={() => setCommentReplyTemplates(prev => [...prev, suggestion])}
+                                                                className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-100 rounded-full text-[11px] font-bold text-slate-600 transition-colors shadow-sm"
+                                                            >
+                                                                + {suggestion}
+                                                            </button>
+                                                        ))
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center justify-between p-6 bg-slate-50/50 rounded-3xl border border-slate-100 group transition-all">
@@ -533,7 +643,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                             </Button>
                         ) : (
                             <Button className="font-black h-12 px-10 rounded-2xl bg-primary text-white hover:opacity-90 transition-all shadow-xl shadow-primary/30" onClick={handleSave} disabled={saving}>
-                                {saving ? "Creating..." : "Launch Automation"}
+                                {saving ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Automation" : "Launch Automation")}
                             </Button>
                         )}
                     </div>

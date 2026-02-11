@@ -155,8 +155,8 @@ export default function AnalyticsPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Performance Insight</h1>
-                    <p className="text-slate-400 font-medium">Real-time data from your automation tunnels.</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Insights</h1>
+                    <p className="text-slate-400 font-medium">See how your auto-replies are performing.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center bg-white border border-slate-100 rounded-2xl p-1 shadow-sm">
@@ -208,13 +208,13 @@ export default function AnalyticsPage() {
                         <StatCard
                             icon={<Activity className="h-5 w-5 text-blue-500" />}
                             value={stats.today}
-                            label="Today's DMs"
+                            label="Today's Messages"
                             color="blue"
                         />
                         <StatCard
                             icon={<MessageCircle className="h-5 w-5 text-indigo-500" />}
                             value={stats.thisMonth.dms}
-                            label={`${currentMonthName} DMs`}
+                            label={`${currentMonthName} Messages`}
                             color="indigo"
                             change={stats.monthGrowth}
                         />
@@ -251,12 +251,12 @@ export default function AnalyticsPage() {
                     <div className="bg-white rounded-[2.5rem] border border-slate-50 shadow-sm p-8 space-y-8">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Daily Engagement</h3>
+                                <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Daily Activity</h3>
                                 <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Last {timeRange} days performance</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-2xl font-black text-slate-900">{stats.period}</p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase">Total DMs</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase">Total Messages</p>
                             </div>
                         </div>
 
@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
                                                 />
                                             )}
                                             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                                {day.count} DMs
+                                                {day.count} Messages
                                             </div>
                                         </div>
                                     </div>
@@ -296,7 +296,7 @@ export default function AnalyticsPage() {
                                     <Award className="h-5 w-5 text-amber-500" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Top Triggers</h3>
+                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Top Keywords</h3>
                                     <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">This month's best performers</p>
                                 </div>
                             </div>
@@ -350,7 +350,7 @@ export default function AnalyticsPage() {
                                     <Clock className="h-5 w-5 text-blue-500" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Activity Pulse</h3>
+                                    <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">Hourly Activity</h3>
                                     <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Last 24 Hours</p>
                                 </div>
                             </div>
@@ -388,14 +388,14 @@ export default function AnalyticsPage() {
                                 <BarChart3 className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-black italic uppercase tracking-tighter">All Time Stats</h3>
+                                <h3 className="text-lg font-black italic uppercase tracking-tighter">Lifetime Stats</h3>
                                 <p className="text-[11px] text-white/50 font-bold uppercase tracking-widest">Since you started</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                             <div>
                                 <p className="text-4xl font-black">{stats.total.toLocaleString()}</p>
-                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-1">Total DMs Sent</p>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-1">Total Messages Sent</p>
                             </div>
                             <div>
                                 <p className="text-4xl font-black">{stats.clicks.toLocaleString()}</p>
@@ -425,7 +425,7 @@ export default function AnalyticsPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-black text-slate-900 italic uppercase tracking-tighter">6-Month Overview</h3>
-                                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">DMs sent per month</p>
+                                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Messages sent per month</p>
                                 </div>
                             </div>
                         </div>
@@ -445,7 +445,7 @@ export default function AnalyticsPage() {
                                                 />
                                             )}
                                             <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                                {month.dms.toLocaleString()} DMs • {month.ctr}% CTR
+                                                {month.dms.toLocaleString()} Messages • {month.ctr}% CTR
                                             </div>
                                         </div>
                                     </div>
@@ -469,7 +469,7 @@ export default function AnalyticsPage() {
                                 <thead className="bg-slate-50">
                                     <tr>
                                         <th className="px-8 py-4 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Month</th>
-                                        <th className="px-8 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">DMs Sent</th>
+                                        <th className="px-8 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Messages Sent</th>
                                         <th className="px-8 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">Clicks</th>
                                         <th className="px-8 py-4 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest">CTR</th>
                                     </tr>
@@ -510,7 +510,7 @@ export default function AnalyticsPage() {
                     <div className="flex items-center justify-between px-1">
                         <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 italic uppercase">
                             <Activity className="h-5 w-5 text-primary" />
-                            Live Engagement Feed
+                            Recent Activity
                         </h2>
                         <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl">
                             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2" />

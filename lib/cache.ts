@@ -116,6 +116,7 @@ export interface CachedAutomation {
     trigger_type: string;
     reply_message: string;
     comment_reply?: string;
+    comment_reply_templates?: string[];
     button_text?: string;
     link_url?: string;
     require_follow: boolean;

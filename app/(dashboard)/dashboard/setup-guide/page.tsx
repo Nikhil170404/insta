@@ -135,7 +135,7 @@ export default function SetupGuidePage() {
                         </div>
 
                         <Button className="w-full h-14 rounded-2xl bg-white text-primary font-black text-xs uppercase tracking-widest hover:bg-slate-50 shadow-lg">
-                            Run Diagnostics Flow
+                            Run Diagnostics Check
                         </Button>
                     </div>
                 </div>

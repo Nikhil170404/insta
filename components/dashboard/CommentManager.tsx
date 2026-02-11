@@ -461,7 +461,7 @@ export default function CommentManager({ instagramUsername }: CommentManagerProp
                             </div>
                             <div className="min-w-0">
                                 <h2 className="text-base font-black text-slate-900 tracking-tight truncate">
-                                    Comment Manager
+                                    Comments
                                 </h2>
                                 <p className="text-[10px] text-slate-400 font-bold truncate">
                                     {selectedPost.caption?.substring(0, 60) || "No caption"}

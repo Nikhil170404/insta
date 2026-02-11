@@ -31,6 +31,7 @@ export const createAutomationSchema = z.object({
     .min(1, "Reply message is required")
     .max(1000, "Reply message must be under 1000 characters"),
   comment_reply: z.string().max(1000).optional().nullable(),
+  comment_reply_templates: z.array(z.string().max(1000)).max(20).optional().nullable(),
 
   button_text: z.string().max(20, "Button text must be under 20 characters").optional().nullable(),
   link_url: z.string().url("Invalid URL format").optional().nullable(),

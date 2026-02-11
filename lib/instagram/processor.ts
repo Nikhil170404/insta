@@ -115,9 +115,15 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             return;
         }
 
-        // 7. Send Public Reply
-        if (automation.comment_reply && automation.comment_reply.trim().length > 0) {
-            const uniqueReply = getUniqueMessage(automation.comment_reply);
+        // 7. Send Public Reply (pick random template)
+        const templates: string[] = automation.comment_reply_templates || [];
+        const singleReply = automation.comment_reply;
+        if (templates.length > 0) {
+            const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+            const uniqueReply = getUniqueMessage(randomTemplate);
+            await replyToComment(user.instagram_access_token, commentId, uniqueReply);
+        } else if (singleReply && singleReply.trim().length > 0) {
+            const uniqueReply = getUniqueMessage(singleReply);
             await replyToComment(user.instagram_access_token, commentId, uniqueReply);
         }
 
@@ -227,7 +233,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         commenterId,
                         automation.final_message || automation.reply_message,
                         automation.id,
-                        automation.final_button_text || automation.button_text || "Open Link",
+                        automation.final_button_text || "Open Link",
                         automation.link_url, // Direct link - single button experience for followers
                         automation.media_thumbnail_url
                     );
@@ -590,7 +596,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     senderIgsid,
                     automation.final_message || automation.reply_message,
                     automation.id,
-                    automation.final_button_text || automation.button_text || "Open Link",
+                    automation.final_button_text || "Open Link",
                     automation.link_url, // Send actual link - creates single "Open Link" button
                     automation.media_thumbnail_url
                 );
@@ -609,7 +615,6 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 // Not following yet - send the gate card again with a hint
                 logger.info("User not yet following, sending gate again", { senderIgsid });
 
-                const { sendFollowGateCard } = await import("@/lib/instagram/service");
                 await sendFollowGateCard(
                     user.instagram_access_token,
                     instagramUserId,
