@@ -18,7 +18,8 @@ import {
   Mail,
   Users,
   ChevronDown,
-  Check
+  Check,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -31,6 +32,7 @@ interface SidebarProps {
 const navigation = [
   { name: "Automation Engine", href: "/dashboard", icon: LayoutDashboard },
   { name: "My Automations", href: "/dashboard/automations", icon: Zap },
+  { name: "Comment Manager", href: "/dashboard/comments", icon: MessageSquare },
   { name: "Engagement Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Growth Plans", href: "/dashboard/billing", icon: CreditCard },
   { name: "Engine Settings", href: "/dashboard/settings", icon: Settings },

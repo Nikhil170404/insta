@@ -196,3 +196,20 @@ export interface MessagingEventData {
     message?: InstagramMessage;
     postback?: InstagramPostback;
 }
+
+// ============================================
+// Comment Management Types
+// ============================================
+
+export interface InstagramCommentDetail {
+    id: string;
+    text: string;
+    timestamp: string;
+    username: string;
+    like_count?: number;
+    hidden?: boolean;
+    parent_id?: string;
+    replies?: {
+        data: InstagramCommentDetail[];
+    };
+}

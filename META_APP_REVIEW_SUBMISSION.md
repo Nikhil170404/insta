@@ -33,12 +33,24 @@ When a user comments "LINK" on a creator's reel, they automatically receive a DM
 5. Comment "DEMO" on Account A's reel
 6. Check Account B's DMs → Should receive automated message within 10 seconds
 
+### Comment Moderation Test Flow
+1. Log into ReplyKaro with Account A
+2. Navigate to Dashboard → **Comment Manager**
+3. Select any post with existing comments
+4. **Reply** to a comment with "Thank you for your feedback!"
+5. **Edit** the reply to say "Thanks! Check our latest reel 🎬"
+6. **Delete** the reply — confirm deletion
+7. Open Instagram (native app/web) → Go to the same post → Confirm reply is gone
+8. **Hide** another comment → Verify it shows as hidden in the dashboard
+9. **Unhide** the comment → Verify it reappears
+
 ## Screencast Video
-[Upload to YouTube/Vimeo - 3-5 minute walkthrough]
-- Show login flow
-- Create automation
-- Trigger from second account
+[Upload to YouTube/Vimeo - 5-7 minute walkthrough]
+- Show complete Meta login flow (Facebook Login → Permissions grant)
+- Show connected account in dashboard
+- Create automation + trigger from second account
 - Show DM delivery
+- **Comment Manager demo**: Reply → Edit → Delete → Verify in native Instagram
 
 ## Privacy Policy URL
 https://replykaro.com/privacy
@@ -51,3 +63,4 @@ https://replykaro.com/api/data-deletion
 
 ## Support Email
 support@replykaro.com
+
