@@ -268,6 +268,15 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                     );
                     if (cardSent) {
                         await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+
+                        // [FIX] Log the re-sent gate card as a sent message
+                        await supabase.from("dm_logs")
+                            .update({
+                                reply_sent: true,
+                                reply_sent_at: new Date().toISOString(),
+                                is_follow_gate: true
+                            })
+                            .eq("instagram_comment_id", commentId);
                     }
                     return;
                 }
@@ -427,6 +436,20 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     undefined
                 );
                 await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+
+                // [FIX] Log the DM so it appears in Analytics
+                await supabase.from("dm_logs").insert({
+                    user_id: user.id,
+                    automation_id: automation.id,
+                    instagram_user_id: senderIgsid,
+                    instagram_username: messaging.sender?.username || "Instagram User",
+                    keyword_matched: "STORY_REPLY",
+                    comment_text: message.text || "Story Reply",
+                    reply_sent: true,
+                    reply_sent_at: new Date().toISOString(),
+                    is_follow_gate: false,
+                    user_is_following: true // Story replies are usually from followers
+                });
             }
             return;
         }
