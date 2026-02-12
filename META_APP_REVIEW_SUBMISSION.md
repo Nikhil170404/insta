@@ -45,6 +45,11 @@ When a user comments "LINK" on a creator's reel, they automatically receive a DM
 
 *Note: The Instagram Graph API does not support editing comments. We use Hide/Delete for moderation.*
 
+### Rejection Response (If Applicable)
+**Reviewer Note:** "We need to see a complete comment moderation loop... edit the comment..."
+**Developer Response:**
+"We have implemented a comprehensive moderation loop including `POST` (Reply), `DELETE` (Delete), and `POST /hide` (Hide). However, regarding the request to 'edit the comment': **The Instagram Graph API does not provide an endpoint to edit existing comments.** (See: https://developers.facebook.com/docs/instagram-api/reference/ig-comment). Therefore, we have implemented 'Hide' and 'Delete' as the standard moderation actions available via the API. The screencast demonstrates these capabilities in lieu of editing."
+
 ## Screencast Video
 [Upload to YouTube/Vimeo - 5-7 minute walkthrough]
 - Show complete Meta login flow (Facebook Login → Permissions grant)
@@ -62,6 +67,5 @@ https://replykaro.com/terms
 ## Data Deletion Instructions URL
 https://replykaro.com/api/data-deletion
 
-## Support Email
-support@replykaro.com
+
 

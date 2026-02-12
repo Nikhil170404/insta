@@ -615,16 +615,14 @@ export default function CommentManager({ instagramUsername }: CommentManagerProp
                                                         <EyeOff className="h-3.5 w-3.5" />
                                                     )}
                                                 </button>
-                                                {isOwnComment && (
-                                                    <button
-                                                        onClick={() => handleDelete(comment.id)}
-                                                        disabled={!!isLoading}
-                                                        className="w-7 h-7 rounded-lg hover:bg-rose-50 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                )}
+                                                <button
+                                                    onClick={() => handleDelete(comment.id)}
+                                                    disabled={!!isLoading}
+                                                    className="w-7 h-7 rounded-lg hover:bg-rose-50 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
                                             </div>
                                         </div>
 
