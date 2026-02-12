@@ -1,4 +1,115 @@
+import { logger } from "@/lib/logger";
+
 const GRAPH_API_VERSION = "v21.0";
+
+// ============================================================
+// Meta Rate Limit Header Tracking (ManyChat/SuperProfile pattern)
+// ============================================================
+
+export interface MetaRateLimitInfo {
+    callCount: number;       // % of allowed calls used (0-100)
+    totalCpuTime: number;    // % of CPU time used (0-100)
+    totalTime: number;       // % of total time used (0-100)
+    estimatedTimeToRegain: number;  // minutes until unthrottled
+    type?: string;           // e.g. "instagram", "messenger"
+}
+
+// In-memory cache of last known rate limit state per account
+const rateLimitCache: Map<string, { info: MetaRateLimitInfo; updatedAt: number }> = new Map();
+
+/**
+ * Parse Meta rate limit headers from API response.
+ * Reads X-Business-Use-Case-Usage (BUC) or X-App-Usage (Platform).
+ */
+export function parseMetaRateLimitHeaders(response: Response, accountId?: string): MetaRateLimitInfo | null {
+    try {
+        // Try BUC header first (Instagram Platform uses this)
+        const bucHeader = response.headers.get("x-business-use-case-usage");
+        if (bucHeader) {
+            const parsed = JSON.parse(bucHeader);
+            // BUC header is keyed by business-object-id, get first entry
+            const entries = Object.values(parsed) as any[][];
+            if (entries.length > 0 && entries[0].length > 0) {
+                const usage = entries[0][0];
+                const info: MetaRateLimitInfo = {
+                    callCount: usage.call_count || 0,
+                    totalCpuTime: usage.total_cputime || 0,
+                    totalTime: usage.total_time || 0,
+                    estimatedTimeToRegain: usage.estimated_time_to_regain_access || 0,
+                    type: usage.type,
+                };
+                const cacheKey = accountId || "default";
+                rateLimitCache.set(cacheKey, { info, updatedAt: Date.now() });
+
+                // Log warnings at different thresholds
+                if (info.callCount >= 95) {
+                    logger.error("Meta API rate limit CRITICAL", { ...info, accountId, category: "instagram" });
+                } else if (info.callCount >= 80) {
+                    logger.warn("Meta API rate limit HIGH", { ...info, accountId, category: "instagram" });
+                } else if (info.callCount >= 50) {
+                    logger.debug("Meta API rate limit moderate", { ...info, accountId, category: "instagram" });
+                }
+                return info;
+            }
+        }
+
+        // Fallback: Platform rate limit header
+        const appHeader = response.headers.get("x-app-usage");
+        if (appHeader) {
+            const usage = JSON.parse(appHeader);
+            const info: MetaRateLimitInfo = {
+                callCount: usage.call_count || 0,
+                totalCpuTime: usage.total_cputime || 0,
+                totalTime: usage.total_time || 0,
+                estimatedTimeToRegain: 0,
+            };
+            const cacheKey = accountId || "default";
+            rateLimitCache.set(cacheKey, { info, updatedAt: Date.now() });
+
+            if (info.callCount >= 80) {
+                logger.warn("Meta API platform rate limit HIGH", { ...info, accountId, category: "instagram" });
+            }
+            return info;
+        }
+    } catch (e) {
+        // Header parsing should never break the main flow
+        logger.debug("Failed to parse Meta rate limit headers", { category: "instagram" });
+    }
+    return null;
+}
+
+/**
+ * Check if we should throttle API calls based on cached rate limit info.
+ * Returns delay in ms to wait (0 = no throttle).
+ */
+export function shouldThrottle(accountId?: string): { throttled: boolean; delayMs: number; info?: MetaRateLimitInfo } {
+    const cacheKey = accountId || "default";
+    const cached = rateLimitCache.get(cacheKey);
+
+    if (!cached) return { throttled: false, delayMs: 0 };
+
+    // Cache is stale after 5 minutes — ignore
+    if (Date.now() - cached.updatedAt > 5 * 60 * 1000) {
+        rateLimitCache.delete(cacheKey);
+        return { throttled: false, delayMs: 0 };
+    }
+
+    const { info } = cached;
+    const maxUsage = Math.max(info.callCount, info.totalCpuTime, info.totalTime);
+
+    if (maxUsage >= 95) {
+        // Hard throttle: wait for estimated regain time or 60s
+        const delayMs = info.estimatedTimeToRegain > 0 ? info.estimatedTimeToRegain * 60 * 1000 : 60000;
+        return { throttled: true, delayMs, info };
+    }
+    if (maxUsage >= 80) {
+        // Soft throttle: slow down with 2-5 second delays
+        const delayMs = Math.floor(2000 + (maxUsage - 80) * 200); // 2s at 80%, 5s at 95%
+        return { throttled: false, delayMs, info };
+    }
+
+    return { throttled: false, delayMs: 0, info };
+}
 
 /**
  * Check if user is following the business account
@@ -31,6 +142,12 @@ export async function checkIsFollowing(
 
 /**
  * Send a direct message via Instagram API
+ * 
+ * OPTIMIZED: Sends only 1 API call per DM (was 4 before).
+ * - Removed mark_seen (not needed for automated DMs)
+ * - Removed typing_on + 1.5s delay (wastes API quota & time)
+ * - Removed separate HUMAN_AGENT tag (incorrect usage per Meta docs)
+ * - Reads rate limit headers from Meta response for auto-throttling
  */
 export async function sendInstagramDM(
     accessToken: string | null | undefined,
@@ -45,55 +162,42 @@ export async function sendInstagramDM(
 ): Promise<boolean> {
     try {
         if (!accessToken || accessToken.length < 20) {
-            console.error("❌ CRITICAL: Invalid or missing access token.");
+            logger.error("Invalid or missing access token", { category: "instagram" });
             return false;
         }
 
-        console.log(`📤 Attempting Instagram DM:`);
-        console.log(`- Recipient (Log): "${recipientIdForLog}"`);
+        // Check Meta rate limit before sending
+        const throttle = shouldThrottle(senderId);
+        if (throttle.throttled) {
+            logger.warn("Meta rate limit reached — skipping DM", {
+                senderId,
+                recipientId: recipientIdForLog,
+                delayMs: throttle.delayMs,
+                callCount: throttle.info?.callCount,
+                category: "instagram",
+            });
+            return false;
+        }
+        // If soft throttle (80-95%), add a small delay
+        if (throttle.delayMs > 0) {
+            logger.info("Meta rate limit soft throttle — adding delay", {
+                delayMs: throttle.delayMs,
+                callCount: throttle.info?.callCount,
+                category: "instagram",
+            });
+            await new Promise(resolve => setTimeout(resolve, throttle.delayMs));
+        }
+
+        logger.info("Sending Instagram DM", {
+            recipientId: recipientIdForLog,
+            hasButton: !!buttonText,
+            hasLink: !!linkUrl,
+            category: "instagram",
+        });
 
         const trimmedToken = accessToken.trim();
         const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${trimmedToken}`;
-
         const recipient = commentId ? { comment_id: commentId } : { id: recipientIdForLog };
-
-        // 1. Send "Mark as Seen"
-        await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                recipient: recipient,
-                sender_action: "mark_seen"
-            }),
-        });
-
-        // 2. Send "Typing..." indicator for 1.5 seconds (Premium feel)
-        await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                recipient: recipient,
-                sender_action: "typing_on"
-            }),
-        });
-
-        // Small delay to simulate thinking
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // 3. TAG AS HUMAN AGENT (Required for Meta App Review / Automated DMs)
-        // Send as SEPARATE request so if it fails (permission issue), the main message still sends!
-        try {
-            await fetch(baseUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    recipient: recipient,
-                    tag: "HUMAN_AGENT"
-                }),
-            });
-        } catch (e) {
-            console.error("⚠️ Failed to tag as HUMAN_AGENT (non-fatal):", e);
-        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let body: any;
@@ -103,9 +207,6 @@ export async function sendInstagramDM(
 
         // Use Generic Templates (Structured Cards) for a premium feel
         if (validatedLinkUrl && (buttonText || thumbnailUrl)) {
-            console.log("💎 Sending Structured Template (Card with Link)");
-            console.log(`🔗 URL: ${validatedLinkUrl}`);
-
             // Build element - EXPLICITLY creating a SINGLE button array
             const singleButton = {
                 type: "web_url",
@@ -116,7 +217,7 @@ export async function sendInstagramDM(
             const element: any = {
                 title: buttonText || "Click to View",
                 subtitle: message.substring(0, 80),
-                buttons: [singleButton] // STRICT single button
+                buttons: [singleButton]
             };
 
             if (thumbnailUrl) {
@@ -124,7 +225,7 @@ export async function sendInstagramDM(
             }
 
             body = {
-                recipient: recipient,
+                recipient,
                 message: {
                     attachment: {
                         type: "template",
@@ -137,10 +238,6 @@ export async function sendInstagramDM(
             };
         } else if (buttonText && automationId && !linkUrl) {
             // Greeting card with postback button (no direct link)
-            // User clicks button → triggers CLICK_LINK_ handler → sends actual link
-            console.log("💬 Sending Greeting Card with Postback Button");
-
-            // Build element - EXPLICITLY creating a SINGLE postback button
             const postbackButton = {
                 type: "postback",
                 title: buttonText.substring(0, 20),
@@ -150,7 +247,7 @@ export async function sendInstagramDM(
             const element: any = {
                 title: message.substring(0, 80) || "You have a message!",
                 subtitle: "Tap below to continue ✨",
-                buttons: [postbackButton] // STRICT single button
+                buttons: [postbackButton]
             };
 
             if (thumbnailUrl) {
@@ -158,7 +255,7 @@ export async function sendInstagramDM(
             }
 
             body = {
-                recipient: recipient,
+                recipient,
                 message: {
                     attachment: {
                         type: "template",
@@ -170,30 +267,38 @@ export async function sendInstagramDM(
                 }
             };
         } else {
-            // Fallback to plain text if no button needed
-            console.log("📝 Sending Plain Text Message");
+            // Plain text message
             body = {
-                recipient: recipient,
+                recipient,
                 message: { text: message }
             };
         }
 
+        // === SINGLE API CALL (was 4 before) ===
         const response = await fetch(baseUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
         });
 
+        // Parse rate limit headers from every response
+        parseMetaRateLimitHeaders(response, senderId);
+
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Meta API Error:", JSON.stringify(errorData, null, 2));
+            logger.error("Meta API DM Error", {
+                errorCode: errorData?.error?.code,
+                errorMessage: errorData?.error?.message,
+                recipientId: recipientIdForLog,
+                category: "instagram",
+            });
             return false;
         }
 
-        console.log("✅ DM sent successfully!");
+        logger.info("DM sent successfully", { recipientId: recipientIdForLog, category: "instagram" });
         return true;
     } catch (error) {
-        console.error("❌ Exception during sendInstagramDM:", error);
+        logger.error("Exception during sendInstagramDM", { category: "instagram" }, error as Error);
         return false;
     }
 }
@@ -202,6 +307,8 @@ export async function sendInstagramDM(
  * Send follow-gate card with two buttons (ManyChat style):
  * 1. "Follow & Get Access" - Links to profile
  * 2. "I'm Following ✓" - Triggers verification check
+ * 
+ * OPTIMIZED: 1 API call (was 3 — removed typing_on & HUMAN_AGENT)
  */
 export async function sendFollowGateCard(
     accessToken: string,
@@ -214,37 +321,33 @@ export async function sendFollowGateCard(
     customMessage?: string
 ): Promise<boolean> {
     try {
+        // Check Meta rate limit
+        const throttle = shouldThrottle(senderId);
+        if (throttle.throttled) {
+            logger.warn("Meta rate limit reached — skipping follow-gate", {
+                senderId, recipientId, category: "instagram",
+            });
+            return false;
+        }
+        if (throttle.delayMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, throttle.delayMs));
+        }
+
         const trimmedToken = accessToken.trim();
         const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${trimmedToken}`;
         const recipient = commentId ? { comment_id: commentId } : { id: recipientId };
 
-        // Typing indicator
-        await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ recipient, sender_action: "typing_on" }),
-        });
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Tag as human agent
-        await fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ recipient, tag: "HUMAN_AGENT" }),
-        });
-
         const message = customMessage || "Hey! 👋 To unlock this, please follow us first!";
 
-        // Validate and build profile URL
+        // Validate profile username
         if (!profileUsername || profileUsername.trim() === '') {
-            console.error("❌ Cannot build follow-gate: profileUsername is empty");
+            logger.error("Cannot build follow-gate: profileUsername is empty", { category: "instagram" });
             return false;
         }
         // Use /_u/ format to force open in Instagram app on mobile
         const profileUrl = `https://www.instagram.com/_u/${profileUsername.trim()}/`;
-        console.log(`🔗 Follow-gate profile URL: ${profileUrl}`);
 
-        // Build element - only include image_url if thumbnail exists
+        // Build element
         const element: any = {
             title: "Follow & Get Access",
             subtitle: message,
@@ -265,9 +368,9 @@ export async function sendFollowGateCard(
             element.image_url = thumbnailUrl;
         }
 
-        // Send the follow-gate card with TWO buttons
+        // === SINGLE API CALL (was 3 before) ===
         const body = {
-            recipient: recipient,
+            recipient,
             message: {
                 attachment: {
                     type: "template",
@@ -285,16 +388,23 @@ export async function sendFollowGateCard(
             body: JSON.stringify(body),
         });
 
+        // Parse rate limit headers
+        parseMetaRateLimitHeaders(response, senderId);
+
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Follow-gate card error:", JSON.stringify(errorData, null, 2));
+            logger.error("Follow-gate card error", {
+                errorCode: errorData?.error?.code,
+                errorMessage: errorData?.error?.message,
+                recipientId, category: "instagram",
+            });
             return false;
         }
 
-        console.log("✅ Follow-gate card sent with verification button!");
+        logger.info("Follow-gate card sent", { recipientId, automationId, category: "instagram" });
         return true;
     } catch (error) {
-        console.error("❌ Exception sending follow-gate card:", error);
+        logger.error("Exception sending follow-gate card", { category: "instagram" }, error as Error);
         return false;
     }
 }
@@ -309,31 +419,37 @@ export async function replyToComment(
 ): Promise<boolean> {
     try {
         if (!message || message.trim().length === 0) {
-            console.error("❌ Cannot send empty public reply.");
+            logger.error("Cannot send empty public reply", { category: "instagram" });
             return false;
         }
 
-        console.log(`💬 Attempting Public Reply to Comment: ${commentId}`);
         const trimmedToken = accessToken.trim();
         const response = await fetch(
             `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${trimmedToken}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: message }),
+                body: JSON.stringify({ message }),
             }
         );
 
+        // Parse rate limit headers
+        parseMetaRateLimitHeaders(response);
+
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Meta Public Reply API Error:", JSON.stringify(errorData, null, 2));
+            logger.error("Meta Public Reply API Error", {
+                errorCode: errorData?.error?.code,
+                commentId,
+                category: "instagram",
+            });
             return false;
         }
 
-        console.log("✅ Public reply sent successfully!");
+        logger.info("Public reply sent", { commentId, category: "instagram" });
         return true;
     } catch (error) {
-        console.error("❌ Exception sending public reply:", error);
+        logger.error("Exception sending public reply", { category: "instagram" }, error as Error);
         return false;
     }
 }
