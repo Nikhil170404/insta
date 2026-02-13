@@ -83,7 +83,6 @@ export const PRICING_PLANS = {
             "Handle Multiple Viral Posts 🔥",
             "Story Automation ✨",
             "Follow-Gate Feature ✨",
-            "Email Capture 🎯",
             "Detailed Analytics",
             "Priority Support (12h)",
         ],

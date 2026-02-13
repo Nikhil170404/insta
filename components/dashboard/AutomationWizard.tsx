@@ -534,21 +534,6 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                         )}
                                     </div>
 
-                                    {/* Email Capture (Coming Soon) */}
-                                    <div className="group flex items-center justify-between p-6 bg-slate-50/50 rounded-[32px] border border-slate-100 opacity-60">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
-                                                <Smartphone className="h-5 w-5" />
-                                            </div>
-                                            <span className="text-sm font-bold">Ask for their email</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Badge className="bg-primary text-white border-none font-bold text-[10px] py-0.5">PRO</Badge>
-                                            <button className="w-12 h-6.5 rounded-full bg-slate-100 flex items-center px-1 cursor-not-allowed">
-                                                <div className="w-[18px] h-[18px] bg-white rounded-full shadow" />
-                                            </button>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         )}

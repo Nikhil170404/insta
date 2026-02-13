@@ -149,6 +149,60 @@ export async function GET(request: NextRequest) {
       user = newUser as User;
     }
 
+    // Step 4.5: Check waitlist for promo redemption (new users only)
+    if (!userRecord) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: waitlistEntry } = await (supabase as any)
+          .from("waitlist")
+          .select("*")
+          .eq("instagram_username", profile.username.toLowerCase())
+          .eq("redeemed", false)
+          .single();
+
+        if (waitlistEntry) {
+          console.log(`🎉 Waitlist match found! Tier: ${waitlistEntry.tier}, Position: ${waitlistEntry.position}`);
+          const now = new Date();
+          const planExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+          const discountExpiry = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 days
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const updateData: any = {
+            waitlist_discount_until: discountExpiry.toISOString(),
+          };
+
+          // Free plan upgrade for pro/starter tiers
+          if (waitlistEntry.tier === "pro" || waitlistEntry.tier === "starter") {
+            updateData.plan_type = waitlistEntry.tier;
+            updateData.plan_expires_at = planExpiry.toISOString();
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from("users")
+            .update(updateData)
+            .eq("id", user.id);
+
+          // Mark waitlist entry as redeemed
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from("waitlist")
+            .update({ redeemed: true, redeemed_at: now.toISOString() })
+            .eq("id", waitlistEntry.id);
+
+          // Update user object for session
+          if (waitlistEntry.tier === "pro" || waitlistEntry.tier === "starter") {
+            user = { ...user, plan_type: waitlistEntry.tier, plan_expires_at: planExpiry.toISOString() } as User;
+          }
+
+          console.log(`✅ Waitlist promo applied: ${waitlistEntry.tier} plan + 10% discount for 3 months`);
+        }
+      } catch (waitlistError) {
+        // Non-critical: don't block login if waitlist check fails
+        console.error("Waitlist redemption check error (non-critical):", waitlistError);
+      }
+    }
+
     // Step 5: Create session and set cookie
     const sessionToken = await createSession(user);
     await setSessionCookie(sessionToken);

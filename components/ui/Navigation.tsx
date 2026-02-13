@@ -17,9 +17,10 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
 
-    // Hide navigation on dashboard and auth pages
+    // Hide navigation on dashboard, auth, and waitlist pages
     const isDashboard = pathname?.startsWith("/dashboard");
     const isAuthPage = pathname === "/signin" || pathname === "/signup";
+    const isWaitlist = pathname === "/waitlist";
 
     useEffect(() => {
         // Auth Check
@@ -36,7 +37,7 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    if (isDashboard || isAuthPage) return null;
+    if (isDashboard || isAuthPage || isWaitlist) return null;
 
     const navLinks = [
         { name: "Features", href: "/#features", hide: hideFeatures },

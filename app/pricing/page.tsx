@@ -146,8 +146,8 @@ export default function PricingPage() {
                         <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] md:tracking-[0.25em]">Start FREE Forever 🎁</span>
                     </div>
                     <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.9]">
-                        70% cheaper <br className="md:hidden" />than <br className="hidden md:block" />
-                        <span className="text-primary italic">ManyChat.</span>
+                        Simple, <br className="md:hidden" />Honest <br className="hidden md:block" />
+                        <span className="text-primary italic">Pricing.</span>
                     </h1>
                     <p className="text-slate-400 text-sm md:text-lg lg:text-xl font-bold leading-relaxed max-w-2xl mx-auto italic">
                         Same features. Indian pricing. Sabki pahunch mein automation.
@@ -185,23 +185,7 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* Comparison Banner */}
-                <div className="max-w-4xl mx-auto mb-10 md:mb-16 bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl md:rounded-[2rem] p-4 md:p-8 relative z-10">
-                    <div className="grid grid-cols-3 gap-2 md:gap-4 text-center">
-                        <div>
-                            <p className="text-slate-400 text-[8px] md:text-[10px] font-bold uppercase tracking-wider md:tracking-widest mb-1 md:mb-2">ManyChat</p>
-                            <p className="text-white text-base md:text-2xl font-black line-through opacity-50">₹1,250<span className="text-[10px] md:text-sm">/mo</span></p>
-                        </div>
-                        <div>
-                            <p className="text-slate-400 text-[8px] md:text-[10px] font-bold uppercase tracking-wider md:tracking-widest mb-1 md:mb-2">SuperProfile</p>
-                            <p className="text-white text-base md:text-2xl font-black line-through opacity-50">₹499<span className="text-[10px] md:text-sm">/mo</span></p>
-                        </div>
-                        <div>
-                            <p className="text-primary text-[8px] md:text-[10px] font-black uppercase tracking-wider md:tracking-widest mb-1 md:mb-2">ReplyKaro 🚀</p>
-                            <p className="text-primary text-base md:text-2xl font-black">₹79<span className="text-[10px] md:text-sm">/30 days</span></p>
-                        </div>
-                    </div>
-                </div>
+
 
                 {/* Pricing Grid - 4 columns */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10 px-4 max-w-7xl mx-auto">
