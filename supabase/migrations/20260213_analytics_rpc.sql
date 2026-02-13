@@ -26,6 +26,7 @@ BEGIN
     'today_count',        COALESCE((SELECT COUNT(*) FROM dm_logs WHERE user_id = p_user_id AND reply_sent = true AND created_at >= v_today_start), 0),
     'period_count',       COALESCE((SELECT COUNT(*) FROM dm_logs WHERE user_id = p_user_id AND reply_sent = true AND created_at >= v_period_start), 0),
     'total_count',        COALESCE((SELECT COUNT(*) FROM dm_logs WHERE user_id = p_user_id AND reply_sent = true), 0),
+    'attempted_count',    COALESCE((SELECT COUNT(*) FROM dm_logs WHERE user_id = p_user_id), 0),
     'click_count',        COALESCE((SELECT COUNT(*) FROM dm_logs WHERE user_id = p_user_id AND is_clicked = true), 0),
 
     -- === This month ===

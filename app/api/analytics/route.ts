@@ -29,8 +29,9 @@ export async function GET(request: Request) {
         const d = data || {};
 
         const totalCount = Number(d.total_count) || 0;
+        const attemptedCount = Number(d.attempted_count) || 0;
         const clickCount = Number(d.click_count) || 0;
-        const successRate = totalCount > 0 ? Math.round((totalCount / totalCount) * 100) : 0; // reply_sent = true IS the total
+        const successRate = attemptedCount > 0 ? Math.round((totalCount / attemptedCount) * 100) : 0;
         const clickRate = totalCount > 0 ? Math.round((clickCount / totalCount) * 100) : 0;
 
         const thisMonthDms = Number(d.this_month_dms) || 0;
