@@ -114,14 +114,14 @@ export default function WaitlistPage() {
     return (
         <div className="min-h-screen bg-slate-50 selection:bg-primary selection:text-white overflow-x-hidden">
 
-            <main className="flex-1 container mx-auto px-4 pt-28 md:pt-40 pb-16 relative">
+            <main className="flex-1 container mx-auto px-4 pt-10 md:pt-16 pb-16 relative">
                 {/* Background Blobs */}
                 <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-primary/5 rounded-full blur-[120px] -mr-[25rem] -mt-[20rem] pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-indigo-500/5 rounded-full blur-[100px] -ml-[20rem] -mb-[10rem] pointer-events-none" />
                 <div className="absolute top-1/2 left-1/2 w-[30rem] h-[30rem] bg-primary/3 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
                 {/* Hero Section */}
-                <div className="text-center space-y-6 max-w-4xl mx-auto mb-16 relative z-10">
+                <div className="text-center space-y-4 max-w-4xl mx-auto mb-10 relative z-10">
                     <div className="inline-flex items-center gap-2 md:gap-4 px-4 md:px-6 py-2 md:py-3 bg-white border border-slate-50 rounded-full mb-4 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] animate-in fade-in slide-in-from-top-4 duration-700">
                         <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
                             <Timer className="h-3 w-3 md:h-4 md:w-4 text-primary" />
@@ -142,7 +142,7 @@ export default function WaitlistPage() {
                 </div>
 
                 {/* Tier Rewards Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-12 relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8 relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
                     {/* Pro Tier */}
                     <div className="relative overflow-hidden bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-200/50 rounded-[2rem] p-6 group hover:shadow-xl hover:shadow-yellow-500/10 transition-all duration-500">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl -mr-8 -mt-8" />
@@ -226,7 +226,7 @@ export default function WaitlistPage() {
                 </div>
 
                 {/* Live Counter */}
-                <div className="max-w-md mx-auto mb-12 relative z-10 animate-in fade-in zoom-in-95 duration-500 delay-400">
+                <div className="max-w-md mx-auto mb-8 relative z-10 animate-in fade-in zoom-in-95 duration-500 delay-400">
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 p-6 text-center">
                         <div className="flex items-center justify-center gap-2 mb-2">
                             <Users className="h-5 w-5 text-primary" />
@@ -249,7 +249,7 @@ export default function WaitlistPage() {
                 </div>
 
                 {/* Form or Success */}
-                <div className="max-w-lg mx-auto mb-20 relative z-10">
+                <div className="max-w-lg mx-auto mb-12 relative z-10">
                     {success ? (
                         /* Success State */
                         <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 md:p-10 text-center animate-in fade-in zoom-in-95 duration-500">
