@@ -149,11 +149,58 @@ export async function GET(request: NextRequest) {
       user = newUser as User;
     }
 
-    // Step 5: Create session and set cookie
+    // Step 5: Check waitlist reward and auto-apply
+    try {
+      const username = profile.username?.toLowerCase();
+      if (username) {
+        const { data: waitlistEntry } = await (supabase as any)
+          .from("waitlist")
+          .select("id, position, reward_tier, is_claimed")
+          .ilike("instagram_username", username)
+          .eq("is_claimed", false)
+          .maybeSingle();
+
+        if (waitlistEntry && waitlistEntry.reward_tier && !waitlistEntry.is_claimed) {
+          // Apply the reward: set plan_type and plan_expires_at (30 days from now)
+          const rewardPlan = waitlistEntry.reward_tier; // 'pro' or 'starter'
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+
+          const { data: upgradedUser } = await (supabase as any)
+            .from("users")
+            .update({
+              plan_type: rewardPlan,
+              plan_expires_at: expiresAt,
+            })
+            .eq("id", user.id)
+            .select()
+            .single();
+
+          if (upgradedUser) {
+            user = upgradedUser as User;
+            console.log(`🎁 Waitlist reward claimed! User ${username} got ${rewardPlan} plan until ${expiresAt}`);
+          }
+
+          // Mark waitlist entry as claimed
+          await (supabase as any)
+            .from("waitlist")
+            .update({
+              is_claimed: true,
+              claimed_by_user_id: user.id,
+              claimed_at: new Date().toISOString(),
+            })
+            .eq("id", waitlistEntry.id);
+        }
+      }
+    } catch (waitlistError) {
+      // Non-critical: don't block login if waitlist check fails
+      console.error("Waitlist reward check error (non-critical):", waitlistError);
+    }
+
+    // Step 6: Create session and set cookie
     const sessionToken = await createSession(user);
     await setSessionCookie(sessionToken);
 
-    // Step 6: Redirect to dashboard
+    // Step 7: Redirect to dashboard
     return NextResponse.redirect(new URL("/dashboard", request.url));
 
   } catch (err) {

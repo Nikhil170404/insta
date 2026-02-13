@@ -49,9 +49,9 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-16 duration-700 delay-300">
-            <Link href="/signin">
+            <Link href="/waitlist">
               <Button className="h-16 px-12 rounded-[2rem] bg-primary hover:bg-primary/90 text-white font-black text-[15px] uppercase tracking-widest shadow-2xl shadow-primary/30 flex items-center gap-4 group transition-all active:scale-95">
-                Get Started For Free
+                Join Waitlist - Free Reward
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
               </Button>
             </Link>
@@ -195,9 +195,9 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <Link href="/signin" className="w-full sm:w-auto">
+              <Link href="/waitlist" className="w-full sm:w-auto">
                 <Button className="w-full h-16 px-12 rounded-[2rem] bg-white text-slate-900 hover:bg-slate-100 font-black text-[15px] uppercase tracking-widest shadow-2xl flex items-center justify-center gap-4 group transition-all active:scale-95">
-                  Start for Free
+                  Join Waitlist Now
                   <ChevronRight className="h-5 w-5 group-hover:translate-x-1" />
                 </Button>
               </Link>
