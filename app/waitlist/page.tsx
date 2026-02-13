@@ -459,7 +459,7 @@ export default function WaitlistPage() {
                 </div>
 
                 {/* Trust Badges */}
-                <div className="flex flex-wrap justify-center gap-10 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all duration-1000 relative z-10 px-4 mb-16">
+                <div className="flex flex-wrap justify-center gap-10 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all duration-1000 relative z-10 px-4">
                     <div className="flex items-center gap-3 font-black text-slate-900 italic tracking-tighter text-xl">
                         <ShieldCheck className="h-7 w-7 text-primary" /> Meta Verified
                     </div>

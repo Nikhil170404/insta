@@ -317,6 +317,19 @@ export default function PricingPage() {
                         Free Forever <Zap className="h-5 w-5 fill-current" />
                     </Button>
                 </div>
+
+                {/* No Refund Policy */}
+                <div className="mt-12 max-w-2xl mx-auto text-center relative z-10 px-4">
+                    <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-6">
+                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-2">⚠️ Strict No-Refund Policy</p>
+                        <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                            All payments are <span className="font-bold text-slate-700">final and non-refundable</span>. We offer a Free Forever plan so you can test all core features before upgrading. Cancellations stop future billing but previous payments are not refunded.
+                        </p>
+                        <Link href="/terms" className="text-xs font-bold text-primary hover:underline mt-2 inline-block">
+                            Read full Terms of Service →
+                        </Link>
+                    </div>
+                </div>
             </main>
 
             {/* Footer */}
