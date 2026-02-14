@@ -161,10 +161,10 @@ export function DashboardSidebar({ user }: SidebarProps) {
 
       {/* Mobile Sidebar Content */}
       <div className={cn(
-        "lg:hidden fixed top-24 left-4 bottom-4 w-[280px] z-[58] bg-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col rounded-[2.5rem] border border-slate-100",
+        "lg:hidden fixed top-24 left-4 bottom-4 w-[280px] z-[58] bg-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col rounded-[2.5rem] border border-slate-100 overflow-hidden",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-[calc(100%+2rem)]"
       )}>
-        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -191,7 +191,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
           <UsageBar compact resetDateText={getPlanDateText(user)} />
         </div>
 
-        <div className="p-6 border-t border-slate-50 bg-slate-50/30">
+        <div className="p-6 border-t border-slate-50 bg-slate-50/30 rounded-b-[2.5rem]">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold">
               {user.instagram_username.charAt(0).toUpperCase()}

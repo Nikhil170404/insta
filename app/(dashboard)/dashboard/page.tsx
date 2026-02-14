@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   if (!session) redirect("/signin");
 
   return (
-    <div className="space-y-6 pt-10 lg:pt-0 pb-16">
+    <div className="space-y-6 pt-0 lg:pt-0 pb-16">
       {/* Premium Compact Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
         <div className="space-y-3">

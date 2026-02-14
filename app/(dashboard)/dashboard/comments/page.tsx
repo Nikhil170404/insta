@@ -8,7 +8,7 @@ export default async function CommentsPage() {
     if (!session) redirect("/signin");
 
     return (
-        <div className="space-y-6 pt-10 lg:pt-0 pb-16">
+        <div className="space-y-6 pt-0 lg:pt-0 pb-16">
             {/* Header */}
             <div className="space-y-3 px-1">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-slate-100 rounded-full shadow-sm">

@@ -23,13 +23,13 @@ export default function LandingPage() {
         <div className="min-h-screen bg-white selection:bg-primary selection:text-white overflow-x-hidden">
 
             {/* Hero Section */}
-            <section className="relative pt-48 pb-32 px-4">
+            <section className="relative pt-32 pb-32 px-4">
                 {/* Background Blobs */}
                 <div className="absolute top-0 right-0 w-[60rem] h-[60rem] bg-primary/5 rounded-full blur-[120px] -mr-[30rem] -mt-[20rem] animate-pulse" />
                 <div className="absolute top-[20%] left-0 w-[40rem] h-[40rem] bg-indigo-500/5 rounded-full blur-[100px] -ml-[20rem] pointer-events-none" />
 
                 <div className="container mx-auto text-center relative z-10">
-                    <div className="inline-flex items-center gap-4 px-6 py-3 bg-white border border-slate-50 rounded-full mb-12 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="inline-flex items-center gap-4 px-6 py-3 bg-white border border-slate-50 rounded-full mb-8 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center">
                             <Zap className="h-4 w-4 text-primary fill-primary" />
                         </div>

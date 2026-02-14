@@ -336,7 +336,7 @@ export default function BillingPage() {
                         </p>
                         <div className="flex justify-center flex-wrap gap-4">
                             <Badge className="bg-slate-100 text-slate-600 border-none px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest">
-                                Status: {userData?.plan_type?.toUpperCase() || "TRIAL"}
+                                Status: {userData?.plan_type?.toUpperCase() || "FREE"}
                             </Badge>
                             {userData?.plan_expires_at && (
                                 <Badge className="bg-rose-50 text-rose-500 border-none px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest">
