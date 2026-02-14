@@ -69,28 +69,28 @@ export default function FAQPage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
 
-            <main className="flex-1 container mx-auto px-4 pt-48 pb-16 relative">
+            <main className="flex-1 container mx-auto px-4 pt-32 md:pt-48 pb-16 relative">
                 {/* Decorative */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60rem] h-[60rem] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[20rem] md:w-[60rem] h-[20rem] md:h-[60rem] bg-indigo-500/5 rounded-full blur-[60px] md:blur-[120px] pointer-events-none" />
 
                 <div className="max-w-4xl mx-auto">
-                    <div className="text-center space-y-6 mb-20">
+                    <div className="text-center space-y-6 mb-12 md:mb-20">
                         <div className="inline-flex items-center gap-4 px-6 py-3 bg-white border border-slate-50 rounded-full mb-4 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)]">
                             <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center">
                                 <Zap className="h-4 w-4 text-primary fill-primary" />
                             </div>
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">Knowledge Base <span className="text-[7px] align-top">IN</span></span>
                         </div>
-                        <h1 className="text-6xl md:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.85]">
+                        <h1 className="text-4xl md:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.95] md:leading-[0.85]">
                             Everything <br />
                             <span className="text-primary italic">explained simply.</span>
                         </h1>
                     </div>
 
                     {/* FAQ Items */}
-                    <div className="space-y-16">
+                    <div className="space-y-12 md:space-y-16">
                         {FAQS.map((category) => (
-                            <section key={category.category} className="space-y-8">
+                            <section key={category.category} className="space-y-6 md:space-y-8">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-primary shadow-sm">
                                         {category.icon}
@@ -99,13 +99,13 @@ export default function FAQPage() {
                                     <div className="flex-1 h-px bg-slate-200" />
                                 </div>
 
-                                <div className="grid gap-6">
+                                <div className="grid gap-4 md:gap-6">
                                     {category.questions.map((q, i) => (
-                                        <div key={i} className="bg-white p-8 md:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:border-primary/10 group">
-                                            <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mb-4 group-hover:text-primary transition-colors">
+                                        <div key={i} className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:border-primary/10 group">
+                                            <h3 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight mb-3 md:mb-4 group-hover:text-primary transition-colors">
                                                 {q.q}
                                             </h3>
-                                            <p className="text-slate-500 font-medium leading-relaxed md:text-lg italic">
+                                            <p className="text-slate-500 font-medium leading-relaxed text-base md:text-lg italic">
                                                 {q.a}
                                             </p>
                                         </div>
@@ -116,14 +116,14 @@ export default function FAQPage() {
                     </div>
 
                     {/* Still have questions? */}
-                    <div className="mt-32 p-12 bg-slate-900 rounded-[4rem] text-center relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -mr-48 -mt-48" />
-                        <h3 className="text-3xl font-black text-white tracking-tight relative z-10 mb-4">Aapka sawal yahan nahi hai?</h3>
-                        <p className="text-slate-400 font-medium max-w-md mx-auto relative z-10 mb-8 leading-relaxed">
+                    <div className="mt-20 md:mt-32 p-8 md:p-12 bg-slate-900 rounded-[2.5rem] md:rounded-[4rem] text-center relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 md:w-96 h-64 md:h-96 bg-primary/20 rounded-full blur-[80px] md:blur-[100px] -mr-32 -mt-32" />
+                        <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight relative z-10 mb-4">Aapka sawal yahan nahi hai?</h3>
+                        <p className="text-slate-400 font-medium max-w-md mx-auto relative z-10 mb-8 leading-relaxed text-sm md:text-base">
                             No worries! Our team is available 24/7 on email and Instagram.
                         </p>
                         <Link href="/contact" className="relative z-10">
-                            <Button className="h-14 px-10 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black text-sm uppercase tracking-widest gap-3 shadow-2xl">
+                            <Button className="h-12 md:h-14 px-8 md:px-10 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black text-xs md:text-sm uppercase tracking-widest gap-3 shadow-2xl">
                                 Support se baat karein
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
