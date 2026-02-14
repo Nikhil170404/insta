@@ -1,0 +1,134 @@
+{
+  "$schema": "https://claude.ai/schemas/cowork-v1.json",
+  "version": "1.0.0",
+  "project": {
+    "name": "ReplyKaro",
+    "description": "Instagram DM automation SaaS platform for content creators",
+    "type": "next.js"
+  },
+  "workflows": {
+    "development": {
+      "description": "Standard development workflow with testing",
+      "steps": [
+        "Create feature branch from main",
+        "Run tests before and after changes",
+        "Run type checking with TypeScript",
+        "Lint code with ESLint",
+        "Build to verify production compatibility"
+      ],
+      "requiredChecks": ["test", "lint", "build"]
+    },
+    "hotfix": {
+      "description": "Quick fixes for production issues",
+      "steps": [
+        "Create hotfix branch",
+        "Make minimal changes",
+        "Run critical tests only",
+        "Deploy to staging first"
+      ],
+      "requiredChecks": ["test:run"]
+    },
+    "feature": {
+      "description": "New feature development",
+      "steps": [
+        "Design API contracts first",
+        "Write tests before implementation (TDD)",
+        "Implement feature with error handling",
+        "Update documentation",
+        "Add to CHANGELOG"
+      ],
+      "requiredChecks": ["test", "lint", "build", "test:coverage"]
+    }
+  },
+  "collaboration": {
+    "codeOwners": {
+      "lib/instagram/*": "Instagram API integration - requires careful testing",
+      "app/api/webhooks/*": "Webhook handlers - security critical",
+      "app/api/payments/*": "Payment processing - requires thorough validation",
+      "lib/auth/*": "Authentication - security sensitive",
+      "supabase/schema.sql": "Database schema - coordinate migrations carefully"
+    },
+    "areas": [
+      {
+        "name": "frontend",
+        "paths": ["app/(dashboard)/**", "components/**"],
+        "description": "Dashboard UI and components"
+      },
+      {
+        "name": "api",
+        "paths": ["app/api/**", "lib/**"],
+        "description": "Backend API and business logic"
+      },
+      {
+        "name": "database",
+        "paths": ["supabase/**"],
+        "description": "Database schema and migrations"
+      },
+      {
+        "name": "testing",
+        "paths": ["tests/**"],
+        "description": "Test suites and test utilities"
+      }
+    ]
+  },
+  "conventions": {
+    "branchNaming": {
+      "feature": "feature/{issue-number}-{short-description}",
+      "bugfix": "fix/{issue-number}-{short-description}",
+      "hotfix": "hotfix/{issue-number}-{short-description}",
+      "claude": "claude/{session-id}"
+    },
+    "commitMessages": {
+      "format": "conventional-commits",
+      "types": ["feat", "fix", "refactor", "test", "docs", "chore", "perf", "style"],
+      "examples": [
+        "feat(automation): add story reply support",
+        "fix(webhook): handle burst events correctly",
+        "refactor(rate-limiter): extract queue logic",
+        "test(instagram): add DM sending tests"
+      ]
+    },
+    "codingStandards": {
+      "typescript": "strict mode enabled",
+      "naming": "camelCase for variables, PascalCase for components",
+      "imports": "use absolute imports with @ prefix",
+      "errorHandling": "always use custom error types from lib/errors.ts",
+      "validation": "use Zod schemas from lib/validations.ts"
+    }
+  },
+  "automation": {
+    "preCommit": {
+      "enabled": true,
+      "checks": ["lint", "test:run"]
+    },
+    "prePush": {
+      "enabled": true,
+      "checks": ["build"]
+    }
+  },
+  "context": {
+    "importantFiles": [
+      "README.md",
+      "docs/API.md",
+      "docs/TEST_PLAN.md",
+      ".env.example",
+      "lib/instagram/service.ts",
+      "lib/smart-rate-limiter.ts",
+      "supabase/schema.sql"
+    ],
+    "externalDocs": [
+      {
+        "name": "Instagram Graph API",
+        "url": "https://developers.facebook.com/docs/instagram-api"
+      },
+      {
+        "name": "Supabase Docs",
+        "url": "https://supabase.com/docs"
+      },
+      {
+        "name": "Next.js App Router",
+        "url": "https://nextjs.org/docs/app"
+      }
+    ]
+  }
+}

@@ -3,11 +3,27 @@
     "allow": [
       "Bash(npm install)",
       "Bash(npm install:*)",
-      "Bash(npm run dev:*)",
-      "Bash(cat:*)",
-      "Bash(npm run build:*)",
-      "Bash(npx vercel --prod)",
-      "Bash(npx tsc:*)"
+      "Bash(npm run *)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git checkout -b *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(npx *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(grep *)",
+      "Bash(find *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(npm publish*)",
+      "Bash(*supabase db reset*)"
     ]
   }
 }

@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# ReplyKaro Pre-Commit Hook
+# Enforces code quality before commits
+
+echo "🔍 Running pre-commit checks..."
+
+# 1. Lint check
+echo "📝 Running ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Linting failed. Please fix errors before committing."
+  exit 1
+fi
+
+# 2. Type check
+echo "🔧 Running TypeScript check..."
+npx tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript errors found. Please fix before committing."
+  exit 1
+fi
+
+# 3. Run tests
+echo "🧪 Running tests..."
+npm run test:run
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Please fix before committing."
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"
