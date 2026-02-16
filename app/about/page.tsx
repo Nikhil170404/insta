@@ -18,7 +18,7 @@ export default function AboutPage() {
     return (
         <div className="min-h-screen bg-white flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
 
-            <main className="flex-1 container mx-auto px-4 pt-32 md:pt-48 pb-16 relative">
+            <main className="flex-1 container mx-auto px-4 pt-20 md:pt-32 lg:pt-48 pb-16 relative">
                 {/* Hero */}
                 <div className="max-w-4xl mx-auto text-center mb-20 md:mb-32">
                     <div className="inline-flex items-center gap-4 px-6 py-3 bg-white border border-slate-50 rounded-full mb-8 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)]">
@@ -27,7 +27,7 @@ export default function AboutPage() {
                         </div>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">The Mission <span className="text-[7px] align-top">IN</span></span>
                     </div>
-                    <h1 className="text-4xl md:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.95] md:leading-[0.85] mb-6 md:mb-8">
+                    <h1 className="text-4xl md:text-6xl lg:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.95] md:leading-[0.85] mb-6 md:mb-8">
                         Democratizing <br />
                         <span className="text-primary italic">Creator Tools.</span>
                     </h1>
@@ -63,7 +63,7 @@ export default function AboutPage() {
                 </div>
 
                 {/* Values */}
-                <div className="bg-slate-900 rounded-[3rem] md:rounded-[5rem] p-8 md:p-32 text-center relative overflow-hidden">
+                <div className="bg-slate-900 rounded-[3rem] md:rounded-[5rem] p-8 md:p-16 lg:p-32 text-center relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-[20rem] md:w-[50rem] h-[20rem] md:h-[50rem] bg-primary/10 rounded-full blur-[60px] md:blur-[120px] -ml-[10rem] md:-ml-[25rem] -mt-[10rem] md:-mt-[25rem]" />
                     <div className="grid md:grid-cols-3 gap-12 relative z-10">
                         <div className="space-y-4">
@@ -91,7 +91,7 @@ export default function AboutPage() {
                 </div>
 
                 {/* Final CTA */}
-                <div className="mt-20 md:mt-32 text-center pb-20">
+                <div className="mt-12 md:mt-24 lg:mt-32 text-center pb-20">
                     <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter mb-8">Ready to build your community?</h2>
                     <Link href="/signin">
                         <Button className="h-14 md:h-16 px-10 md:px-12 rounded-[2rem] bg-primary text-white font-black text-sm md:text-[15px] uppercase tracking-widest gap-4 shadow-2xl transition-all hover:scale-105 active:scale-95">

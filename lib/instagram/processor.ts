@@ -412,6 +412,17 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         if (dmSent) {
             await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+
+            // Notify User of DM Sent
+            try {
+                const { notifyUser } = await import("@/lib/notifications/push");
+                await notifyUser(user.id, 'dm_sent', {
+                    title: "DM Sent! ✨",
+                    body: `Automated reply sent to @${commenterUsername} on your post.`
+                });
+            } catch (notifyError) {
+                logger.error("Error triggering DM notification", { userId: user.id }, notifyError as Error);
+            }
         } else {
             await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
         }

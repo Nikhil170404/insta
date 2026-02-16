@@ -69,7 +69,7 @@ export default function FAQPage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
 
-            <main className="flex-1 container mx-auto px-4 pt-32 md:pt-48 pb-16 relative">
+            <main className="flex-1 container mx-auto px-4 pt-20 md:pt-32 pb-16 relative">
                 {/* Decorative */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[20rem] md:w-[60rem] h-[20rem] md:h-[60rem] bg-indigo-500/5 rounded-full blur-[60px] md:blur-[120px] pointer-events-none" />
 
@@ -81,7 +81,7 @@ export default function FAQPage() {
                             </div>
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">Knowledge Base <span className="text-[7px] align-top">IN</span></span>
                         </div>
-                        <h1 className="text-4xl md:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.95] md:leading-[0.85]">
+                        <h1 className="text-4xl md:text-6xl lg:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.95] md:leading-[0.85]">
                             Everything <br />
                             <span className="text-primary italic">explained simply.</span>
                         </h1>
@@ -101,7 +101,7 @@ export default function FAQPage() {
 
                                 <div className="grid gap-4 md:gap-6">
                                     {category.questions.map((q, i) => (
-                                        <div key={i} className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:border-primary/10 group">
+                                        <div key={i} className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:border-primary/10 group">
                                             <h3 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight mb-3 md:mb-4 group-hover:text-primary transition-colors">
                                                 {q.q}
                                             </h3>

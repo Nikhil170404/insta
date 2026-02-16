@@ -18,7 +18,7 @@ export default function ContactPage() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
 
-            <main className="flex-1 container mx-auto px-4 pt-32 md:pt-48 pb-16 relative">
+            <main className="flex-1 container mx-auto px-4 pt-20 md:pt-32 pb-16 relative">
                 {/* Background Blobs */}
                 <div className="absolute top-0 right-0 w-[20rem] md:w-[50rem] h-[20rem] md:h-[50rem] bg-primary/5 rounded-full blur-[60px] md:blur-[120px] -mr-[10rem] md:-mr-[25rem] -mt-[10rem] md:-mt-[20rem] pointer-events-none" />
 
@@ -30,7 +30,7 @@ export default function ContactPage() {
                             </div>
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Support Station <span className="text-[7px] align-top">IN</span></span>
                         </div>
-                        <h1 className="text-4xl md:text-7xl font-[900] text-slate-900 tracking-tighter leading-tight">
+                        <h1 className="text-3xl md:text-5xl lg:text-7xl font-[900] text-slate-900 tracking-tighter leading-tight">
                             We're here to help <br />
                             <span className="text-primary italic">you engage better.</span>
                         </h1>
@@ -41,7 +41,7 @@ export default function ContactPage() {
 
                     <div className="grid md:grid-cols-2 gap-6 md:gap-8">
                         {/* Direct Support */}
-                        <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 group transition-all hover:border-primary/20">
+                        <div className="bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 group transition-all hover:border-primary/20">
                             <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary mb-6 md:mb-8 transition-transform group-hover:scale-110 group-hover:rotate-3">
                                 <Mail className="h-7 w-7" />
                             </div>
@@ -58,7 +58,7 @@ export default function ContactPage() {
                         </div>
 
                         {/* Social Support */}
-                        <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 group transition-all hover:border-indigo-200">
+                        <div className="bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 group transition-all hover:border-indigo-200">
                             <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 md:mb-8 transition-transform group-hover:scale-110 group-hover:-rotate-3">
                                 <Instagram className="h-7 w-7" />
                             </div>

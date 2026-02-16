@@ -114,7 +114,7 @@ export default function WaitlistPage() {
     return (
         <div className="min-h-screen bg-slate-50 selection:bg-primary selection:text-white overflow-x-hidden">
 
-            <main className="flex-1 container mx-auto px-4 pt-10 md:pt-16 pb-16 relative">
+            <main className="flex-1 container mx-auto px-4 pt-8 md:pt-16 pb-16 relative">
                 {/* Background Blobs */}
                 <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-primary/5 rounded-full blur-[120px] -mr-[25rem] -mt-[20rem] pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-indigo-500/5 rounded-full blur-[100px] -ml-[20rem] -mb-[10rem] pointer-events-none" />
@@ -131,7 +131,7 @@ export default function WaitlistPage() {
                         </span>
                     </div>
 
-                    <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.9] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.9] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
                         Join the <br className="md:hidden" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-indigo-600">Waitlist.</span>
                     </h1>

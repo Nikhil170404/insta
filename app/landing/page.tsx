@@ -23,7 +23,7 @@ export default function LandingPage() {
         <div className="min-h-screen bg-white selection:bg-primary selection:text-white overflow-x-hidden">
 
             {/* Hero Section */}
-            <section className="relative pt-32 pb-32 px-4">
+            <section className="relative pt-24 md:pt-32 pb-20 md:pb-32 px-4">
                 {/* Background Blobs */}
                 <div className="absolute top-0 right-0 w-[60rem] h-[60rem] bg-primary/5 rounded-full blur-[120px] -mr-[30rem] -mt-[20rem] animate-pulse" />
                 <div className="absolute top-[20%] left-0 w-[40rem] h-[40rem] bg-indigo-500/5 rounded-full blur-[100px] -ml-[20rem] pointer-events-none" />
@@ -38,7 +38,7 @@ export default function LandingPage() {
                         </span>
                     </div>
 
-                    <h1 className="text-7xl md:text-8xl lg:text-9xl font-[900] text-[#1e293b] tracking-tighter leading-[0.8] mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+                    <h1 className="text-5xl md:text-8xl lg:text-9xl font-[900] text-[#1e293b] tracking-tighter leading-[0.8] mb-6 md:mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
                         Reply Karo, <br />
                         <span className="text-primary italic">Reach Badao!</span>
                     </h1>
@@ -73,7 +73,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Hero Feature Visualization */}
-                <div className="container mx-auto mt-24 relative">
+                <div className="container mx-auto mt-12 md:mt-24 relative">
                     <div className="relative mx-auto max-w-5xl group">
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-indigo-500/20 to-primary/20 rounded-[3.5rem] blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000" />
                         <div className="relative bg-white rounded-[3rem] border border-slate-100 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.1)] overflow-hidden">
@@ -111,7 +111,7 @@ export default function LandingPage() {
             </section>
 
             {/* Features Grid */}
-            <section id="features" className="py-32 bg-slate-50/50">
+            <section id="features" className="py-20 md:py-32 bg-slate-50/50">
                 <div className="container mx-auto px-4">
                     <div className="text-center max-w-3xl mx-auto mb-24">
                         <Badge className="bg-slate-900/5 text-slate-900 border-none px-4 py-1.5 rounded-full mb-6 uppercase tracking-[0.2em] text-[10px] font-black">
@@ -163,7 +163,7 @@ export default function LandingPage() {
                             }
                         ]
                             .map((feat, i) => (
-                                <div key={i} className="group p-10 bg-white rounded-[3rem] border border-slate-100 hover:border-primary/20 transition-all duration-500 hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)]">
+                                <div key={i} className="group p-8 md:p-10 bg-white rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 hover:border-primary/20 transition-all duration-500 hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)]">
                                     <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 group-hover:rotate-3", feat.color)}>
                                         {feat.icon}
                                     </div>
@@ -176,27 +176,27 @@ export default function LandingPage() {
             </section>
 
             {/* Localized CTA Section */}
-            <section className="py-32 px-4 relative overflow-hidden">
+            <section className="py-16 md:py-32 px-4 relative overflow-hidden">
                 <div className="absolute inset-0 bg-slate-900" />
                 <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-primary/20 rounded-full blur-[120px] -mr-[25rem] -mt-[25rem]" />
                 <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-indigo-500/10 rounded-full blur-[100px] -ml-[20rem] -mb-[20rem]" />
 
                 <div className="container mx-auto relative z-10">
-                    <div className="max-w-5xl mx-auto bg-white/5 backdrop-blur-3xl rounded-[4rem] border border-white/10 p-10 md:p-24 text-center">
+                    <div className="max-w-5xl mx-auto bg-white/5 backdrop-blur-3xl rounded-[4rem] border border-white/10 p-6 md:p-24 text-center">
                         <Badge className="bg-primary text-white border-none px-6 py-2 rounded-full mb-8 uppercase tracking-[0.3em] text-[11px] font-black shadow-xl shadow-primary/20">
                             Launch Your Engine
                         </Badge>
-                        <h2 className="text-4xl md:text-7xl font-black text-slate-100 tracking-tighter mb-8 leading-[1.1] md:leading-tight">
+                        <h2 className="text-2xl md:text-7xl font-black text-slate-100 tracking-tighter mb-4 md:mb-8 leading-[1.1] md:leading-tight">
                             Bahut hua manual replies. <br />
                             Ab karo <span className="text-primary italic">Smart Engagement.</span>
                         </h2>
-                        <p className="text-slate-400 text-lg md:text-xl font-bold mb-12 max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-slate-400 text-sm md:text-xl font-bold mb-8 md:mb-12 max-w-2xl mx-auto leading-relaxed">
                             Join 5,000+ creators building authentic communities on Instagram without expensive tools.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                             <Link href="/signin" className="w-full sm:w-auto">
-                                <Button className="w-full h-16 px-12 rounded-[2rem] bg-white text-slate-900 hover:bg-slate-100 font-black text-[15px] uppercase tracking-widest shadow-2xl flex items-center justify-center gap-4 group transition-all active:scale-95">
+                                <Button className="w-full h-14 md:h-16 px-12 rounded-[2rem] bg-white text-slate-900 hover:bg-slate-100 font-black text-[15px] uppercase tracking-widest shadow-2xl flex items-center justify-center gap-4 group transition-all active:scale-95">
                                     Start for Free
                                     <ChevronRight className="h-5 w-5 group-hover:translate-x-1" />
                                 </Button>

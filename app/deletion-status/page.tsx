@@ -16,7 +16,7 @@ export default function DeletionStatusPage() {
             <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-emerald-500/5 rounded-full blur-[100px] -mr-[20rem] -mt-[20rem]" />
             <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-primary/5 rounded-full blur-[100px] -ml-[20rem] -mb-[20rem]" />
 
-            <div className="max-w-lg w-full bg-white p-12 md:p-16 rounded-[3.5rem] border border-slate-100 shadow-2xl relative z-10 text-center">
+            <div className="max-w-lg w-full bg-white p-8 md:p-16 rounded-[3.5rem] border border-slate-100 shadow-2xl relative z-10 text-center">
                 <div className="w-20 h-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
                     <CheckCircle2 className="h-10 w-10 text-emerald-500" />
                 </div>

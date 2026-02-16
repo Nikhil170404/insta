@@ -8,17 +8,10 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Link href="/" className="text-xl font-bold text-primary">
-            ReplyKaro
-          </Link>
-        </div>
-      </header>
+
 
       {/* Content */}
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
+      <main className="container mx-auto px-4 pt-24 md:pt-32 pb-12 max-w-4xl">
         <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
         <p className="text-gray-500 mb-8">Last updated: January 2025</p>
 

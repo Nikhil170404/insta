@@ -30,7 +30,79 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<"profile" | "billing" | "notifications" | "security">("profile");
     const [disconnecting, setDisconnecting] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [notifications, setNotifications] = useState({
+        dm_sent: true,
+        billing: true,
+        security: true,
+        web_push_token: null as string | null
+    });
+    const [pushSupported, setPushSupported] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        if (activeTab === "notifications") {
+            fetchNotifications();
+        }
+        setPushSupported('serviceWorker' in navigator && 'PushManager' in window);
+    }, [activeTab]);
+
+    async function fetchNotifications() {
+        try {
+            const res = await fetch("/api/settings/notifications");
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+            }
+        } catch (error) {
+            console.error("Error fetching notifications:", error);
+        }
+    }
+
+    async function handleToggle(id: string) {
+        const updated = {
+            ...notifications,
+            [id]: !((notifications as any)[id])
+        };
+        setNotifications(updated as any);
+        saveNotifications(updated);
+    }
+
+    async function saveNotifications(updated: any) {
+        try {
+            await fetch("/api/settings/notifications", {
+                method: "PATCH",
+                body: JSON.stringify(updated)
+            });
+        } catch (error) {
+            console.error("Error saving notifications:", error);
+        }
+    }
+
+    async function enablePush() {
+        if (!pushSupported) return;
+
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            const permission = await Notification.requestPermission();
+
+            if (permission === 'granted') {
+                // Subscribe to push notifications
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    // Note: In a production app, you MUST provide a VAPID public key here
+                    // applicationServerKey: urlBase64ToUint8Array('YOUR_VAPID_PUBLIC_KEY')
+                });
+
+                const updated = { ...notifications, web_push_token: JSON.stringify(subscription) };
+                setNotifications(updated);
+                saveNotifications(updated);
+                alert("Push notifications enabled! Phir milenge alerts ke saath.");
+            }
+        } catch (error) {
+            console.error("Error enabling push:", error);
+            alert("Failed to enable push. Make sure you are on HTTPS or localhost.");
+        }
+    }
 
     async function handleDisconnect() {
         if (!confirm("Are you sure you want to terminate your session? This will log you out of the ReplyKaro matrix.")) {
@@ -135,8 +207,20 @@ export default function SettingsPage() {
                             </div>
 
                             <div className="space-y-4">
+                                {pushSupported && !notifications.web_push_token && (
+                                    <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                                        <div>
+                                            <p className="font-black text-primary tracking-tight">Enable Browser Notifications</p>
+                                            <p className="text-xs text-slate-400 font-medium">Be the first to know when your reach increases.</p>
+                                        </div>
+                                        <Button onClick={enablePush} className="bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest px-6 h-10 shadow-lg shadow-primary/20">
+                                            Enable Now
+                                        </Button>
+                                    </div>
+                                )}
+
                                 {[
-                                    { id: "dm", name: "DM Sent", desc: "Push notification when a bot replies to a comment." },
+                                    { id: "dm_sent", name: "DM Sent", desc: "Push notification when a bot replies to a comment." },
                                     { id: "billing", name: "Billing Updates", desc: "Critical updates regarding your plan status." },
                                     { id: "security", name: "Security Alerts", desc: "Notify me of any remote login attempts." },
                                 ].map((item) => (
@@ -145,8 +229,17 @@ export default function SettingsPage() {
                                             <p className="font-black text-slate-900 tracking-tight">{item.name}</p>
                                             <p className="text-xs text-slate-400 font-medium">{item.desc}</p>
                                         </div>
-                                        <div className="w-12 h-6 bg-primary rounded-full relative cursor-pointer shadow-inner shadow-black/10">
-                                            <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full shadow-sm" />
+                                        <div
+                                            onClick={() => handleToggle(item.id)}
+                                            className={cn(
+                                                "w-12 h-6 rounded-full relative cursor-pointer shadow-inner transition-all duration-300",
+                                                (notifications as any)[item.id] ? "bg-primary shadow-black/10" : "bg-slate-200"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300",
+                                                (notifications as any)[item.id] ? "right-1" : "left-1"
+                                            )} />
                                         </div>
                                     </div>
                                 ))}

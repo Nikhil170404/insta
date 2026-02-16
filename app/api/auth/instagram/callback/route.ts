@@ -207,6 +207,17 @@ export async function GET(request: NextRequest) {
     const sessionToken = await createSession(user);
     await setSessionCookie(sessionToken);
 
+    // Step 5.5: Notify user of Signin Success (Security Alert)
+    try {
+      const { notifyUser } = await import("@/lib/notifications/push");
+      await notifyUser(user.id, 'security', {
+        title: "Signin Success 🚀",
+        body: `Welcome back, @${user.instagram_username}. You just logged into ReplyKaro.`
+      });
+    } catch (notifyError) {
+      console.error("Error triggering signin notification:", notifyError);
+    }
+
     // Step 6: Redirect to dashboard
     return NextResponse.redirect(new URL("/dashboard", request.url));
 

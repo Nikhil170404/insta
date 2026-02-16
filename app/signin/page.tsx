@@ -26,7 +26,7 @@ export default async function SignInPage() {
         </Link>
 
         {/* Sign In Card */}
-        <div className="bg-white rounded-[3.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.08)] border border-slate-100 p-8 md:p-16 text-center">
+        <div className="bg-white rounded-[3.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.08)] border border-slate-100 p-6 md:p-12 lg:p-16 text-center">
           {/* Logo Area */}
           <div className="mb-10">
             <div className="w-20 h-20 rounded-[2rem] bg-slate-50 flex items-center justify-center mx-auto mb-6 shadow-inner ring-1 ring-slate-100">
@@ -35,7 +35,7 @@ export default async function SignInPage() {
             <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-[0.25em] px-4 py-1.5 rounded-full mb-4">
               Creator Gateway 🚪
             </Badge>
-            <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter leading-tight">
+            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter leading-tight">
               Ready to scale <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">at Warp Speed?</span>
             </h1>

@@ -26,6 +26,7 @@ export type Database = {
           subscription_interval: "monthly" | "yearly" | null;
           created_at: string;
           updated_at: string;
+          notification_settings: Json | null;
         };
         Insert: {
           id?: string;
@@ -42,6 +43,7 @@ export type Database = {
           subscription_interval?: "monthly" | "yearly" | null;
           created_at?: string;
           updated_at?: string;
+          notification_settings?: Json | null;
         };
         Update: {
           id?: string;
@@ -50,7 +52,7 @@ export type Database = {
           instagram_access_token?: string;
           instagram_token_expires_at?: string;
           email?: string | null;
-          plan_type: "free" | "starter" | "pro" | "expired";
+          plan_type?: "free" | "starter" | "pro" | "expired";
           plan_expires_at?: string | null;
 
           razorpay_subscription_id?: string | null;
@@ -58,6 +60,7 @@ export type Database = {
           subscription_interval?: "monthly" | "yearly" | null;
           created_at?: string;
           updated_at?: string;
+          notification_settings?: Json | null;
         };
       };
       keywords: {

@@ -132,20 +132,20 @@ export default function PricingPage() {
                 src="https://checkout.razorpay.com/v1/checkout.js"
             />
 
-            <main className="flex-1 container mx-auto px-4 pt-28 md:pt-48 pb-16 relative">
+            <main className="flex-1 container mx-auto px-4 pt-20 md:pt-32 pb-16 relative">
                 {/* Background */}
                 <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-primary/5 rounded-full blur-[120px] -mr-[25rem] -mt-[20rem] pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-indigo-500/5 rounded-full blur-[100px] -ml-[20rem] -mb-[10rem] pointer-events-none" />
 
                 {/* Header */}
-                <div className="text-center space-y-6 max-w-4xl mx-auto mb-12 relative z-10 px-4">
+                <div className="text-center space-y-4 md:space-y-6 max-w-4xl mx-auto mb-8 md:mb-12 relative z-10 px-4">
                     <div className="inline-flex items-center gap-2 md:gap-4 px-4 md:px-6 py-2 md:py-3 bg-white border border-slate-50 rounded-full mb-4 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)]">
                         <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-emerald-100 flex items-center justify-center">
                             <Gift className="h-3 w-3 md:h-4 md:w-4 text-emerald-600" />
                         </div>
                         <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] md:tracking-[0.25em]">Start FREE Forever 🎁</span>
                     </div>
-                    <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.9]">
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-[900] text-slate-900 tracking-tighter leading-[0.9]">
                         Simple, <br className="md:hidden" />Honest <br className="hidden md:block" />
                         <span className="text-primary italic">Pricing.</span>
                     </h1>

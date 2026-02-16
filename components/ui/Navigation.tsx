@@ -54,7 +54,7 @@ export function Navigation({ hideFeatures = false }: NavigationProps) {
             )}>
                 <div className="container mx-auto flex items-center justify-center gap-3">
                     {/* Main Nav Pill */}
-                    <div className="flex items-center justify-between glass-nav px-3 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl sm:rounded-[2.5rem] flex-1 max-w-4xl border border-white/20 overflow-hidden">
+                    <div className="flex items-center justify-between glass-nav px-2.5 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl sm:rounded-[2.5rem] flex-1 max-w-4xl border border-white/20 overflow-hidden">
                         {/* Logo & Brand Pod */}
                         <Link href="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 transition-transform hover:scale-105 active:scale-95 group flex-shrink-0">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] flex items-center justify-center ring-1 ring-slate-100 group-hover:rotate-12 transition-all duration-500 overflow-hidden shrink-0">
