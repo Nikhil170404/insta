@@ -43,11 +43,15 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
     // State for different steps
     const [triggerType, setTriggerType] = useState<"specific" | "any" | "next" | "story">(
         initialData
-            ? (initialData.trigger_type === "story_reply" ? "story" : (initialData.trigger_type === "any" ? "any" : "specific"))
+            ? (initialData.trigger_type === "story_reply" ? "story" :
+                (initialData.trigger_type === "all_posts" || initialData.media_id === "ALL_MEDIA" ? "any" :
+                    (initialData.trigger_type === "next_posts" || initialData.media_id === "NEXT_MEDIA" ? "next" : "specific")))
             : (selectedMedia?.id === "STORY_AUTOMATION" ? "story" : "specific")
     );
     const [matchingType, setMatchingType] = useState<"any" | "keyword">(
-        initialData ? (initialData.trigger_type === "any" ? "any" : "keyword") : "keyword"
+        initialData
+            ? (initialData.trigger_keyword === null ? "any" : "keyword")
+            : "keyword"
     );
     const [keywords, setKeywords] = useState(initialData?.trigger_keyword || "");
     const [replyToComments, setReplyToComments] = useState(!!initialData?.comment_reply || !!(initialData?.comment_reply_templates?.length));
@@ -100,7 +104,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
         onSave({
             id: initialData?.id,
             trigger_type: finalTriggerType,
-            trigger_keyword: triggerType === "story" ? null : keywords,
+            trigger_keyword: (triggerType === "story" || matchingType === "any") ? null : keywords,
             reply_message: openingDM,
             comment_reply: replyToComments && triggerType !== "story" && commentReplyTemplates.length > 0 ? commentReplyTemplates[0] : null,
             comment_reply_templates: replyToComments && triggerType !== "story" ? commentReplyTemplates : null,

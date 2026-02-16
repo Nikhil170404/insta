@@ -774,9 +774,16 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
 }
 
 function checkKeywordMatch(triggerType: string, triggerKeyword: string | null, commentText: string): boolean {
-    if (triggerType === "any") return true;
-    if (!triggerKeyword) return false;
+    // If the trigger type explicitly says 'any', or if there's no keyword, it's a catch-all
+    if (triggerType === "any" || !triggerKeyword || triggerKeyword.toLowerCase().trim() === 'any') return true;
+
+    // Normalize comment for matching
     const normalizedComment = commentText.toLowerCase().trim();
-    const normalizedKeyword = triggerKeyword.toLowerCase().trim();
-    return normalizedComment.includes(normalizedKeyword);
+
+    // Support comma-separated keywords (ManyChat style)
+    const keywords = triggerKeyword.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
+
+    if (keywords.length === 0) return true;
+
+    return keywords.some(k => normalizedComment.includes(k));
 }
