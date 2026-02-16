@@ -52,7 +52,7 @@ export function EmailCollectionModal({ initialEmail }: EmailCollectionModalProps
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden scrollbar-hide">
                 <div className="p-6">
                     <h2 className="text-xl font-semibold mb-2 text-zinc-900 dark:text-white">
                         Complete Your Profile

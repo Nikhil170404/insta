@@ -395,13 +395,29 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
         const senderIgsid = messaging.sender?.id;
         const message = messaging.message;
 
-        // Detect story interaction: reply_to.story_id OR story_mention attachment
-        const isStoryReply = !!message?.reply_to?.story_id;
+        logger.info("Handling message event", {
+            instagramUserId,
+            sender: senderIgsid,
+            messageSnippet: message?.text?.substring(0, 20),
+            hasReplyTo: !!message?.reply_to,
+            hasAttachments: !!message?.attachments,
+            payload: JSON.stringify(messaging).substring(0, 500) // Log first 500 chars of payload
+        });
+
+        // Detect story interaction: reply_to.story object exists
+        const isStoryReply = !!message?.reply_to?.story;
         const isStoryMention = message?.attachments?.some(
             (att: any) => att.type === 'story_mention'
         );
 
         if (isStoryReply || isStoryMention) {
+            logger.info("Processing story event", {
+                isStoryReply,
+                isStoryMention,
+                sender: senderIgsid,
+                recipient: instagramUserId
+            });
+
             let user = await getCachedUser(instagramUserId);
             if (!user) {
                 const { data: dbUser } = await supabase
@@ -409,7 +425,10 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     .select("*")
                     .eq("instagram_user_id", instagramUserId)
                     .single();
-                if (!dbUser) return;
+                if (!dbUser) {
+                    logger.warn("User not found for story event", { instagramUserId });
+                    return;
+                }
                 user = dbUser;
                 await setCachedUser(instagramUserId, dbUser);
             }
@@ -417,13 +436,18 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             // Guard against null user (TypeScript strict)
             if (!user) return;
 
-            const { data: automation } = await supabase
+            const { data: automation, error: automationError } = await supabase
                 .from("automations")
                 .select("*")
                 .eq("user_id", user.id)
                 .eq("trigger_type", "story_reply")
                 .eq("is_active", true)
                 .maybeSingle();
+
+            if (automationError) {
+                logger.error("Error fetching automation", { userId: user.id, error: automationError });
+                return;
+            }
 
             if (!automation) {
                 logger.info("No active story_reply automation found", { userId: user.id });
@@ -475,6 +499,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             }
 
             // Send the DM
+            logger.info("Sending story DM...", { automationId: automation.id, recipient: senderIgsid });
             const dmSent = await sendInstagramDM(
                 user.instagram_access_token,
                 instagramUserId,
@@ -483,14 +508,16 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 automation.reply_message,
                 automation.id,
                 automation.button_text,
-                automation.link_url,
+                undefined, // Force 2-step flow (Postback) so we can handle follow-gate logic
                 undefined
             );
 
             if (dmSent) {
                 await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                logger.info("Story DM sent successfully", { automationId: automation.id });
             } else {
                 await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
+                logger.error("Failed to send story DM", { automationId: automation.id });
             }
 
             // Log the DM so it appears in Analytics

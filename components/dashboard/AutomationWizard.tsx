@@ -42,7 +42,9 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
 
     // State for different steps
     const [triggerType, setTriggerType] = useState<"specific" | "any" | "next" | "story">(
-        initialData ? (initialData.trigger_type === "story_reply" ? "story" : (initialData.trigger_type === "any" ? "any" : "specific")) : "specific"
+        initialData
+            ? (initialData.trigger_type === "story_reply" ? "story" : (initialData.trigger_type === "any" ? "any" : "specific"))
+            : (selectedMedia?.id === "STORY_AUTOMATION" ? "story" : "specific")
     );
     const [matchingType, setMatchingType] = useState<"any" | "keyword">(
         initialData ? (initialData.trigger_type === "any" ? "any" : "keyword") : "keyword"
@@ -98,12 +100,12 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
             follow_gate_message: requireFollow ? followGateMessage : null,
             respond_to_replies: respondToReplies,
             ignore_self_comments: ignoreSelfComments,
-            media_id: triggerType === "specific" ? (selectedMedia?.id || initialData?.media_id) : null,
+            media_id: triggerType === "story" ? "STORY_AUTOMATION" : (triggerType === "specific" ? (selectedMedia?.id || initialData?.media_id) : null),
         });
     };
 
     return (
-        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/40 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="fixed inset-0 z-[100] overflow-y-auto scrollbar-hide bg-slate-900/40 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div className="flex min-h-full items-center justify-center p-0 md:p-6 lg:p-12">
                 {/* Wizard Container */}
                 <div className="relative w-full h-[100dvh] md:h-auto md:max-h-[90vh] md:max-w-xl bg-white md:rounded-[2.5rem] shadow-[0_20px_100px_-20px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-300">
@@ -124,88 +126,94 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
+                    <div className="flex-1 overflow-y-auto scrollbar-hide p-6 md:p-8 space-y-8">
 
                         {/* STEP 1: TRIGGER TYPE */}
                         {step === 1 && (
                             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                                 <h3 className="text-xl font-bold text-slate-900">Select a trigger</h3>
                                 <div className="space-y-3">
-                                    <button
-                                        onClick={() => setTriggerType("specific")}
-                                        className={cn(
-                                            "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-4",
-                                            triggerType === "specific" ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "border-slate-100 hover:border-slate-200"
-                                        )}
-                                    >
-                                        <div className={cn("mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all", triggerType === "specific" ? "border-primary" : "border-slate-300")}>
-                                            {triggerType === "specific" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900">A specific post or reel</p>
-                                            {selectedMedia && triggerType === "specific" && (
-                                                <div className="mt-4 flex gap-3 p-3 bg-white rounded-xl border border-primary/10">
-                                                    <img src={selectedMedia.thumbnail_url || selectedMedia.media_url} className="w-12 h-16 object-cover rounded-lg" alt="" />
-                                                    <p className="text-xs text-slate-500 line-clamp-3">{selectedMedia.caption || "No caption provided"}</p>
+                                    {selectedMedia?.id !== "STORY_AUTOMATION" && (
+                                        <>
+                                            <button
+                                                onClick={() => setTriggerType("specific")}
+                                                className={cn(
+                                                    "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-4",
+                                                    triggerType === "specific" ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "border-slate-100 hover:border-slate-200"
+                                                )}
+                                            >
+                                                <div className={cn("mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all", triggerType === "specific" ? "border-primary" : "border-slate-300")}>
+                                                    {triggerType === "specific" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                                                 </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900">A specific post or reel</p>
+                                                    {selectedMedia && triggerType === "specific" && (
+                                                        <div className="mt-4 flex gap-3 p-3 bg-white rounded-xl border border-primary/10">
+                                                            <img src={selectedMedia.thumbnail_url || selectedMedia.media_url} className="w-12 h-16 object-cover rounded-lg" alt="" />
+                                                            <p className="text-xs text-slate-500 line-clamp-3">{selectedMedia.caption || "No caption provided"}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                onClick={() => setTriggerType("any")}
+                                                className={cn(
+                                                    "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 relative overflow-hidden",
+                                                    triggerType === "any" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200 opacity-60"
+                                                )}
+                                            >
+                                                <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0", triggerType === "any" ? "border-primary" : "border-slate-300")}>
+                                                    {triggerType === "any" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-slate-900">Any post or reel</p>
+                                                </div>
+                                                <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "free" ? "bg-green-500 text-white" : "bg-primary text-white")}>
+                                                    {planType === "free" ? "FREE" : "PRO"}
+                                                </Badge>
+                                            </button>
+
+                                            <button
+                                                onClick={() => setTriggerType("next")}
+                                                className={cn(
+                                                    "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 relative overflow-hidden",
+                                                    triggerType === "next" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200 opacity-60"
+                                                )}
+                                            >
+                                                <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0", triggerType === "next" ? "border-primary" : "border-slate-300")}>
+                                                    {triggerType === "next" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-slate-900">Next post or reel</p>
+                                                </div>
+                                                <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "free" ? "bg-green-500 text-white" : "bg-primary text-white")}>
+                                                    {planType === "free" ? "FREE" : "PRO"}
+                                                </Badge>
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {selectedMedia?.id === "STORY_AUTOMATION" || !selectedMedia ? (
+                                        <button
+                                            onClick={() => setTriggerType("story")}
+                                            className={cn(
+                                                "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 relative overflow-hidden",
+                                                triggerType === "story" ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "border-slate-100 hover:border-slate-200"
                                             )}
-                                        </div>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setTriggerType("any")}
-                                        className={cn(
-                                            "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 relative overflow-hidden",
-                                            triggerType === "any" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200 opacity-60"
-                                        )}
-                                    >
-                                        <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0", triggerType === "any" ? "border-primary" : "border-slate-300")}>
-                                            {triggerType === "any" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-slate-900">Any post or reel</p>
-                                        </div>
-                                        <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "free" ? "bg-green-500 text-white" : "bg-primary text-white")}>
-                                            {planType === "free" ? "FREE" : "PRO"}
-                                        </Badge>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setTriggerType("next")}
-                                        className={cn(
-                                            "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 relative overflow-hidden",
-                                            triggerType === "next" ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200 opacity-60"
-                                        )}
-                                    >
-                                        <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0", triggerType === "next" ? "border-primary" : "border-slate-300")}>
-                                            {triggerType === "next" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-slate-900">Next post or reel</p>
-                                        </div>
-                                        <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "free" ? "bg-green-500 text-white" : "bg-primary text-white")}>
-                                            {planType === "free" ? "FREE" : "PRO"}
-                                        </Badge>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setTriggerType("story")}
-                                        className={cn(
-                                            "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 relative overflow-hidden",
-                                            triggerType === "story" ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "border-slate-100 hover:border-slate-200"
-                                        )}
-                                    >
-                                        <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0", triggerType === "story" ? "border-primary" : "border-slate-300")}>
-                                            {triggerType === "story" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-slate-900">Fan replies to my story</p>
-                                            <p className="text-[11px] text-slate-400 font-medium">Auto-respond to all story engagements</p>
-                                        </div>
-                                        <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "free" ? "bg-green-500 text-white" : "bg-indigo-600 text-white")}>
-                                            {planType === "free" ? "FREE" : "ENGAGEMENT-BOOST"}
-                                        </Badge>
-                                    </button>
+                                        >
+                                            <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0", triggerType === "story" ? "border-primary" : "border-slate-300")}>
+                                                {triggerType === "story" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-slate-900">Fan replies to my story</p>
+                                                <p className="text-[11px] text-slate-400 font-medium">Auto-respond to all story engagements</p>
+                                            </div>
+                                            <Badge className={cn("border-none font-bold text-[10px] py-0.5", planType === "free" ? "bg-green-500 text-white" : "bg-indigo-600 text-white")}>
+                                                {planType === "free" ? "FREE" : "ENGAGEMENT-BOOST"}
+                                            </Badge>
+                                        </button>
+                                    ) : null}
                                 </div>
                             </div>
                         )}
