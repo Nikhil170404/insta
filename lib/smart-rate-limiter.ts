@@ -298,7 +298,7 @@ export async function processQueuedDMs() {
                         dm.automation_id,
                         dm.automations.button_text,
                         dm.automations.link_url,
-                        dm.automations.media_thumbnail_url
+                        dm.automations.link_url ? dm.automations.media_thumbnail_url : undefined
                     );
 
                     if (dmSent) {

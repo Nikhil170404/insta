@@ -297,7 +297,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         commenterId,
                         automation.id,
                         user.instagram_username || '',
-                        automation.media_thumbnail_url,
+                        undefined, // No thumbnail for follow-gate card
                         `Hey ${commenterUsername}! 👀 Hmm, looks like you haven't followed yet. Please follow us first to unlock this!`
                     );
                     if (cardSent) {
@@ -336,7 +336,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         automation.id,
                         automation.button_text || "Get Link",
                         undefined, // No direct link - follow check happens on button click
-                        automation.media_thumbnail_url
+                        undefined // No thumbnail for initial greeting
                     );
 
                     // Log as non-follower greeting (placeholder was already created in step 8b)
@@ -367,7 +367,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         automation.id,
                         automation.button_text || "Get Link",
                         undefined, // No direct link - user must click button to get link (for click tracking)
-                        automation.media_thumbnail_url
+                        undefined // No thumbnail for initial greeting
                     );
 
                     // Update placeholder record
@@ -616,7 +616,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                         senderIgsid,
                         automation.id,
                         user.instagram_username || '',
-                        automation.media_thumbnail_url,
+                        undefined, // No thumbnail for follow-gate card
                         followGateMsg
                     );
 
@@ -763,7 +763,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     senderIgsid,
                     automation.id,
                     user.instagram_username || '',
-                    automation.media_thumbnail_url,
+                    undefined, // No thumbnail for follow-gate card
                     "Hmm, looks like you haven't followed yet! 🤔\n\nPlease follow us first, then tap 'I'm Following' again!"
                 );
             }
