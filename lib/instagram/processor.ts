@@ -395,11 +395,13 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
         const senderIgsid = messaging.sender?.id;
         const message = messaging.message;
 
-        // story reply, quick reply click, etc.
-        // Similar to your current handleMessagingEvent but optimized
+        // Detect story interaction: reply_to.story_id OR story_mention attachment
+        const isStoryReply = !!message?.reply_to?.story_id;
+        const isStoryMention = message?.attachments?.some(
+            (att: any) => att.type === 'story_mention'
+        );
 
-        // Let's implement the story reply part for now
-        if (message?.reply_to?.story_id) {
+        if (isStoryReply || isStoryMention) {
             let user = await getCachedUser(instagramUserId);
             if (!user) {
                 const { data: dbUser } = await supabase
@@ -423,34 +425,89 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 .eq("is_active", true)
                 .maybeSingle();
 
-            if (automation) {
-                await sendInstagramDM(
-                    user.instagram_access_token,
-                    instagramUserId,
-                    null,
-                    senderIgsid,
-                    automation.reply_message,
-                    automation.id,
-                    automation.button_text,
-                    automation.link_url,
-                    undefined
-                );
-                await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-
-                // [FIX] Log the DM so it appears in Analytics
-                await supabase.from("dm_logs").insert({
-                    user_id: user.id,
-                    automation_id: automation.id,
-                    instagram_user_id: senderIgsid,
-                    instagram_username: messaging.sender?.username || "Instagram User",
-                    keyword_matched: "STORY_REPLY",
-                    comment_text: message.text || "Story Reply",
-                    reply_sent: true,
-                    reply_sent_at: new Date().toISOString(),
-                    is_follow_gate: false,
-                    user_is_following: true // Story replies are usually from followers
-                });
+            if (!automation) {
+                logger.info("No active story_reply automation found", { userId: user.id });
+                return;
             }
+
+            // Idempotency: prevent duplicate DMs for the same sender + automation
+            const storyInteractionId = message?.reply_to?.story_id
+                || `story_mention_${messaging.timestamp || Date.now()}`;
+
+            const { data: alreadySent } = await supabase
+                .from("dm_logs")
+                .select("id")
+                .eq("instagram_user_id", senderIgsid)
+                .eq("automation_id", automation.id)
+                .eq("instagram_comment_id", storyInteractionId)
+                .maybeSingle();
+
+            if (alreadySent) {
+                logger.info("Skipping duplicate story DM", { senderIgsid, storyInteractionId });
+                return;
+            }
+
+            // Rate limit check
+            const planLimits = getPlanLimits(user.plan_type || 'free');
+            const rateLimitResult = await smartRateLimit(user.id, {
+                hourlyLimit: planLimits.dmsPerHour,
+                monthlyLimit: planLimits.dmsPerMonth || 1000,
+                spreadDelay: false,
+            });
+
+            if (!rateLimitResult.allowed) {
+                logger.info("Rate limit hit for story DM, queuing", {
+                    userId: user.id,
+                    remaining: rateLimitResult.remaining
+                });
+                await queueDM(
+                    user.id,
+                    {
+                        commentId: storyInteractionId,
+                        commenterId: senderIgsid,
+                        message: automation.reply_message,
+                        automation_id: automation.id
+                    },
+                    rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000),
+                    user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
+                );
+                return;
+            }
+
+            // Send the DM
+            const dmSent = await sendInstagramDM(
+                user.instagram_access_token,
+                instagramUserId,
+                null,
+                senderIgsid,
+                automation.reply_message,
+                automation.id,
+                automation.button_text,
+                automation.link_url,
+                undefined
+            );
+
+            if (dmSent) {
+                await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+            } else {
+                await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
+            }
+
+            // Log the DM so it appears in Analytics
+            await supabase.from("dm_logs").insert({
+                user_id: user.id,
+                automation_id: automation.id,
+                instagram_comment_id: storyInteractionId,
+                instagram_user_id: senderIgsid,
+                instagram_username: messaging.sender?.username || "Instagram User",
+                keyword_matched: isStoryMention ? "STORY_MENTION" : "STORY_REPLY",
+                comment_text: message?.text || (isStoryMention ? "Story Mention" : "Story Reply"),
+                reply_sent: dmSent,
+                reply_sent_at: dmSent ? new Date().toISOString() : null,
+                is_follow_gate: false,
+                user_is_following: true
+            });
+
             return;
         }
 

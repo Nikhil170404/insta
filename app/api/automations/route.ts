@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
             .select("id")
             .eq("user_id", session.id)
             .eq("media_id", media_id)
+            .eq("is_archived", false)
             .single();
 
         if (existing) {
