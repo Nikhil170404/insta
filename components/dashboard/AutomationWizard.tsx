@@ -85,9 +85,21 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
     const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
     const handleSave = () => {
+        let finalTriggerType = triggerType === "story" ? "story_reply" : (matchingType === "any" ? "any" : "keyword");
+        let finalMediaId = triggerType === "story" ? "STORY_AUTOMATION" : (triggerType === "specific" ? (selectedMedia?.id || initialData?.media_id) : null);
+
+        // Distinguish Any vs Next
+        if (triggerType === "any") {
+            finalTriggerType = "all_posts";
+            finalMediaId = "ALL_MEDIA";
+        } else if (triggerType === "next") {
+            finalTriggerType = "next_posts";
+            finalMediaId = "NEXT_MEDIA";
+        }
+
         onSave({
             id: initialData?.id,
-            trigger_type: triggerType === "story" ? "story_reply" : (matchingType === "any" ? "any" : "keyword"),
+            trigger_type: finalTriggerType,
             trigger_keyword: triggerType === "story" ? null : keywords,
             reply_message: openingDM,
             comment_reply: replyToComments && triggerType !== "story" && commentReplyTemplates.length > 0 ? commentReplyTemplates[0] : null,
@@ -100,7 +112,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
             follow_gate_message: requireFollow ? followGateMessage : null,
             respond_to_replies: respondToReplies,
             ignore_self_comments: ignoreSelfComments,
-            media_id: triggerType === "story" ? "STORY_AUTOMATION" : (triggerType === "specific" ? (selectedMedia?.id || initialData?.media_id) : null),
+            media_id: finalMediaId,
         });
     };
 

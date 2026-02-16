@@ -455,6 +455,29 @@ export async function replyToComment(
 }
 
 /**
+ * Get metadata for a specific media post (e.g. timestamp)
+ */
+export async function getMediaDetails(
+    accessToken: string,
+    mediaId: string
+): Promise<{ id: string, timestamp: string, media_type: string } | null> {
+    try {
+        const response = await fetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${mediaId}?fields=id,timestamp,media_type&access_token=${accessToken}`
+        );
+
+        if (!response.ok) {
+            return null;
+        }
+
+        return response.json();
+    } catch (error) {
+        console.error("Error fetching media details:", error);
+        return null;
+    }
+}
+
+/**
  * Get all comments on a media post
  */
 export async function getMediaComments(

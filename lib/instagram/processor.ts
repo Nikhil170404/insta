@@ -7,7 +7,8 @@ import {
     getUniqueMessage,
     incrementAutomationCount,
     sendFollowGateCard,
-    hasReceivedFollowGate
+    hasReceivedFollowGate,
+    getMediaDetails
 } from "@/lib/instagram/service";
 import { smartRateLimit, queueDM } from "@/lib/smart-rate-limiter";
 import { getCachedUser, setCachedUser, getCachedAutomation, setCachedAutomation } from "@/lib/cache";
@@ -84,13 +85,25 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             // Priority 1: Exact media_id match
             let matchedAutomation = allAutomations.find((a: any) => a.media_id === mediaId);
 
-            // Priority 2: Global fallback (trigger_type = 'all_posts' OR media_id is null/empty)
+            // Priority 2: Global fallback (Any Post / Next Post)
             if (!matchedAutomation) {
+                // Try Any Post first
                 matchedAutomation = allAutomations.find((a: any) =>
-                    a.trigger_type === 'all_posts' || !a.media_id
+                    a.trigger_type === 'all_posts' || a.media_id === 'ALL_MEDIA' || !a.media_id
                 );
+
+                // Then try Next Post
+                if (!matchedAutomation) {
+                    matchedAutomation = allAutomations.find((a: any) =>
+                        a.trigger_type === 'next_posts' || a.media_id === 'NEXT_MEDIA'
+                    );
+                }
+
                 if (matchedAutomation) {
-                    logger.info("Using global all_posts fallback automation", { automationId: matchedAutomation.id });
+                    logger.info("Using global fallback automation", {
+                        automationId: matchedAutomation.id,
+                        type: matchedAutomation.trigger_type
+                    });
                 }
             }
 
@@ -107,6 +120,27 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         if (!automation) {
             logger.info("No automation found after cache/db lookup", { userId: user.id, mediaId });
             return;
+        }
+
+        // 5b. Timestamp Check for 'Next Post'
+        if (automation.trigger_type === 'next_posts' || automation.media_id === 'NEXT_MEDIA') {
+            const mediaDetails = await getMediaDetails(user.instagram_access_token, mediaId);
+            if (!mediaDetails) {
+                logger.warn("Could not fetch media details for Next Post validation", { mediaId });
+                return;
+            }
+
+            const mediaTime = new Date(mediaDetails.timestamp).getTime();
+            const automationTime = new Date(automation.created_at).getTime();
+
+            if (mediaTime <= automationTime) {
+                logger.info("Skipping 'Next Post' trigger: Media created before automation", {
+                    mediaId,
+                    mediaTime: new Date(mediaTime).toISOString(),
+                    automationTime: new Date(automationTime).toISOString()
+                });
+                return;
+            }
         }
 
         // 6. Check keyword match

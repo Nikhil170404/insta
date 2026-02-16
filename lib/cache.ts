@@ -125,6 +125,7 @@ export interface CachedAutomation {
     follow_gate_message?: string;
     final_message?: string;
     final_button_text?: string;
+    created_at: string;
 }
 
 export const getCachedAutomation = (key: string) => getCached<CachedAutomation>(key);

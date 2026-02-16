@@ -156,11 +156,11 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...data,
-                    media_id: selectedMedia.id,
-                    media_type: selectedMedia.media_type,
-                    media_url: selectedMedia.media_url,
-                    media_thumbnail_url: selectedMedia.thumbnail_url || selectedMedia.media_url,
-                    media_caption: selectedMedia.caption?.substring(0, 200),
+                    media_id: data.media_id || selectedMedia.id,
+                    media_type: data.media_id ? (data.media_id === "STORY_AUTOMATION" ? "STORY" : "REELS") : selectedMedia.media_type,
+                    media_url: data.media_id ? "" : selectedMedia.media_url,
+                    media_thumbnail_url: data.media_id ? "" : (selectedMedia.thumbnail_url || selectedMedia.media_url),
+                    media_caption: data.media_id ? (data.media_id === "ALL_MEDIA" ? "Any Post" : (data.media_id === "NEXT_MEDIA" ? "Next Post" : "Story Automation")) : selectedMedia.caption?.substring(0, 200),
                 }),
             });
 
