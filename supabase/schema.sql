@@ -101,8 +101,8 @@ CREATE TABLE public.automations (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
 
-  CONSTRAINT valid_reply_message CHECK (LENGTH(reply_message) >= 1 AND LENGTH(reply_message) <= 1000),
-  CONSTRAINT unique_media_per_user UNIQUE(user_id, media_id)
+  CONSTRAINT valid_reply_message CHECK (LENGTH(reply_message) >= 1 AND LENGTH(reply_message) <= 1000)
+  -- NOTE: unique_media_per_user moved to partial index (see migration 2026-02-16)
 );
 
 -- Indexes
@@ -463,6 +463,21 @@ ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role full access" ON public.waitlist FOR ALL TO service_role USING (true);
 
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS waitlist_discount_until TIMESTAMPTZ;
+
+
+-- ============================================
+-- MIGRATION: 2026-02-16 - Fix unique constraint for archived automations
+-- ============================================
+
+-- Drop old hard constraint that blocked re-creating automations after deletion
+ALTER TABLE public.automations DROP CONSTRAINT IF EXISTS unique_media_per_user;
+
+-- Create partial unique index: only enforce uniqueness for non-archived automations
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_media_per_user_active
+  ON public.automations(user_id, media_id)
+  WHERE is_archived = false;
+
+
 
 
 
