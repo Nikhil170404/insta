@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         // Build API URL with pagination
         let apiUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${user.instagram_user_id}/media?` +
             `fields=id,caption,media_type,media_url,thumbnail_url,timestamp,permalink&` +
-            `limit=12&access_token=${user.instagram_access_token}`;
+            `limit=11&access_token=${user.instagram_access_token}`;
 
         if (afterCursor) {
             apiUrl += `&after=${afterCursor}`;

@@ -352,84 +352,80 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                 hasAutomation ? "border-indigo-500 ring-4 ring-indigo-500/10" : "border-transparent"
                                             )}
                                         >
-                                            <div className="flex-1 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-6 md:p-8 flex flex-col items-center justify-center text-center text-white relative group-hover:scale-[1.02] transition-transform duration-700 min-h-[300px]">
+                                            <div className="flex-1 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-3 md:p-5 flex flex-col justify-between text-center text-white relative group-hover:scale-[1.02] transition-transform duration-700 min-h-[300px]">
+                                                {/* Top Space (Vertical Centering) */}
+                                                <div />
+
                                                 {!hasAutomation && (
                                                     <div className="flex flex-col items-center justify-center flex-1">
                                                         <button
                                                             onClick={() => { setSelectedMedia(item); setShowWizard(true); }}
                                                             className="flex flex-col items-center gap-3 group/create"
                                                         >
-                                                            <div className="w-12 h-12 md:w-16 md:h-16 bg-white text-indigo-600 rounded-[1.25rem] shadow-2xl flex items-center justify-center transform group-hover/create:scale-110 group-hover/create:rotate-90 transition-all duration-500 ring-4 ring-white/10">
-                                                                <Plus className="h-6 w-6 md:h-8 md:w-8" />
+                                                            <div className="w-12 h-12 md:w-14 md:h-14 bg-primary text-white rounded-2xl shadow-2xl shadow-primary/40 flex items-center justify-center transform group-hover/create:scale-110 group-hover/create:rotate-90 transition-all duration-500 ring-4 ring-white/10">
+                                                                <Plus className="h-6 w-6 md:h-7 md:w-7" />
                                                             </div>
                                                             <span className="text-white text-[10px] md:text-xs font-black tracking-[0.2em] uppercase drop-shadow-lg">Create Reply</span>
                                                         </button>
-                                                        <div className="mt-8 flex flex-col items-center opacity-60">
-                                                            <div className="w-10 h-10 bg-white/20 backdrop-blur-xl rounded-xl flex items-center justify-center mb-3">
-                                                                <Zap className="h-5 w-5 text-white fill-white" />
-                                                            </div>
-                                                            <h3 className="font-black text-sm tracking-tight mb-1">Story Reply</h3>
-                                                            <p className="text-[8px] font-semibold text-white/90 leading-relaxed max-w-[120px]">
-                                                                Auto-respond to everyone who replies
-                                                            </p>
-                                                        </div>
                                                     </div>
                                                 )}
 
-                                                {hasAutomation && (
-                                                    <div className="flex-1 flex flex-col items-center justify-center">
-                                                        <div className="w-12 h-12 md:w-16 md:h-16 bg-white/20 backdrop-blur-xl rounded-[1.25rem] flex items-center justify-center mb-4 md:mb-5 shadow-2xl ring-1 ring-white/30 transform group-hover:rotate-12 transition-transform duration-500">
-                                                            <Zap className="h-6 w-6 md:h-8 md:w-8 text-white fill-white" />
-                                                        </div>
-                                                        <h3 className="font-black text-lg md:text-xl tracking-tight mb-2 md:mb-3">Story Reply</h3>
-                                                        <p className="text-[10px] md:text-xs font-semibold text-white/90 leading-relaxed mb-6 md:mb-8 max-w-[160px]">
-                                                            Auto-respond to everyone who replies to your stories
+                                                {/* Bottom Info Bar (Unified with posts) */}
+                                                <div className="space-y-3">
+                                                    <div className="bg-slate-900/40 backdrop-blur-3xl border border-white/5 p-2 rounded-xl flex items-center justify-center gap-2">
+                                                        <Zap className="h-3 w-3 text-white/60 fill-white/60" />
+                                                        <p className="text-[10px] md:text-xs text-white/90 font-bold leading-relaxed uppercase tracking-widest italic">
+                                                            Story Reply
                                                         </p>
+                                                    </div>
+                                                </div>
 
-                                                        <div className="absolute top-4 right-4 animate-in fade-in zoom-in duration-500">
-                                                            <Badge className={cn("border-none font-black text-[8px] md:text-[10px] uppercase tracking-widest bg-white shadow-xl px-2.5 py-1", automation.is_active ? "text-green-600" : "text-slate-400")}>
-                                                                {automation.is_active ? "● ACTIVE" : "PAUSED"}
-                                                            </Badge>
-                                                        </div>
+                                                {hasAutomation && (
+                                                    <div className="absolute top-4 right-4 animate-in fade-in zoom-in duration-500">
+                                                        <Badge className={cn("border-none font-black text-[8px] md:text-[10px] uppercase tracking-widest bg-white shadow-xl px-2.5 py-1", automation.is_active ? "text-green-600" : "text-slate-400")}>
+                                                            {automation.is_active ? "● ACTIVE" : "PAUSED"}
+                                                        </Badge>
+                                                    </div>
+                                                )}
 
-                                                        {/* Actions Overlay */}
-                                                        <div className="absolute inset-x-0 bottom-0 z-20 p-2.5 md:p-4">
-                                                            <div className={cn(
-                                                                "bg-slate-900/40 backdrop-blur-3xl rounded-2xl border border-white/10 p-3 md:p-4 shadow-2xl transition-all duration-500",
-                                                                "translate-y-0 opacity-100",
-                                                                "md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
-                                                            )}>
-                                                                <div className="flex flex-col gap-2 md:grid md:grid-cols-4 md:gap-2">
-                                                                    <button
-                                                                        onClick={() => { setEditingAutomation(automation); setSelectedMedia(item); setShowWizard(true); }}
-                                                                        className="w-full h-10 md:h-12 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center transition-all group/edit"
-                                                                        title="Edit Reply"
-                                                                    >
-                                                                        <Edit3 className="h-4 w-4 transition-transform group-hover/edit:scale-110" />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => toggleAutomation(automation.id, automation.is_active)}
-                                                                        className={cn(
-                                                                            "w-full col-span-2 h-10 md:h-12 rounded-xl flex items-center justify-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border border-white/10 shadow-lg shadow-black/20",
-                                                                            automation.is_active
-                                                                                ? "bg-white/10 text-white hover:bg-white/20"
-                                                                                : "bg-white text-indigo-600 shadow-white/20"
-                                                                        )}
-                                                                    >
-                                                                        {automation.is_active ? (
-                                                                            <><X className="h-3.5 w-3.5" /> Deactivate</>
-                                                                        ) : (
-                                                                            <><Zap className="h-3.5 w-3.5 fill-current" /> Activate</>
-                                                                        )}
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => deleteAutomation(automation.id)}
-                                                                        className="w-full h-10 md:h-12 rounded-xl bg-rose-500/20 hover:bg-rose-500 border border-rose-500/20 text-rose-400 hover:text-white flex items-center justify-center transition-all group/del"
-                                                                        title="Delete Reply"
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4 transition-transform group-hover/del:rotate-12" />
-                                                                    </button>
-                                                                </div>
+                                                {/* Actions Overlay */}
+                                                {hasAutomation && (
+                                                    <div className="absolute inset-x-0 bottom-0 z-20 p-2.5 md:p-4">
+                                                        <div className={cn(
+                                                            "bg-slate-900/40 backdrop-blur-3xl rounded-2xl border border-white/10 p-3 md:p-4 shadow-2xl transition-all duration-500",
+                                                            "translate-y-0 opacity-100",
+                                                            "md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
+                                                        )}>
+                                                            <div className="flex flex-col gap-2 md:grid md:grid-cols-4 md:gap-2">
+                                                                <button
+                                                                    onClick={() => { setEditingAutomation(automation); setSelectedMedia(item); setShowWizard(true); }}
+                                                                    className="w-full h-10 md:h-12 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center transition-all group/edit"
+                                                                    title="Edit Reply"
+                                                                >
+                                                                    <Edit3 className="h-4 w-4 transition-transform group-hover/edit:scale-110" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => toggleAutomation(automation.id, automation.is_active)}
+                                                                    className={cn(
+                                                                        "w-full col-span-2 h-10 md:h-12 rounded-xl flex items-center justify-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border border-white/10 shadow-lg shadow-black/20",
+                                                                        automation.is_active
+                                                                            ? "bg-white/10 text-white hover:bg-white/20"
+                                                                            : "bg-white text-indigo-600 shadow-white/20"
+                                                                    )}
+                                                                >
+                                                                    {automation.is_active ? (
+                                                                        <><X className="h-3.5 w-3.5" /> Deactivate</>
+                                                                    ) : (
+                                                                        <><Zap className="h-3.5 w-3.5 fill-current" /> Activate</>
+                                                                    )}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => deleteAutomation(automation.id)}
+                                                                    className="w-full h-10 md:h-12 rounded-xl bg-rose-500/20 hover:bg-rose-500 border border-rose-500/20 text-rose-400 hover:text-white flex items-center justify-center transition-all group/del"
+                                                                    title="Delete Reply"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 transition-transform group-hover/del:rotate-12" />
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
