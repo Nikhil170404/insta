@@ -1,24 +1,23 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { refreshLongLivedToken } from "@/lib/instagram/config";
+import { verifyCronRequest } from "@/lib/cron-auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
+    const auth = verifyCronRequest(request);
+    if (!auth.authorized) {
+        return NextResponse.json({ error: auth.message }, { status: auth.status });
+    }
+
     try {
-        const authHeader = request.headers.get("authorization");
-        const validSecrets = [process.env.CRON_SECRET, process.env.EXTERNAL_CRON_SECRET].filter(Boolean);
-        const isAuthorized = validSecrets.some(secret => authHeader === `Bearer ${secret}`);
-
-        if (!isAuthorized) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
         const supabase = getSupabaseAdmin();
 
         // Get tokens expiring in the next 10 days
         const expiryThreshold = new Date();
         expiryThreshold.setDate(expiryThreshold.getDate() + 10);
 
-        console.log(`Checking for tokens expiring before: ${expiryThreshold.toISOString()}`);
+        logger.info("Checking for expiring tokens", { before: expiryThreshold.toISOString(), category: "cron" });
 
         const { data: users, error } = await (supabase as any)
             .from('users')
@@ -26,23 +25,22 @@ export async function GET(request: Request) {
             .lt('instagram_token_expires_at', expiryThreshold.toISOString());
 
         if (error) {
-            console.error("Error fetching users for token refresh:", error);
+            logger.error("Error fetching users for token refresh", { category: "cron" }, error as Error);
             throw error;
         }
 
-        console.log(`Found ${users?.length || 0} users with near-expiry tokens.`);
+        logger.info("Users with near-expiry tokens", { count: users?.length || 0, category: "cron" });
 
         let successCount = 0;
         let failCount = 0;
 
         for (const user of users || []) {
-            console.log(`Refreshing token for @${user.instagram_username}`);
+            logger.info("Refreshing token", { username: user.instagram_username, category: "cron" });
 
             const refreshResult = await refreshLongLivedToken(user.instagram_access_token);
 
             if (refreshResult && refreshResult.accessToken) {
                 const newExpiry = new Date();
-                // Meta returns expiresIn in seconds (usually 60 days)
                 newExpiry.setSeconds(newExpiry.getSeconds() + refreshResult.expiresIn);
 
                 const { error: updateError } = await (supabase as any)
@@ -55,14 +53,14 @@ export async function GET(request: Request) {
                     .eq('id', user.id);
 
                 if (updateError) {
-                    console.error(`Failed to update DB for @${user.instagram_username}:`, updateError);
+                    logger.error("Failed to update token in DB", { username: user.instagram_username, category: "cron" }, updateError as Error);
                     failCount++;
                 } else {
-                    console.log(`✅ Refreshed token for @${user.instagram_username}`);
+                    logger.info("Token refreshed successfully", { username: user.instagram_username, category: "cron" });
                     successCount++;
                 }
             } else {
-                console.error(`❌ Meta failed to refresh token for @${user.instagram_username}`);
+                logger.error("Meta failed to refresh token", { username: user.instagram_username, category: "cron" });
                 failCount++;
             }
         }
@@ -75,7 +73,7 @@ export async function GET(request: Request) {
         });
 
     } catch (error) {
-        console.error("CRITICAL: Token refresh cron failed:", error);
+        logger.error("Token refresh cron failed", { category: "cron" }, error as Error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

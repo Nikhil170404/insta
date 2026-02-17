@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import {
   exchangeCodeForToken,
   getInstagramProfile,
@@ -6,19 +7,49 @@ import {
 } from "@/lib/instagram/config";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { logger } from "@/lib/logger";
 import type { User } from "@/lib/supabase/types";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
+  const state = searchParams.get("state");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
   // Handle user denial or errors
   if (error || !code) {
-    console.error("Instagram auth error:", error, errorDescription);
+    logger.error("Instagram auth error", { error: error || undefined, errorDescription: errorDescription || undefined, category: "auth" });
     return NextResponse.redirect(
       new URL(`/signin?error=${encodeURIComponent(errorDescription || "instagram_denied")}`, request.url)
+    );
+  }
+
+  // 1.1 CSRF Validation: Compare state from URL with state stored in cookie
+  const cookieStore = request.cookies;
+  const storedState = cookieStore.get("oauth_state")?.value;
+
+  if (!storedState || !state) {
+    logger.warn("OAuth state missing", { hasStoredState: !!storedState, hasUrlState: !!state, category: "auth" });
+    return NextResponse.redirect(
+      new URL(`/signin?error=${encodeURIComponent("auth_state_missing")}`, request.url)
+    );
+  }
+
+  // Use timing-safe comparison to prevent timing attacks
+  try {
+    const storedBuf = Buffer.from(storedState, "utf-8");
+    const receivedBuf = Buffer.from(state, "utf-8");
+    if (storedBuf.length !== receivedBuf.length || !crypto.timingSafeEqual(storedBuf, receivedBuf)) {
+      logger.warn("OAuth state mismatch — possible CSRF attack", { category: "auth" });
+      return NextResponse.redirect(
+        new URL(`/signin?error=${encodeURIComponent("auth_state_mismatch")}`, request.url)
+      );
+    }
+  } catch {
+    logger.warn("OAuth state comparison error", { category: "auth" });
+    return NextResponse.redirect(
+      new URL(`/signin?error=${encodeURIComponent("auth_state_invalid")}`, request.url)
     );
   }
 
@@ -26,24 +57,25 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     // Step 1: Exchange code for Instagram Short-Lived Token
-    console.log("Step 1: Exchanging code for Instagram token...");
+    logger.info("Exchanging code for Instagram token", { category: "auth" });
     const tokenData = await exchangeCodeForToken(code, request.url);
     let accessToken = tokenData.access_token;
 
     // MANDATORY: Exchange for Long-Lived Token (60 days)
-    console.log("🔄 Exchanging for Long-Lived Token...");
+    logger.info("Exchanging for Long-Lived Token", { category: "auth" });
     const longLivedToken = await exchangeShortLivedForLongLived(accessToken);
     if (longLivedToken) {
-      console.log("✅ Long-Lived Token acquired.");
+      logger.info("Long-Lived Token acquired", { category: "auth" });
       accessToken = longLivedToken;
     } else {
-      console.warn("⚠️ Long-Lived exchange failed, using short-lived placeholder.");
+      logger.warn("Long-Lived exchange failed, using short-lived placeholder", { category: "auth" });
     }
 
-    console.log(`📊 Token Diagnostic: Length=${accessToken.length}, StartsWith=${accessToken.substring(0, 10)}...`);
+    // 1.3: Token diagnostic — never log token values
+    logger.debug("Token acquired", { tokenLength: accessToken.length, isLongLived: !!longLivedToken, category: "auth" });
 
     // Step 2: Get Instagram profile to verify and get username
-    console.log("Step 2: Getting Instagram profile using /me...");
+    logger.info("Getting Instagram profile using /me", { category: "auth" });
     const profile = await getInstagramProfile(accessToken);
 
     // CRITICAL FIX: 'profile.id' is the App-Scoped ID (ASID) like 256...
@@ -51,13 +83,11 @@ export async function GET(request: NextRequest) {
     // The webhooks use the IGID, so we MUST save the IGID to the database.
     const instagramUserId = (profile.user_id || profile.id).toString();
     const profilePictureUrl = profile.profile_picture_url;
-    console.log(`✅ Final Resolved Instagram ID (IGID): "${instagramUserId}"`);
-    console.log(`📸 Profile Pic: ${profilePictureUrl ? "Found" : "Not Found"}`);
-    if (profile.user_id) console.log(`ℹ️ App-Scoped ID (ASID) was: "${profile.id}"`);
+    logger.info("Resolved Instagram ID", { igid: instagramUserId, hasProfilePic: !!profilePictureUrl, hasUserIdField: !!profile.user_id, category: "auth" });
 
     // Step 3: Auto-subscribe webhooks (Native Instagram subscription)
     try {
-      console.log("Step 3: Auto-subscribing webhooks for IG ID:", instagramUserId);
+      logger.info("Auto-subscribing webhooks", { igId: instagramUserId, category: "auth" });
       const subscribeResponse = await fetch(
         `https://graph.instagram.com/v21.0/${instagramUserId}/subscribed_apps`,
         {
@@ -71,17 +101,17 @@ export async function GET(request: NextRequest) {
       );
 
       if (subscribeResponse.ok) {
-        console.log("✅ Webhooks auto-subscribed successfully!");
+        logger.info("Webhooks auto-subscribed successfully", { category: "auth" });
       } else {
         const errorData = await subscribeResponse.json();
-        console.error("⚠️ Webhook subscription note (may require App Review for live):", errorData);
+        logger.warn("Webhook subscription note (may require App Review for live)", { errorData, category: "auth" });
       }
     } catch (webhookError) {
-      console.error("Error auto-subscribing webhooks:", webhookError);
+      logger.error("Error auto-subscribing webhooks", { category: "auth" }, webhookError as Error);
     }
 
     // Step 4: Create or update user in database
-    console.log(`Step 4: Managing user in DB (IGID: ${instagramUserId}, ASID: ${profile.id})`);
+    logger.info("Managing user in DB", { igid: instagramUserId, asid: profile.id, category: "auth" });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let { data: userRecord } = await (supabase as any)
@@ -93,7 +123,7 @@ export async function GET(request: NextRequest) {
     // FALLBACK: If not found by IGID, try matching by the OLD ASID (profile.id)
     // This handles users who were created before our ID fix.
     if (!userRecord) {
-      console.log("ℹ️ User not found by IGID, checking for old ASID match...");
+      logger.info("User not found by IGID, checking for old ASID match", { category: "auth" });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: legacyUser } = await (supabase as any)
         .from("users")
@@ -102,7 +132,7 @@ export async function GET(request: NextRequest) {
         .single();
 
       if (legacyUser) {
-        console.log("✅ Found legacy user (ASID match). Migrating to IGID...");
+        logger.info("Found legacy user (ASID match). Migrating to IGID", { category: "auth" });
         userRecord = legacyUser;
       }
     }
@@ -110,7 +140,7 @@ export async function GET(request: NextRequest) {
     let user: User;
 
     if (userRecord) {
-      console.log("Updating existing user record...");
+      logger.info("Updating existing user record", { category: "auth" });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: updatedUser, error: updateError } = await (supabase as any)
         .from("users")
@@ -128,7 +158,7 @@ export async function GET(request: NextRequest) {
       if (updateError) throw updateError;
       user = updatedUser as User;
     } else {
-      console.log("Creating new user record...");
+      logger.info("Creating new user record", { category: "auth" });
       // Create new user with Free plan (no expiry)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: newUser, error: insertError } = await (supabase as any)
@@ -161,7 +191,7 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (waitlistEntry) {
-          console.log(`🎉 Waitlist match found! Tier: ${waitlistEntry.tier}, Position: ${waitlistEntry.position}`);
+          logger.info("Waitlist match found", { tier: waitlistEntry.tier, position: waitlistEntry.position, category: "auth" });
           const now = new Date();
           const planExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
           const discountExpiry = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 days
@@ -195,11 +225,11 @@ export async function GET(request: NextRequest) {
             user = { ...user, plan_type: waitlistEntry.tier, plan_expires_at: planExpiry.toISOString() } as User;
           }
 
-          console.log(`✅ Waitlist promo applied: ${waitlistEntry.tier} plan + 10% discount for 3 months`);
+          logger.info("Waitlist promo applied", { tier: waitlistEntry.tier, category: "auth" });
         }
       } catch (waitlistError) {
         // Non-critical: don't block login if waitlist check fails
-        console.error("Waitlist redemption check error (non-critical):", waitlistError);
+        logger.error("Waitlist redemption check error (non-critical)", { category: "auth" }, waitlistError as Error);
       }
     }
 
@@ -215,18 +245,22 @@ export async function GET(request: NextRequest) {
         body: `Welcome back, @${user.instagram_username}. You just logged into ReplyKaro.`
       });
     } catch (notifyError) {
-      console.error("Error triggering signin notification:", notifyError);
+      logger.error("Error triggering signin notification", { category: "auth" }, notifyError as Error);
     }
 
-    // Step 6: Redirect to dashboard
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Step 6: Redirect to dashboard — delete the OAuth state cookie
+    const redirectResponse = NextResponse.redirect(new URL("/dashboard", request.url));
+    redirectResponse.cookies.delete("oauth_state");
+    return redirectResponse;
 
   } catch (err) {
-    console.error("Instagram callback error:", err);
+    logger.error("Instagram callback error", { category: "auth" }, err as Error);
     const message = err instanceof Error ? err.message : "auth_failed";
     const errorParam = encodeURIComponent(message);
-    return NextResponse.redirect(
+    const redirectResponse = NextResponse.redirect(
       new URL(`/signin?error=${errorParam}`, request.url)
     );
+    redirectResponse.cookies.delete("oauth_state");
+    return redirectResponse;
   }
 }

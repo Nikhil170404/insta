@@ -1,32 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { handleCommentEvent, handleMessageEvent } from "@/lib/instagram/processor";
+import { verifyCronRequest } from "@/lib/cron-auth";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 300; // 5 minutes max for batch processing
 
 export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get("authorization");
-    const validSecrets = [
-        process.env.CRON_SECRET,
-        process.env.EXTERNAL_CRON_SECRET
-    ].filter(Boolean);
-
-    const isAuthorized = validSecrets.some(
-        secret => authHeader === `Bearer ${secret}`
-    );
-
-    if (!isAuthorized) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = verifyCronRequest(request);
+    if (!auth.authorized) {
+        return NextResponse.json({ error: auth.message }, { status: auth.status });
     }
 
-    console.log("⏰ Batch processor started");
+    logger.info("Batch processor started", { category: "cron" });
     const startTime = Date.now();
 
     try {
         const supabase = getSupabaseAdmin();
 
-        // 1. Fetch unprocessed webhooks
-        // Limit to 2000 per run to stay within timeout and memory limits
+        // 1. Fetch unprocessed webhooks (limit 2000 per run)
         const { data: webhooks, error } = await (supabase as any)
             .from('webhook_batch')
             .select('*')
@@ -38,11 +30,11 @@ export async function GET(request: NextRequest) {
         if (error) throw error;
 
         if (!webhooks || webhooks.length === 0) {
-            console.log("ℹ️ No webhooks to process");
+            logger.info("No webhooks to process", { category: "cron" });
             return NextResponse.json({ success: true, processed: 0 });
         }
 
-        console.log(`📦 Processing ${webhooks.length} webhooks...`);
+        logger.info("Processing webhooks", { count: webhooks.length, category: "cron" });
 
         let processed = 0;
 
@@ -70,15 +62,15 @@ export async function GET(request: NextRequest) {
                             .eq('id', webhook.id);
 
                     } catch (err) {
-                        console.error(`❌ Failed to process webhook ${webhook.id}:`, err);
+                        logger.error("Failed to process webhook", { webhookId: webhook.id, category: "cron" }, err as Error);
                     }
                 })
             );
 
             processed += subBatch.length;
-            console.log(`✅ Progress: ${processed}/${webhooks.length}`);
+            logger.info("Processing progress", { processed, total: webhooks.length, category: "cron" });
 
-            // Short delay to avoid hitting Instagram API rate limits too hard in one burst
+            // Short delay to avoid hitting Instagram API rate limits
             if (i + batchSize < webhooks.length) {
                 await new Promise(r => setTimeout(r, 100));
             }
@@ -92,10 +84,7 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error("❌ Batch processor error:", error);
-        return NextResponse.json(
-            { error: (error as Error).message },
-            { status: 500 }
-        );
+        logger.error("Batch processor error", { category: "cron" }, error as Error);
+        return NextResponse.json({ error: "Operation failed" }, { status: 500 });
     }
 }

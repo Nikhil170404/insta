@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getInstagramAuthUrl } from "@/lib/instagram/config";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
   // Rate Limit: 10 requests per 10 seconds per IP
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
     }
   } catch (error) {
     // Fail safe: If Redis is down, allow traffic but log error
-    console.error("Rate limit error:", error);
+    logger.error("Rate limit error", { category: "auth" }, error as Error);
   }
 
   // Generate a random state for CSRF protection
@@ -24,6 +25,15 @@ export async function GET(request: Request) {
   // Get the Instagram OAuth URL
   const authUrl = getInstagramAuthUrl(state, request.url);
 
-  // Redirect to Instagram OAuth
-  return NextResponse.redirect(authUrl);
+  // Store state in httpOnly cookie for CSRF validation in callback
+  const response = NextResponse.redirect(authUrl);
+  response.cookies.set("oauth_state", state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 600, // 10 minutes — plenty of time to complete OAuth
+    path: "/",
+  });
+
+  return response;
 }

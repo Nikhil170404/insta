@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { verifyCronRequest } from "@/lib/cron-auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: Request) {
-    // P0 Fix: Verify Cron Secret
-    const authHeader = req.headers.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return new NextResponse("Unauthorized", { status: 401 });
+    const auth = verifyCronRequest(req);
+    if (!auth.authorized) {
+        return NextResponse.json({ error: auth.message }, { status: auth.status });
     }
 
     try {
@@ -13,8 +14,6 @@ export async function GET(req: Request) {
         const now = new Date().toISOString();
 
         // Find expired users
-        // plan_type is NOT 'free' or 'trial' (already handled or valid)
-        // plan_expires_at is in the past
         const { data: expiredUsers, error: fetchError } = await (supabase
             .from("users") as any)
             .select("id, instagram_username, plan_type")
@@ -27,9 +26,8 @@ export async function GET(req: Request) {
             return NextResponse.json({ message: "No expired users found" });
         }
 
-        console.log(`Found ${expiredUsers.length} expired users. Downgrading...`);
+        logger.info("Downgrading expired users", { count: expiredUsers.length, category: "cron" });
 
-        // Downgrade them to FREE
         const idsToUpdate = expiredUsers.map((u: any) => u.id);
 
         const { error: updateError } = await (supabase
@@ -49,9 +47,8 @@ export async function GET(req: Request) {
             downgraded_count: expiredUsers.length
         });
 
-    } catch (error: any) {
-        console.error("Cron Expiry Error:", error);
-        // P1 Fix: Don't leak error messages
+    } catch (error) {
+        logger.error("Cron expiry error", { category: "cron" }, error as Error);
         return NextResponse.json({ error: "Operation failed" }, { status: 500 });
     }
 }

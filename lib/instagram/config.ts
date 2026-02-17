@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 export const INSTAGRAM_CONFIG = {
   appId: process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID!,
   appSecret: process.env.INSTAGRAM_APP_SECRET!,
@@ -59,7 +61,7 @@ export async function exchangeCodeForToken(code: string, requestUrl?: string) {
 
   if (!response.ok) {
     const error = await response.json();
-    console.error("Token exchange err:", error);
+    logger.error("Token exchange error", { category: "auth" }, new Error(error.error_message || "Token exchange failed"));
     throw new Error(error.error_message || "Token exchange failed");
   }
 
@@ -81,7 +83,7 @@ export async function exchangeShortLivedForLongLived(shortLivedToken: string) {
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error("Long-lived exchange error:", errorData);
+    logger.error("Long-lived exchange error", { category: "auth" }, new Error(JSON.stringify(errorData)));
     return null; // Fallback to short-lived if exchange fails
   }
 
@@ -102,7 +104,7 @@ export async function refreshLongLivedToken(longLivedToken: string) {
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error("Token refresh error:", errorData);
+    logger.error("Token refresh error", { category: "auth" }, new Error(JSON.stringify(errorData)));
     return null;
   }
 
@@ -127,7 +129,7 @@ export async function getInstagramProfile(accessToken: string) {
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error("Profile fetch error:", errorData);
+    logger.error("Profile fetch error", { category: "auth" }, new Error(errorData.error?.message || "Failed to get Instagram profile"));
     throw new Error(errorData.error?.message || "Failed to get Instagram profile");
   }
 

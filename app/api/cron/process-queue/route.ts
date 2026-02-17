@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { processQueuedDMs } from "@/lib/smart-rate-limiter";
+import { verifyCronRequest } from "@/lib/cron-auth";
+import { logger } from "@/lib/logger";
 
 /**
  * process-queue Cron Job
@@ -11,26 +13,18 @@ import { processQueuedDMs } from "@/lib/smart-rate-limiter";
 export const maxDuration = 60; // 60 seconds timeout
 
 export async function GET(request: Request) {
-    // Verify cron secret (security)
-    const authHeader = request.headers.get("authorization");
-    const validSecrets = [process.env.CRON_SECRET, process.env.EXTERNAL_CRON_SECRET].filter(Boolean);
-    const isAuthorized = validSecrets.some(secret => authHeader === `Bearer ${secret}`);
-
-    if (!isAuthorized) {
-        console.warn("⚠️ Unauthorized cron attempt blocked");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = verifyCronRequest(request);
+    if (!auth.authorized) {
+        return NextResponse.json({ error: auth.message }, { status: auth.status });
     }
 
     try {
-        console.log("⏰ Cron started: Processing DM queue...");
+        logger.info("Cron started: Processing DM queue", { category: "cron" });
         await processQueuedDMs();
         return NextResponse.json({ success: true, timestamp: new Date().toISOString() });
     } catch (error) {
-        console.error("❌ Cron error:", error);
-        return NextResponse.json(
-            { error: (error as Error).message },
-            { status: 500 }
-        );
+        logger.error("Cron queue processing error", { category: "cron" }, error as Error);
+        return NextResponse.json({ error: "Operation failed" }, { status: 500 });
     }
 }
 

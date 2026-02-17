@@ -34,7 +34,9 @@ export const createAutomationSchema = z.object({
   comment_reply_templates: z.array(z.string().max(1000)).max(20).optional().nullable(),
 
   button_text: z.string().max(20, "Button text must be under 20 characters").optional().nullable(),
-  link_url: z.string().url("Invalid URL format").optional().nullable(),
+  link_url: z.string().url("Invalid URL format")
+    .refine((url) => /^https?:\/\//i.test(url), { message: "Only http/https URLs allowed" })
+    .optional().nullable(),
 
   require_follow: z.boolean().default(false),
   follow_gate_message: z.string().max(500).optional().nullable(),

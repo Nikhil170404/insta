@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { razorpay } from "@/lib/razorpay";
 import { ratelimit } from "@/lib/ratelimit";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
     try {
@@ -31,7 +32,6 @@ export async function POST(req: Request) {
             throw new Error("Razorpay Key Secret is missing");
         }
 
-        // Verify signature
         // Verify signature using timingSafeEqual
         const hmac = crypto.createHmac("sha256", secret);
         hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
@@ -52,6 +52,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
+        // 2.1: Validate amount BEFORE plan upgrade
+        const finalAmount = Number(order.amount);
+        if (!finalAmount || finalAmount <= 0) {
+            logger.error("Invalid payment amount detected — rejecting", { amount: finalAmount, orderId: razorpay_order_id, category: "payment" });
+            return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 });
+        }
+
         // Trust the NOTES from the server-created order, NOT the client body
         const planName = order.notes?.planId; // stored as 'planId' in notes
         const interval = order.notes?.interval;
@@ -70,14 +77,12 @@ export async function POST(req: Request) {
             expiresAt.setMonth(expiresAt.getMonth() + 1);
         }
 
-        // Update user plan
-        // FIX: Do NOT overwrite razorpay_customer_id with razorpay_payment_id
+        // Update user plan (amount already validated above)
         const { error: userError } = await (supabase
             .from("users") as any)
             .update({
                 plan_type: planType,
                 plan_expires_at: expiresAt.toISOString(),
-                // razorpay_customer_id: order.customer_id, // If we had it, but don't overwrite with payment_id
                 updated_at: new Date().toISOString()
             })
             .eq("id", session.id);
@@ -85,13 +90,6 @@ export async function POST(req: Request) {
         if (userError) throw userError;
 
         // Log payment
-        // FIX: Ensure amount is valid. Use raw amount from order (in paise)
-        const finalAmount = Number(order.amount);
-
-        if (finalAmount <= 0) {
-            console.error("Invalid payment amount detected:", finalAmount);
-        }
-
         const { error: paymentError } = await (supabase
             .from("payments") as any)
             .insert({
@@ -104,11 +102,11 @@ export async function POST(req: Request) {
                 status: "paid"
             });
 
-        if (paymentError) console.error("Payment logging error:", paymentError);
+        if (paymentError) logger.error("Payment logging error", { category: "payment" }, paymentError as Error);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        console.error("Razorpay Verification Error:", error);
+        logger.error("Razorpay Verification Error", { category: "payment" }, error as Error);
         // P1 Fix: Don't leak error details
         return NextResponse.json({
             error: "Verification failed"

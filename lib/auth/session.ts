@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "@/lib/supabase/types";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { logger } from "@/lib/logger";
 
 // CRITICAL: Session secret must be set in environment
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
@@ -99,7 +100,7 @@ export async function getSession(): Promise<SessionUser | null> {
       }
     } catch (err) {
       // Fallback to JWT data if Redis/DB fails
-      console.error("Error refreshing session data:", err);
+      logger.error("Error refreshing session data", { userId: sessionUser.id, category: "auth" }, err as Error);
     }
 
     return updatedSessionUser;
@@ -110,5 +111,21 @@ export async function getSession(): Promise<SessionUser | null> {
 
 export async function deleteSession() {
   const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+
+  // 2.2: Invalidate session cache BEFORE deleting cookie
+  if (token) {
+    try {
+      const { payload } = await jwtVerify(token, SECRET);
+      const userId = (payload as any)?.id;
+      if (userId) {
+        const { invalidateSessionCache } = await import("@/lib/auth/cache");
+        await invalidateSessionCache(userId);
+      }
+    } catch {
+      // JWT may be expired/invalid — that's fine, just clean up cookie
+    }
+  }
+
   cookieStore.delete(COOKIE_NAME);
 }

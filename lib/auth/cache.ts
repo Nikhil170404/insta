@@ -1,5 +1,5 @@
 
-import { getSession } from "./session";
+import { logger } from "@/lib/logger";
 
 export async function invalidateSessionCache(userId: string) {
     if (!userId) return;
@@ -13,9 +13,9 @@ export async function invalidateSessionCache(userId: string) {
 
         if (redis) {
             await (redis as any).del(cacheKey);
-            console.log(`Invalidated session cache for user: ${userId}`);
+            logger.info("Invalidated session cache", { userId, category: "auth" });
         }
     } catch (error) {
-        console.error("Failed to invalidate session cache:", error);
+        logger.error("Failed to invalidate session cache", { userId, category: "auth" }, error as Error);
     }
 }

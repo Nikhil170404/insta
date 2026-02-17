@@ -3,11 +3,16 @@ import { getPlanLimits } from "./pricing";
 import { logger } from "./logger";
 
 /**
- * Instagram API Rate Limits (2025):
- * - 200 API calls per hour per user
- * - 4,800 API calls per day per user
- * 
- * Our Smart Limits (High-Speed & Safe):
+ * Rate Limiting Strategy:
+ *
+ * Meta Platform Rate Limits (external):
+ * - ~200 API calls per hour per user (via X-Business-Use-Case-Usage header)
+ * - Monitored automatically via parseMetaRateLimitHeaders() in service.ts
+ *
+ * Our Internal Application Limits (this file):
+ * - Hourly speed limit (plan-based): controls burst speed
+ * - Monthly quota (plan-based): total DMs allowed per billing cycle
+ * - These are INTERNAL limits; Meta's own throttling is handled separately
  */
 
 let upstashLimiter: any = null;
@@ -211,14 +216,14 @@ export async function processQueuedDMs() {
         const limits = getPlanLimits(planType);
 
         // B. Check Counters (Hourly & Monthly)
-        // Hourly Window
+        // 3.1: Use UTC for consistent windows across timezones
         const hourStart = new Date();
-        hourStart.setMinutes(0, 0, 0);
+        hourStart.setUTCMinutes(0, 0, 0);
 
         // Monthly Window
         const monthStart = new Date();
-        monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
+        monthStart.setUTCDate(1);
+        monthStart.setUTCHours(0, 0, 0, 0);
 
         const { count: hourlyCount } = await (supabase as any)
             .from("dm_logs")
@@ -325,10 +330,13 @@ export async function processQueuedDMs() {
                             }).eq("id", existingLog.id);
                         } else {
                             // Fallback: Insert new if no placeholder (e.g. strict mode or missed claim)
+                            // 3.2 + 3.3: Include automation_id and instagram_username for analytics
                             await (supabase as any).from("dm_logs").insert({
                                 user_id: dm.user_id,
                                 instagram_comment_id: dm.instagram_comment_id,
                                 instagram_user_id: dm.instagram_user_id,
+                                automation_id: dm.automation_id,
+                                instagram_username: dm.instagram_username || null,
                                 keyword_matched: "QUEUED",
                                 comment_text: "Processed from queue",
                                 reply_sent: true,

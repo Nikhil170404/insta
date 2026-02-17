@@ -96,7 +96,8 @@ describe('processor.ts', () => {
             button_text: 'Get Link',
             link_url: 'https://example.com',
             is_active: true,
-            require_follow: false
+            require_follow: false,
+            created_at: '2026-01-01T00:00:00Z'
         };
 
         it('should skip self-comments', async () => {
@@ -160,7 +161,8 @@ describe('processor.ts', () => {
             const keywordAutomation = {
                 ...mockAutomation,
                 trigger_type: 'keyword',
-                trigger_keyword: 'interested'
+                trigger_keyword: 'interested',
+                created_at: '2026-01-01T00:00:00Z'
             };
 
             const nonMatchingEvent = {

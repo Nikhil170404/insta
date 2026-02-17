@@ -15,6 +15,8 @@ export class InstagramWebhookService {
      */
     static verifySignature(rawBody: string, signature: string | null): boolean {
         if (process.env.NODE_ENV !== "production" && !process.env.INSTAGRAM_APP_SECRET) {
+            // 1.4: Make dev bypass visible in logs
+            logger.warn("SECURITY: Webhook signature verification BYPASSED — INSTAGRAM_APP_SECRET is unset in non-production", { category: "webhook" });
             return true;
         }
 
@@ -25,7 +27,13 @@ export class InstagramWebhookService {
             .update(rawBody)
             .digest('hex');
 
-        return signature === `sha256=${expectedSignature}`;
+        // 1.2: Use timing-safe comparison to prevent timing attacks
+        const expectedSig = `sha256=${expectedSignature}`;
+        const expectedBuf = Buffer.from(expectedSig, "utf-8");
+        const receivedBuf = Buffer.from(signature, "utf-8");
+
+        if (expectedBuf.length !== receivedBuf.length) return false;
+        return crypto.timingSafeEqual(expectedBuf, receivedBuf);
     }
 
     /**

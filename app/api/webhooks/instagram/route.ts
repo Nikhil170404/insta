@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { InstagramWebhookService } from "@/lib/instagram/webhook-service";
 import { logger } from "@/lib/logger";
 
@@ -13,8 +14,12 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get("hub.verify_token");
     const challenge = searchParams.get("hub.challenge");
 
-    if (mode && token) {
-        if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    if (mode && token && VERIFY_TOKEN) {
+        // 2.4: Timing-safe comparison for verify token
+        const tokenBuf = Buffer.from(token, "utf-8");
+        const expectedBuf = Buffer.from(VERIFY_TOKEN, "utf-8");
+
+        if (mode === "subscribe" && tokenBuf.length === expectedBuf.length && crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
             logger.info("Webhook verified by Meta", { category: "webhook" });
             return new NextResponse(challenge, { status: 200 });
         } else {

@@ -111,6 +111,52 @@ export function shouldThrottle(accountId?: string): { throttled: boolean; delayM
     return { throttled: false, delayMs: 0, info };
 }
 
+// ============================================================
+// 1.5: Centralized Graph API fetch helper
+// Sends access_token via Authorization header instead of URL query param.
+// Prevents token leakage via server logs and referrer headers.
+// NOTE: config.ts OAuth endpoints still use query params per Meta spec.
+// ============================================================
+
+interface GraphApiFetchOptions {
+    method?: string;
+    body?: any;
+    contentType?: string;
+    accountId?: string; // For rate limit header tracking
+}
+
+async function graphApiFetch(
+    url: string,
+    accessToken: string,
+    options: GraphApiFetchOptions = {}
+): Promise<Response> {
+    const { method = "GET", body, contentType = "application/json", accountId } = options;
+
+    const headers: Record<string, string> = {
+        "Authorization": `Bearer ${accessToken.trim()}`,
+    };
+
+    if (body && method !== "GET") {
+        headers["Content-Type"] = contentType;
+    }
+
+    const fetchOptions: RequestInit = {
+        method,
+        headers,
+    };
+
+    if (body && method !== "GET") {
+        fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
+    }
+
+    const response = await fetch(url, fetchOptions);
+
+    // Parse rate limit headers from every response
+    parseMetaRateLimitHeaders(response, accountId);
+
+    return response;
+}
+
 /**
  * Check if user is following the business account
  * Uses Instagram's official is_user_follow_business API field
@@ -121,21 +167,22 @@ export async function checkIsFollowing(
     userInstagramScopedId: string
 ): Promise<boolean> {
     try {
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${userInstagramScopedId}?fields=is_user_follow_business&access_token=${accessToken}`
+        const response = await graphApiFetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${userInstagramScopedId}?fields=is_user_follow_business`,
+            accessToken
         );
 
         if (!response.ok) {
-            console.log("❌ Could not check follow status via API");
+            logger.warn("Could not check follow status via API", { userInstagramScopedId, category: "instagram" });
             return false;
         }
 
         const data = await response.json();
-        console.log(`📋 Follow check for ${userInstagramScopedId}:`, data);
+        logger.debug("Follow check result", { userInstagramScopedId, isFollowing: data.is_user_follow_business, category: "instagram" });
 
         return data.is_user_follow_business === true;
     } catch (error) {
-        console.error("Error checking is_user_follow_business:", error);
+        logger.error("Error checking is_user_follow_business", { category: "instagram" }, error as Error);
         return false;
     }
 }
@@ -195,8 +242,7 @@ export async function sendInstagramDM(
             category: "instagram",
         });
 
-        const trimmedToken = accessToken.trim();
-        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${trimmedToken}`;
+        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages`;
         const recipient = commentId ? { comment_id: commentId } : { id: recipientIdForLog };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -275,19 +321,40 @@ export async function sendInstagramDM(
         }
 
         // === SINGLE API CALL (was 4 before) ===
-        const response = await fetch(baseUrl, {
+        const response = await graphApiFetch(baseUrl, accessToken, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body,
+            accountId: senderId,
         });
-
-        // Parse rate limit headers from every response
-        parseMetaRateLimitHeaders(response, senderId);
 
         if (!response.ok) {
             const errorData = await response.json();
+            const errorCode = errorData?.error?.code;
+
+            // 3.4: Handle Meta rate limit error codes
+            // 80002 = Instagram BUC rate limit, 4 = app rate limit
+            if (errorCode === 80002 || errorCode === 4) {
+                logger.warn("Meta API rate limit error — marking account throttled", {
+                    errorCode,
+                    senderId,
+                    recipientId: recipientIdForLog,
+                    category: "instagram",
+                });
+                // Force throttle by setting callCount to 100%
+                const cacheKey = senderId || "default";
+                rateLimitCache.set(cacheKey, {
+                    info: {
+                        callCount: 100,
+                        totalCpuTime: 0,
+                        totalTime: 0,
+                        estimatedTimeToRegain: errorData?.error?.estimated_time_to_regain_access || 5,
+                    },
+                    updatedAt: Date.now(),
+                });
+            }
+
             logger.error("Meta API DM Error", {
-                errorCode: errorData?.error?.code,
+                errorCode,
                 errorMessage: errorData?.error?.message,
                 recipientId: recipientIdForLog,
                 category: "instagram",
@@ -333,8 +400,7 @@ export async function sendFollowGateCard(
             await new Promise(resolve => setTimeout(resolve, throttle.delayMs));
         }
 
-        const trimmedToken = accessToken.trim();
-        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages?access_token=${trimmedToken}`;
+        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages`;
         const recipient = commentId ? { comment_id: commentId } : { id: recipientId };
 
         const message = customMessage || "Hey! 👋 To unlock this, please follow us first!";
@@ -382,14 +448,11 @@ export async function sendFollowGateCard(
             }
         };
 
-        const response = await fetch(baseUrl, {
+        const response = await graphApiFetch(baseUrl, accessToken, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body,
+            accountId: senderId,
         });
-
-        // Parse rate limit headers
-        parseMetaRateLimitHeaders(response, senderId);
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -423,18 +486,14 @@ export async function replyToComment(
             return false;
         }
 
-        const trimmedToken = accessToken.trim();
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies?access_token=${trimmedToken}`,
+        const response = await graphApiFetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}/replies`,
+            accessToken,
             {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message }),
+                body: { message },
             }
         );
-
-        // Parse rate limit headers
-        parseMetaRateLimitHeaders(response);
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -462,8 +521,9 @@ export async function getMediaDetails(
     mediaId: string
 ): Promise<{ id: string, timestamp: string, media_type: string } | null> {
     try {
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${mediaId}?fields=id,timestamp,media_type&access_token=${accessToken}`
+        const response = await graphApiFetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${mediaId}?fields=id,timestamp,media_type`,
+            accessToken
         );
 
         if (!response.ok) {
@@ -472,7 +532,7 @@ export async function getMediaDetails(
 
         return response.json();
     } catch (error) {
-        console.error("Error fetching media details:", error);
+        logger.error("Error fetching media details", { mediaId, category: "instagram" }, error as Error);
         return null;
     }
 }
@@ -486,18 +546,17 @@ export async function getMediaComments(
     afterCursor?: string
 ): Promise<{ comments: any[]; nextCursor: string | null }> {
     try {
-        const trimmedToken = accessToken.trim();
-        let url = `https://graph.instagram.com/${GRAPH_API_VERSION}/${mediaId}/comments?fields=id,text,timestamp,username,like_count,hidden,parent_id,from{id,username}&limit=50&access_token=${trimmedToken}`;
+        let url = `https://graph.instagram.com/${GRAPH_API_VERSION}/${mediaId}/comments?fields=id,text,timestamp,username,like_count,hidden,parent_id,from{id,username}&limit=50`;
 
         if (afterCursor) {
             url += `&after=${afterCursor}`;
         }
 
-        const response = await fetch(url);
+        const response = await graphApiFetch(url, accessToken);
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Error fetching comments:", JSON.stringify(errorData, null, 2));
+            logger.error("Error fetching comments", { mediaId, errorData, category: "instagram" });
             return { comments: [], nextCursor: null };
         }
 
@@ -512,7 +571,7 @@ export async function getMediaComments(
             nextCursor: data.paging?.cursors?.after || null,
         };
     } catch (error) {
-        console.error("❌ Exception fetching comments:", error);
+        logger.error("Exception fetching comments", { mediaId, category: "instagram" }, error as Error);
         return { comments: [], nextCursor: null };
     }
 }
@@ -526,31 +585,29 @@ export async function createComment(
 ): Promise<{ id: string } | null> {
     try {
         if (!message || message.trim().length === 0) {
-            console.error("❌ Cannot create comment with empty text.");
+            logger.error("Cannot create comment with empty text", { category: "instagram" });
             return null;
         }
 
-        console.log(`💬 Creating comment on media: ${mediaId}`);
-        const trimmedToken = accessToken.trim();
+        logger.info("Creating comment on media", { mediaId, category: "instagram" });
         const encodedMessage = encodeURIComponent(message);
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${mediaId}/comments?message=${encodedMessage}&access_token=${trimmedToken}`,
-            {
-                method: "POST",
-            }
+        const response = await graphApiFetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${mediaId}/comments?message=${encodedMessage}`,
+            accessToken,
+            { method: "POST" }
         );
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Create comment error:", JSON.stringify(errorData, null, 2));
+            logger.error("Create comment error", { mediaId, errorData, category: "instagram" });
             return null;
         }
 
         const data = await response.json();
-        console.log("✅ Comment created successfully!", data.id);
+        logger.info("Comment created successfully", { commentId: data.id, category: "instagram" });
         return { id: data.id };
     } catch (error) {
-        console.error("❌ Exception creating comment:", error);
+        logger.error("Exception creating comment", { mediaId, category: "instagram" }, error as Error);
         return null;
     }
 }
@@ -563,23 +620,23 @@ export async function deleteComment(
     commentId: string
 ): Promise<boolean> {
     try {
-        console.log(`🗑️ Deleting comment: ${commentId}`);
-        const trimmedToken = accessToken.trim();
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}?access_token=${trimmedToken}`,
+        logger.info("Deleting comment", { commentId, category: "instagram" });
+        const response = await graphApiFetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}`,
+            accessToken,
             { method: "DELETE" }
         );
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Delete comment error:", JSON.stringify(errorData, null, 2));
+            logger.error("Delete comment error", { commentId, errorData, category: "instagram" });
             return false;
         }
 
-        console.log("✅ Comment deleted successfully!");
+        logger.info("Comment deleted successfully", { commentId, category: "instagram" });
         return true;
     } catch (error) {
-        console.error("❌ Exception deleting comment:", error);
+        logger.error("Exception deleting comment", { commentId, category: "instagram" }, error as Error);
         return false;
     }
 }
@@ -593,27 +650,26 @@ export async function hideComment(
     hide: boolean
 ): Promise<boolean> {
     try {
-        console.log(`${hide ? "👁️‍🗨️ Hiding" : "👁️ Unhiding"} comment: ${commentId}`);
-        const trimmedToken = accessToken.trim();
-        const response = await fetch(
-            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}?access_token=${trimmedToken}`,
+        logger.info(hide ? "Hiding comment" : "Unhiding comment", { commentId, category: "instagram" });
+        const response = await graphApiFetch(
+            `https://graph.instagram.com/${GRAPH_API_VERSION}/${commentId}`,
+            accessToken,
             {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ hide: hide }),
+                body: { hide: hide },
             }
         );
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("❌ Hide comment error:", JSON.stringify(errorData, null, 2));
+            logger.error("Hide comment error", { commentId, hide, errorData, category: "instagram" });
             return false;
         }
 
-        console.log(`✅ Comment ${hide ? "hidden" : "unhidden"} successfully!`);
+        logger.info(`Comment ${hide ? "hidden" : "unhidden"} successfully`, { commentId, category: "instagram" });
         return true;
     } catch (error) {
-        console.error(`❌ Exception ${hide ? "hiding" : "unhiding"} comment:`, error);
+        logger.error(`Exception ${hide ? "hiding" : "unhiding"} comment`, { commentId, category: "instagram" }, error as Error);
         return false;
     }
 }
@@ -674,7 +730,7 @@ export async function checkFollowStatus(
 
         return data.is_following === true;
     } catch (error) {
-        console.error("Error checking follow status from DB:", error);
+        logger.error("Error checking follow status from DB", { userId, category: "instagram" }, error as Error);
         return false;
     }
 }
@@ -731,12 +787,12 @@ export async function recordFollowEvent(
             });
 
         if (error) {
-            console.error("Error recording follow event:", error);
+            logger.error("Error recording follow event", { followerUsername, category: "instagram" }, error as Error);
         } else {
-            console.log(`✅ Recorded ${isFollowing ? 'follow' : 'unfollow'} for ${followerUsername || followerInstagramId}`);
+            logger.info(`Recorded ${isFollowing ? 'follow' : 'unfollow'}`, { followerUsername: followerUsername || followerInstagramId, category: "instagram" });
         }
     } catch (error) {
-        console.error("Exception recording follow event:", error);
+        logger.error("Exception recording follow event", { category: "instagram" }, error as Error);
     }
 }
 
@@ -754,9 +810,9 @@ export async function incrementAutomationCount(supabase: any, automationId: stri
         });
 
         if (error) {
-            console.error(`Error incrementing ${field} via RPC:`, error);
+            logger.error(`Error incrementing ${field} via RPC`, { automationId, category: "instagram" }, error as Error);
         }
     } catch (error) {
-        console.error(`Exception incrementing ${field}:`, error);
+        logger.error(`Exception incrementing ${field}`, { automationId, category: "instagram" }, error as Error);
     }
 }

@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { logger } from "@/lib/logger";
 
 // Use Upstash Redis for production-ready caching (survives serverless cold starts)
 let redis: Redis | null = null;
@@ -10,7 +11,7 @@ function getRedis(): Redis | null {
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
     if (!url || !token) {
-        console.warn("⚠️ Upstash Redis not configured - caching disabled");
+        logger.warn("Upstash Redis not configured — caching disabled", { category: "cache" });
         return null;
     }
 
@@ -33,7 +34,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
             const data = await client.get<T>(key);
             return data;
         } catch (error) {
-            console.error("Redis GET error:", error);
+            logger.error("Redis GET error", { category: "cache" }, error as Error);
             return null;
         }
     }
@@ -60,7 +61,7 @@ export async function setCached<T>(key: string, data: T, ttlSeconds = DEFAULT_TT
             await client.setex(key, ttlSeconds, JSON.stringify(data));
             return;
         } catch (error) {
-            console.error("Redis SET error:", error);
+            logger.error("Redis SET error", { category: "cache" }, error as Error);
         }
     }
 
@@ -87,7 +88,7 @@ export async function deleteCached(key: string): Promise<void> {
         try {
             await client.del(key);
         } catch (error) {
-            console.error("Redis DEL error:", error);
+            logger.error("Redis DEL error", { category: "cache" }, error as Error);
         }
     }
 
