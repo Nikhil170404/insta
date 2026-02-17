@@ -707,6 +707,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                         .eq("id", latestLog.id);
                 }
             }
+            return; // Prevent fall-through to VERIFY_FOLLOW_ handler
         }
 
         // Handle "I'm Following" button click for follow-gate verification

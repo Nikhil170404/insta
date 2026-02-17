@@ -261,8 +261,8 @@ export async function sendInstagramDM(
             };
 
             const element: any = {
-                title: buttonText || "Click to View",
-                subtitle: message.substring(0, 80),
+                title: message.substring(0, 80) || "You have a message!",
+                subtitle: (buttonText || "Tap below to continue ✨").substring(0, 80),
                 buttons: [singleButton]
             };
 
