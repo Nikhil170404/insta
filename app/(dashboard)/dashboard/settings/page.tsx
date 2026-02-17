@@ -78,6 +78,21 @@ export default function SettingsPage() {
         }
     }
 
+    function urlBase64ToUint8Array(base64String: string) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
     async function enablePush() {
         if (!pushSupported) return;
 
@@ -86,11 +101,12 @@ export default function SettingsPage() {
             const permission = await Notification.requestPermission();
 
             if (permission === 'granted') {
+                const PUBLIC_VAPID_KEY = 'BPAAPXZ5jDDebbt0vowFkl6hlCZdJ5swwaaLekem5ZOK4yu00SZpJM-4ne4Fkdyt5c6OsVTItv-6tYKh8YzPgGE';
+
                 // Subscribe to push notifications
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    // Note: In a production app, you MUST provide a VAPID public key here
-                    // applicationServerKey: urlBase64ToUint8Array('YOUR_VAPID_PUBLIC_KEY')
+                    applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
                 });
 
                 const updated = { ...notifications, web_push_token: JSON.stringify(subscription) };
@@ -100,7 +116,7 @@ export default function SettingsPage() {
             }
         } catch (error) {
             console.error("Error enabling push:", error);
-            alert("Failed to enable push. Make sure you are on HTTPS or localhost.");
+            alert("Failed to enable push. This usually happens if notifications are blocked or VAPID keys are missing.");
         }
     }
 
