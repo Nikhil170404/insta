@@ -101,7 +101,7 @@ export default function SettingsPage() {
             const permission = await Notification.requestPermission();
 
             if (permission === 'granted') {
-                const PUBLIC_VAPID_KEY = 'BPAAPXZ5jDDebbt0vowFkl6hlCZdJ5swwaaLekem5ZOK4yu00SZpJM-4ne4Fkdyt5c6OsVTItv-6tYKh8YzPgGE';
+                const PUBLIC_VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 
                 // Subscribe to push notifications
                 const subscription = await registration.pushManager.subscribe({

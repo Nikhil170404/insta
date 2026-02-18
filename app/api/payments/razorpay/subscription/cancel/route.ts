@@ -58,6 +58,15 @@ export async function POST(req: Request) {
         const { invalidateSessionCache } = await import("@/lib/auth/cache");
         await invalidateSessionCache(session.id);
 
+        // Notify user of cancellation
+        try {
+            const { notifyUser } = await import("@/lib/notifications/push");
+            await notifyUser(session.id, 'billing', {
+                title: "Subscription Cancelled",
+                body: "Your subscription will remain active until the end of the current billing cycle."
+            });
+        } catch (_) { }
+
         return NextResponse.json({ success: true });
 
     } catch (error: any) {

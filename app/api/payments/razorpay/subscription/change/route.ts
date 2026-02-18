@@ -120,6 +120,15 @@ export async function POST(req: Request) {
         // Invalidate session cache so UI reflects changes immediately
         await invalidateSessionCache(session.id);
 
+        // Notify user of successful upgrade
+        try {
+            const { notifyUser } = await import("@/lib/notifications/push");
+            await notifyUser(session.id, 'billing', {
+                title: "Plan Upgraded! 🚀",
+                body: `You've been upgraded to ${newPlanLookup.planType} (${newPlanLookup.isYearly ? 'yearly' : 'monthly'}).`
+            });
+        } catch (_) { }
+
         return NextResponse.json({
             success: true,
             message: "Plan upgraded successfully"

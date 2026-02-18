@@ -1,6 +1,15 @@
+import webPush from "web-push";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { logger } from "@/lib/logger";
-import { sendWelcomeEmail } from "./email";
+
+// Configure VAPID credentials for Web Push
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:replykaro1704@gmail.com";
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+    webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
 
 /**
  * Interface for notification payload
@@ -12,7 +21,8 @@ interface NotificationPayload {
 }
 
 /**
- * Notify a user across enabled channels
+ * Notify a user across enabled channels (Web Push + Email for critical events).
+ * Designed to be fire-and-forget — never throws.
  */
 export async function notifyUser(userId: string, type: 'dm_sent' | 'billing' | 'security', payload: NotificationPayload) {
     try {
@@ -38,22 +48,37 @@ export async function notifyUser(userId: string, type: 'dm_sent' | 'billing' | '
             return;
         }
 
-        // 3. Dispatch Web Push if enabled
-        if (settings.web_push_token) {
+        // 3. Dispatch Web Push if token exists and VAPID is configured
+        if (settings.web_push_token && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
             try {
-                // In a real implementation with web-push library:
-                // const subscription = JSON.parse(settings.web_push_token);
-                // await webPush.sendNotification(subscription, JSON.stringify(payload));
-                logger.info("Web Push would be sent here", { userId, type, payload });
-            } catch (pushError) {
-                logger.error("Failed to send Web Push", { userId }, pushError as Error);
+                const subscription = JSON.parse(settings.web_push_token);
+                await webPush.sendNotification(
+                    subscription,
+                    JSON.stringify({
+                        title: payload.title,
+                        body: payload.body,
+                        tag: payload.tag || type,
+                    })
+                );
+                logger.info("Web Push sent", { userId, type });
+            } catch (pushError: any) {
+                // 410 Gone or 404 = subscription expired, clean it up
+                if (pushError?.statusCode === 410 || pushError?.statusCode === 404) {
+                    logger.warn("Push subscription expired, clearing token", { userId });
+                    const updatedSettings = { ...settings, web_push_token: null };
+                    await (supabase.from("users") as any)
+                        .update({ notification_settings: updatedSettings })
+                        .eq("id", userId);
+                } else {
+                    logger.error("Failed to send Web Push", { userId }, pushError as Error);
+                }
             }
         }
 
-        // 4. Dispatch Email for critical events if enabled
-        if (type === 'security' || (type === 'billing' && (user as any).email)) {
-            // Example: sendWelcomeEmail(user.email, user.instagram_username);
-            logger.info("Notification Email would be sent here", { userId, type });
+        // 4. Email for critical events (billing/security) — already handled by dedicated email functions
+        // This is a fallback log; actual emails are sent by the specific route handlers via email.ts
+        if ((type === 'security' || type === 'billing') && (user as any).email) {
+            logger.info("Critical notification dispatched", { userId, type, channel: "push" });
         }
 
     } catch (error) {

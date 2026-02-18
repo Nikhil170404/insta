@@ -115,6 +115,15 @@ export async function POST(req: Request) {
 
         if (paymentError) logger.error("Payment logging error", { category: "payment" }, paymentError as Error);
 
+        // Notify user of successful payment
+        try {
+            const { notifyUser } = await import("@/lib/notifications/push");
+            await notifyUser(session.id, 'billing', {
+                title: "Payment Successful! ✅",
+                body: `Your ${planType} plan is now active.`
+            });
+        } catch (_) { }
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         logger.error("Razorpay Verification Error", { category: "payment" }, error as Error);
