@@ -1,4 +1,19 @@
+import crypto from "crypto";
 import { logger } from "@/lib/logger";
+
+/**
+ * Timing-safe string comparison to prevent timing attacks.
+ */
+function safeCompare(a: string, b: string): boolean {
+    const bufA = Buffer.from(a, 'utf-8');
+    const bufB = Buffer.from(b, 'utf-8');
+    if (bufA.length !== bufB.length) {
+        // Burn constant time by comparing bufA against itself, then return false
+        crypto.timingSafeEqual(bufA, bufA);
+        return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+}
 
 /**
  * Verify that a request is from an authorized cron source.
@@ -27,10 +42,10 @@ export function verifyCronRequest(
         token = authHeader.slice(7);
     }
 
-    // Validate token
+    // Validate token using timing-safe comparison
     const isValid = token && (
-        (cronSecret && token === cronSecret) ||
-        (externalCronSecret && token === externalCronSecret)
+        (cronSecret && safeCompare(token, cronSecret)) ||
+        (externalCronSecret && safeCompare(token, externalCronSecret))
     );
 
     if (!isValid) {
@@ -51,3 +66,4 @@ export function verifyCronRequest(
 
     return { authorized: true };
 }
+

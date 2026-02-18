@@ -22,6 +22,7 @@ export async function POST(req: Request) {
             }
         } catch (e) {
             console.error("Rate limit error:", e);
+            return NextResponse.json({ error: "Service temporarily unavailable. Please try again." }, { status: 503 });
         }
 
         const body = await req.json();
@@ -70,8 +71,16 @@ export async function POST(req: Request) {
         const currentRank = PLAN_HIERARCHY[currentPlanLookup?.planType || "free"] ?? 0;
         const newRank = PLAN_HIERARCHY[newPlanLookup.planType] ?? 0;
 
-        if (newRank <= currentRank) {
+        if (newRank < currentRank) {
             return NextResponse.json({ error: "Downgrades are not supported through this endpoint. Please cancel and re-subscribe." }, { status: 400 });
+        }
+
+        // Same tier: only allow monthly → yearly (not yearly → monthly)
+        if (newRank === currentRank) {
+            const currentIsYearly = currentPlanLookup?.isYearly ?? false;
+            if (currentIsYearly || !newPlanLookup.isYearly) {
+                return NextResponse.json({ error: "This change is not supported. You can only upgrade from monthly to yearly billing." }, { status: 400 });
+            }
         }
 
         console.log(`Upgrading subscription ${currentSubscriptionId} to plan ${newPlanId}`);

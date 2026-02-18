@@ -78,14 +78,14 @@ export async function POST(req: Request) {
         }
 
         // Update user plan (amount already validated above)
-        // Bug 16 Fix: Also set subscription_status and subscription_interval
+        // Note: Do NOT set subscription_status or subscription_interval here —
+        // one-time orders have no Razorpay subscription, so setting these
+        // would show a broken "Active Membership" with dead cancel/upgrade buttons.
         const { error: userError } = await (supabase
             .from("users") as any)
             .update({
                 plan_type: planType,
                 plan_expires_at: expiresAt.toISOString(),
-                subscription_status: "active",
-                subscription_interval: interval || "monthly",
                 updated_at: new Date().toISOString()
             })
             .eq("id", session.id);

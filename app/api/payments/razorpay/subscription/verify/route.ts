@@ -6,11 +6,13 @@ import { razorpay } from "@/lib/razorpay";
 import { PLANS_ARRAY } from "@/lib/pricing";
 
 export async function POST(req: Request) {
+    let sessionId: string | null = null;
     try {
         const session = await getSession();
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        sessionId = session.id;
 
         const body = await req.json();
         const {
@@ -77,19 +79,17 @@ export async function POST(req: Request) {
         }
 
         // Fetch payment details to get exact amount and currency
-        let paymentAmount = 0;
-        let paymentCurrency = "INR";
+        let paymentAmount: number;
+        let paymentCurrency: string;
 
         try {
             const payment = await razorpay.payments.fetch(razorpay_payment_id);
-            if (payment) {
-                paymentAmount = Number(payment.amount); // Amount in paise
-                paymentCurrency = payment.currency;
-            }
+            paymentAmount = Number(payment.amount); // Amount in paise
+            paymentCurrency = payment.currency;
         } catch (fetchError) {
+            // Bug 4 Fix: Fail instead of storing $0 — the webhook will activate the plan as fallback
             console.error("Error fetching payment details:", fetchError);
-            // Fallback to 0 if fetch fails, but log it.
-            // Ideally we should probably fail, but let's not block the user activation if signature was valid.
+            return NextResponse.json({ error: "Unable to verify payment amount. Your plan will activate shortly via automatic confirmation." }, { status: 502 });
         }
 
         // --- ATOMIC DB UPDATE (RPC) ---
@@ -122,16 +122,14 @@ export async function POST(req: Request) {
         console.error("Verification Error:", error);
         return NextResponse.json({ error: "Verification failed" }, { status: 500 });
     } finally {
-        // Invalidate cache so UI updates immediately
-        // We need session to be available, or pass userId if we have it
-        try {
-            const session = await getSession();
-            if (session?.id) {
+        // Bug 5 Fix: Reuse sessionId captured at start — no double getSession() call
+        if (sessionId) {
+            try {
                 const { invalidateSessionCache } = await import("@/lib/auth/cache");
-                await invalidateSessionCache(session.id);
+                await invalidateSessionCache(sessionId);
+            } catch (e) {
+                console.error("Cache invalidation failed in verify:", e);
             }
-        } catch (e) {
-            console.error("Cache invalidation failed in verify:", e);
         }
     }
 }

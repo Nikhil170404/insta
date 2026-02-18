@@ -19,7 +19,7 @@ export async function POST(req: Request) {
             }
         } catch (e) {
             console.error("Rate limit error:", e);
-            // Continue if rate limit fails (fail-open or fail-closed? Fail-open is better for UX, but let's log it)
+            return NextResponse.json({ error: "Service temporarily unavailable. Please try again." }, { status: 503 });
         }
 
         const supabase = getSupabaseAdmin();

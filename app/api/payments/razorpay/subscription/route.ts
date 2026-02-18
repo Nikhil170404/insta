@@ -32,7 +32,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Failed to verify account status" }, { status: 500 });
         }
 
-        const activePlans = ['starter', 'growth', 'pro', 'agency', 'paid'];
+        const activePlans = ['starter', 'pro'];
         const isActive = activePlans.includes(userData.plan_type) &&
             userData.plan_expires_at &&
             new Date(userData.plan_expires_at) > new Date();
