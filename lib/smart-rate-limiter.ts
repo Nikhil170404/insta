@@ -89,12 +89,18 @@ export async function smartRateLimit(
     }
 
     const hourlyUsed = newHourlyCount as number;
-    const hourlyRemaining = Math.max(0, config.hourlyLimit - hourlyUsed);
 
-    // 3. Logic Check
-    if (hourlyRemaining < 0) {
-        // We exceeded limit (the increment pushed us over)
-        // We don't rollback the increment (it's a "penalized" attempt), but we block the specific action
+    // 3. Hourly Limit Check
+    if (hourlyUsed > config.hourlyLimit) {
+        // The increment pushed us over the limit.
+        // Rollback the phantom increment to keep counts accurate.
+        const { error: decrementError } = await (supabase as any)
+            .rpc("decrement_rate_limit", { p_user_id: userId });
+
+        if (decrementError) {
+            logger.error("Decrement rollback failed", { userId, error: decrementError, category: "rate-limiter" });
+        }
+
         const hourStart = new Date(now);
         hourStart.setMinutes(0, 0, 0);
 
@@ -104,6 +110,8 @@ export async function smartRateLimit(
             remaining: { hourly: 0, monthly: monthlyRemaining }
         };
     }
+
+    const hourlyRemaining = Math.max(0, config.hourlyLimit - hourlyUsed);
 
     // 4. Spread Delay (optional)
     if (config.spreadDelay && hourlyUsed > 1) {

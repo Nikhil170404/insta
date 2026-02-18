@@ -175,7 +175,7 @@ CREATE TABLE public.rate_limits (
   created_at TIMESTAMPTZ DEFAULT NOW(),
 
   UNIQUE(user_id, hour_bucket),
-  CONSTRAINT valid_dm_count CHECK (dm_count >= 0 AND dm_count <= 300)
+  CONSTRAINT valid_dm_count CHECK (dm_count >= 0 AND dm_count <= 500)
 );
 
 -- Indexes
@@ -244,6 +244,22 @@ BEGIN
   RETURNING dm_count INTO new_count;
 
   RETURN new_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Decrement rate limit function (rollback phantom increments)
+CREATE OR REPLACE FUNCTION decrement_rate_limit(p_user_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  current_hour TIMESTAMPTZ := date_trunc('hour', NOW());
+  new_count INTEGER;
+BEGIN
+  UPDATE public.rate_limits
+  SET dm_count = GREATEST(dm_count - 1, 0)
+  WHERE user_id = p_user_id AND hour_bucket = current_hour
+  RETURNING dm_count INTO new_count;
+
+  RETURN COALESCE(new_count, 0);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
