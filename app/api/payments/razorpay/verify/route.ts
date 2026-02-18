@@ -78,16 +78,27 @@ export async function POST(req: Request) {
         }
 
         // Update user plan (amount already validated above)
+        // Bug 16 Fix: Also set subscription_status and subscription_interval
         const { error: userError } = await (supabase
             .from("users") as any)
             .update({
                 plan_type: planType,
                 plan_expires_at: expiresAt.toISOString(),
+                subscription_status: "active",
+                subscription_interval: interval || "monthly",
                 updated_at: new Date().toISOString()
             })
             .eq("id", session.id);
 
         if (userError) throw userError;
+
+        // Bug 16 Fix: Invalidate session cache so UI reflects changes immediately
+        try {
+            const { invalidateSessionCache } = await import("@/lib/auth/cache");
+            await invalidateSessionCache(session.id);
+        } catch (cacheError) {
+            logger.error("Cache invalidation failed in order verify", { category: "payment" }, cacheError as Error);
+        }
 
         // Log payment
         const { error: paymentError } = await (supabase

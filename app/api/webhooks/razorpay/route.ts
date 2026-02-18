@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { invalidateSessionCache } from "@/lib/auth/cache";
 import { logger } from "@/lib/logger";
+import { getPlanByRazorpayId } from "@/lib/pricing";
 
 export async function POST(req: Request) {
     let eventLogId: string | null = null;
@@ -75,41 +76,39 @@ export async function POST(req: Request) {
                 return NextResponse.json({ received: true });
             }
 
+            // Bug 2 Fix: Determine plan type from plan_id, not stale notes
+            const planLookup = getPlanByRazorpayId(subscription.plan_id);
+            const planType = planLookup?.planType || (notes?.planName === "Pro Pack" ? "pro" : "starter");
+            const isYearly = planLookup?.isYearly ?? (subscription.period === 'yearly');
+            const planName = planLookup?.plan?.name || notes?.planName || "Starter Pack";
+
             // Calculate new expiry (safe buffer logic)
             const expiryDate = new Date();
-
-            // Check subscription period
-            if (subscription.period === 'yearly') {
+            if (isYearly) {
                 expiryDate.setFullYear(expiryDate.getFullYear() + 1);
                 expiryDate.setDate(expiryDate.getDate() + 5);
             } else {
                 expiryDate.setDate(expiryDate.getDate() + 35); // Monthly + 5 days buffer
             }
 
-            // Determine Plan Type from Notes
-            const planName = notes?.planName || "Starter Pack";
-            let planType = "starter";
-
-            if (planName === "Pro Pack") planType = "pro";
-            else if (planName === "Starter Pack") planType = "starter";
-
             await (supabase.from("users") as any).update({
                 plan_type: planType,
                 plan_expires_at: expiryDate.toISOString(),
                 razorpay_subscription_id: subscription.id,
                 subscription_status: "active",
+                subscription_interval: isYearly ? "yearly" : "monthly", // Bug 8 Fix
                 updated_at: new Date().toISOString()
             }).eq("id", userId);
 
-            // Log Payment
-            await (supabase.from("payments") as any).insert({
+            // Bug 9 Fix: Upsert payment to prevent race condition with verify endpoint
+            await (supabase.from("payments") as any).upsert({
                 user_id: userId,
                 razorpay_payment_id: payment.id,
                 razorpay_subscription_id: subscription.id,
                 amount: payment.amount, // Store raw amount in Paise
                 status: "paid",
                 currency: payment.currency
-            });
+            }, { onConflict: 'razorpay_payment_id', ignoreDuplicates: true });
 
             // Send Receipt Email
             try {
@@ -213,7 +212,7 @@ export async function POST(req: Request) {
                     const { sendPaymentFailedEmail } = await import("@/lib/notifications/email");
                     const { data: user } = await supabase.from("users").select("email, plan_type").eq("id", userId).single() as any;
                     if (user?.email) {
-                        const retryLink = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`;
+                        const retryLink = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`; // Bug 5 Fix
                         await sendPaymentFailedEmail(user.email, user.plan_type || "Subscription", retryLink);
                     }
                 } catch (e) {
@@ -271,11 +270,13 @@ export async function POST(req: Request) {
         // Handle Payment Failed
         else if (event.event === "payment.failed") {
             const payment = payload.payment.entity;
-            const subscriptionId = payment.order_id || payment.subscription_id;
+            // Bug 6 Fix: Prioritize subscription_id over order_id
+            const subscriptionId = payment.subscription_id || payment.order_id;
 
             if (subscriptionId) {
+                // Bug 7 Fix: Select email and plan_type upfront to avoid redundant second query
                 const { data: user } = await (supabase.from("users") as any)
-                    .select("id")
+                    .select("id, email, plan_type")
                     .eq("razorpay_subscription_id", subscriptionId)
                     .single();
 
@@ -290,15 +291,13 @@ export async function POST(req: Request) {
                     });
 
                     // Send Failed Payment Email
+                    // Bug 7 Fix: Use email/plan_type from initial query (no redundant second query)
+                    // Bug 5 Fix: Correct billing URL
                     try {
                         const { sendPaymentFailedEmail } = await import("@/lib/notifications/email");
                         if (user.email) {
-                            const { data: fullUser } = await supabase.from("users").select("email, plan_type").eq("id", user.id).single() as any;
-
-                            if (fullUser?.email) {
-                                const retryLink = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`;
-                                await sendPaymentFailedEmail(fullUser.email, fullUser.plan_type || "Subscription", retryLink);
-                            }
+                            const retryLink = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`;
+                            await sendPaymentFailedEmail(user.email, user.plan_type || "Subscription", retryLink);
                         }
                     } catch (e) {
                         logger.error("Failed to send payment failed email", { category: "payment" }, e as Error);

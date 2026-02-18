@@ -106,6 +106,32 @@ export const PRICING_PLANS = {
 
 export const PLANS_ARRAY = Object.values(PRICING_PLANS);
 
+// Plan hierarchy for upgrade/downgrade validation (higher = more premium)
+export const PLAN_HIERARCHY: Record<string, number> = {
+    free: 0,
+    starter: 1,
+    pro: 2,
+};
+
+// Helper to get plan by Razorpay plan ID (monthlyPlanId or yearlyPlanId)
+export function getPlanByRazorpayId(razorpayPlanId: string): {
+    plan: (typeof PLANS_ARRAY)[number];
+    isYearly: boolean;
+    planType: string;
+} | null {
+    for (const plan of PLANS_ARRAY) {
+        if (plan.monthlyPlanId === razorpayPlanId) {
+            const planType = plan.name === "Pro Pack" ? "pro" : plan.name === "Starter Pack" ? "starter" : "free";
+            return { plan, isYearly: false, planType };
+        }
+        if (plan.yearlyPlanId === razorpayPlanId) {
+            const planType = plan.name === "Pro Pack" ? "pro" : plan.name === "Starter Pack" ? "starter" : "free";
+            return { plan, isYearly: true, planType };
+        }
+    }
+    return null;
+}
+
 // Helper to get plan by name
 export function getPlanByName(name: string) {
     return Object.values(PRICING_PLANS).find(p => p.name === name);

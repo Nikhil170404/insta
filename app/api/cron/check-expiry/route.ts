@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { logger } from "@/lib/logger";
+import { invalidateSessionCache } from "@/lib/auth/cache";
 
 export async function GET(req: Request) {
     const auth = verifyCronRequest(req);
@@ -41,6 +42,11 @@ export async function GET(req: Request) {
             .in("id", idsToUpdate);
 
         if (updateError) throw updateError;
+
+        // Bug 12 Fix: Invalidate session cache for each downgraded user
+        await Promise.allSettled(
+            idsToUpdate.map((id: string) => invalidateSessionCache(id))
+        );
 
         return NextResponse.json({
             success: true,
