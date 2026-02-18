@@ -457,12 +457,24 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                     {item.media_type === "REELS" ? "🎬 REEL" : "📸 PHOTO"}
                                                 </Badge>
                                                 {hasAutomation && (
-                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/20 backdrop-blur-xl rounded-full border border-green-500/30">
+                                                    <div className={cn(
+                                                        "flex items-center gap-1.5 px-2 py-0.5 backdrop-blur-xl rounded-full border",
+                                                        automation.is_active
+                                                            ? "bg-green-500/20 border-green-500/30"
+                                                            : "bg-amber-500/20 border-amber-500/30"
+                                                    )}>
                                                         <div className={cn(
-                                                            "w-1 h-1 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80]",
-                                                            automation.is_active && "animate-pulse"
+                                                            "w-1 h-1 rounded-full",
+                                                            automation.is_active
+                                                                ? "bg-green-400 shadow-[0_0_8px_#4ade80] animate-pulse"
+                                                                : "bg-amber-400"
                                                         )} />
-                                                        <span className="text-[7px] md:text-[8px] font-black text-green-400 uppercase tracking-widest">Active</span>
+                                                        <span className={cn(
+                                                            "text-[7px] md:text-[8px] font-black uppercase tracking-widest",
+                                                            automation.is_active ? "text-green-400" : "text-amber-400"
+                                                        )}>
+                                                            {automation.is_active ? "Active" : "Paused"}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </div>
