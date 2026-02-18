@@ -48,6 +48,17 @@ export async function POST(request: NextRequest) {
         logger.info("Webhook verified & received", { category: "webhook" });
 
         if (body.object === "instagram") {
+            // P1 Audit Fix: Timestamp Replay Protection
+            for (const entry of body.entry || []) {
+                if (entry.time) {
+                    const eventAge = (Date.now() / 1000) - entry.time;
+                    if (eventAge > 300) { // 5 minutes
+                        logger.warn("Instagram webhook event too old — rejecting", { age: eventAge, category: "webhook" });
+                        return new NextResponse("Request too old", { status: 400 });
+                    }
+                }
+            }
+
             // Processing happens asynchronously so we can return 200 OK fast to Meta
             // However, on Vercel/Serverless, we must await to ensure execution isn't frozen
             await InstagramWebhookService.processWebhookEvents(body);

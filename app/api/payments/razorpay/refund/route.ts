@@ -12,6 +12,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // P1 Audit Fix: Rate Limit Refunds (Sensitive Action)
+        const { checkRateLimit } = await import("@/lib/rate-limit-middleware");
+        const rateLimit = await checkRateLimit("auth", `user:${session.id}`);
+
+        if (!rateLimit.success) {
+            return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+        }
+
         const body = await req.json();
         const { paymentId } = body;
 

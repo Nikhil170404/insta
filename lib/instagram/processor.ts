@@ -47,6 +47,15 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             await setCachedUser(instagramUserId, dbUser);
         }
 
+        // P1 Audit Fix: Enforce Plan Expiry (Cache Override)
+        // Even if cache says 'pro', check the timestamp to prevent 5-min leak
+        if (user && user.plan_type !== 'free' && user.plan_expires_at) {
+            if (new Date(user.plan_expires_at).getTime() < Date.now()) {
+                logger.info("Plan expired during cached session — enforcing FREE limits", { userId: user.id });
+                user.plan_type = 'free';
+            }
+        }
+
         // 3. Self-comment detection
         if (!user || commenterId === user.instagram_user_id) {
             if (user) logger.info("Skipping self-comment", { instagramUserId });
@@ -476,6 +485,14 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 }
                 user = dbUser;
                 await setCachedUser(instagramUserId, dbUser);
+            }
+
+            // P1 Audit Fix: Enforce Plan Expiry (Cache Override)
+            if (user && user.plan_type !== 'free' && user.plan_expires_at) {
+                if (new Date(user.plan_expires_at).getTime() < Date.now()) {
+                    logger.info("Plan expired during cached session (story) — enforcing FREE limits", { userId: user.id });
+                    user.plan_type = 'free';
+                }
             }
 
             // Guard against null user (TypeScript strict)

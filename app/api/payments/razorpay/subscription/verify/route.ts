@@ -14,6 +14,14 @@ export async function POST(req: Request) {
         }
         sessionId = session.id;
 
+        // P1 Audit Fix: Rate Limit Verification (Prevent Brute Force)
+        const { checkRateLimit } = await import("@/lib/rate-limit-middleware");
+        const rateLimit = await checkRateLimit("auth", `user:${session.id}`);
+
+        if (!rateLimit.success) {
+            return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+        }
+
         const body = await req.json();
         const {
             razorpay_payment_id,

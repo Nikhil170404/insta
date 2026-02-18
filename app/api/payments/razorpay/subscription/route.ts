@@ -7,9 +7,12 @@ import { ratelimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
     try {
-        const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
-        const { success } = await ratelimit.limit(ip);
-        if (!success) {
+        // P1 Audit Fix: Unified Rate Limiting
+        const { checkRateLimit, getRateLimitIdentifier } = await import("@/lib/rate-limit-middleware");
+        const identifier = getRateLimitIdentifier(req as any); // IP-based for pre-auth
+        const rateLimit = await checkRateLimit("auth", identifier);
+
+        if (!rateLimit.success) {
             return NextResponse.json({ error: "Too many requests" }, { status: 429 });
         }
 

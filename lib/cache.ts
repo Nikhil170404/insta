@@ -102,6 +102,7 @@ export interface CachedUser {
     instagram_user_id: string;
     instagram_username?: string;
     plan_type: string;
+    plan_expires_at?: string; // P1 Audit Fix: Required for strict expiry check
 }
 
 export const getCachedUser = (id: string) => getCached<CachedUser>(`user:${id}`);

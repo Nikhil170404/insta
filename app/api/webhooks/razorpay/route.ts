@@ -31,6 +31,27 @@ export async function POST(req: Request) {
         const { payload } = event;
         const supabase = getSupabaseAdmin();
 
+        // P1 Audit Fix: Timestamp Replay Attack Protection
+        // Razorpay sends 'created_at' in unix seconds
+        const eventAge = (Date.now() / 1000) - event.created_at;
+        if (eventAge > 300) { // 5 minutes allow
+            logger.warn("Razorpay webhook rejected: request too old", { age: eventAge, category: "payment" });
+            return NextResponse.json({ error: "Request too old" }, { status: 400 });
+        }
+
+        // P1 Audit Fix: Deduplication (Idempotency) BEFORE processing
+        // Check if we already processed this event_id
+        const { data: existingEvent } = await supabase
+            .from("webhook_events")
+            .select("id, status")
+            .eq("event_id", event.id)
+            .single();
+
+        if (existingEvent) {
+            logger.info("Webhook event already received — skipping", { eventId: event.id, category: "payment" });
+            return NextResponse.json({ received: true });
+        }
+
         // Log Webhook Event
         const { data: insertedEvent, error: logError } = await (supabase.from("webhook_events") as any).insert({
             event_id: event.id,
@@ -41,7 +62,16 @@ export async function POST(req: Request) {
 
         if (insertedEvent) eventLogId = insertedEvent.id;
 
-        if (logError) logger.error("Failed to log webhook event", { category: "payment" }, logError as Error);
+        if (logError) {
+            // If insert failed but existing check passed, likely a race condition.
+            // We logged it, now deciding whether to proceed.
+            // If unique constraint violation, it's a duplicate.
+            if (logError.code === '23505') { // Postgres limit violation
+                return NextResponse.json({ received: true });
+            }
+            logger.error("Failed to log webhook event", { category: "payment" }, logError as Error);
+            // Proceed cautiously
+        }
 
         // Handle Subscription Charged
         if (event.event === "subscription.charged") {

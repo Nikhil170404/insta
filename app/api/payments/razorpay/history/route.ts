@@ -10,6 +10,14 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // P2 Audit Fix: Rate Limit History (Analytics)
+        const { checkRateLimit } = await import("@/lib/rate-limit-middleware");
+        const rateLimit = await checkRateLimit("analytics", `user:${session.id}`);
+
+        if (!rateLimit.success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+
         const { searchParams } = new URL(req.url);
         const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
         const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "10") || 10));
