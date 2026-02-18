@@ -414,9 +414,9 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                                     )}
                                                                 >
                                                                     {automation.is_active ? (
-                                                                        <><X className="h-3.5 w-3.5" /> Deactivate</>
+                                                                        <><X className="h-3.5 w-3.5" /> Stop</>
                                                                     ) : (
-                                                                        <><Zap className="h-3.5 w-3.5 fill-current" /> Activate</>
+                                                                        <><Zap className="h-3.5 w-3.5 fill-current" /> Start</>
                                                                     )}
                                                                 </button>
                                                                 <button
@@ -521,9 +521,9 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                                                     )}
                                                                 >
                                                                     {automation.is_active ? (
-                                                                        <><X className="h-3.5 w-3.5" /> Deactivate</>
+                                                                        <><X className="h-3.5 w-3.5" /> Stop</>
                                                                     ) : (
-                                                                        <><Zap className="h-3.5 w-3.5 fill-current" /> Activate</>
+                                                                        <><Zap className="h-3.5 w-3.5 fill-current" /> Start</>
                                                                     )}
                                                                 </button>
                                                                 <button
