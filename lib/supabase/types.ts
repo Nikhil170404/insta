@@ -383,6 +383,10 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: number;
       };
+      decrement_rate_limit: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
     };
   };
 };

@@ -107,14 +107,57 @@ describe('Smart Rate Limiter (RPC Version)', () => {
             expect(mockRpc).not.toHaveBeenCalled();
         });
 
-        it('should BLOCK request when over hourly limit (RPC returns high count)', async () => {
-            // Setup: RPC returns 201
-            mockRpc.mockResolvedValue({ data: 201, error: null });
+        it('should BLOCK request and DECREMENT when over hourly limit', async () => {
+            // Setup: RPC increment returns 201 (over 200 limit), decrement succeeds
+            mockRpc.mockImplementation((func: string) => {
+                if (func === 'increment_rate_limit') {
+                    return Promise.resolve({ data: 201, error: null });
+                }
+                if (func === 'decrement_rate_limit') {
+                    return Promise.resolve({ data: 200, error: null });
+                }
+                return Promise.resolve({ data: null, error: null });
+            });
 
             const result = await smartRateLimit('user_123');
 
             expect(result.allowed).toBe(false);
+            expect(result.remaining.hourly).toBe(0); // 200 - 201 clamped to 0
+
+            // Should rollback the phantom increment
+            expect(mockRpc).toHaveBeenCalledWith('decrement_rate_limit', { p_user_id: 'user_123' });
+        });
+
+        it('should ALLOW request at exact boundary (count == limit)', async () => {
+            // Setup: RPC returns exactly 200 (the limit)
+            mockRpc.mockResolvedValue({ data: 200, error: null });
+
+            const result = await smartRateLimit('user_123');
+
+            expect(result.allowed).toBe(true);
             expect(result.remaining.hourly).toBe(0);
+
+            // Should NOT call decrement (we are AT the limit, not over it)
+            expect(mockRpc).not.toHaveBeenCalledWith('decrement_rate_limit', expect.anything());
+        });
+
+        it('should still block when decrement fails (phantom persists gracefully)', async () => {
+            // Setup: increment goes over, decrement fails
+            mockRpc.mockImplementation((func: string) => {
+                if (func === 'increment_rate_limit') {
+                    return Promise.resolve({ data: 201, error: null });
+                }
+                if (func === 'decrement_rate_limit') {
+                    return Promise.resolve({ data: null, error: { message: 'DB error' } });
+                }
+                return Promise.resolve({ data: null, error: null });
+            });
+
+            const result = await smartRateLimit('user_123');
+
+            expect(result.allowed).toBe(false);
+            // Decrement was attempted even though it failed
+            expect(mockRpc).toHaveBeenCalledWith('decrement_rate_limit', { p_user_id: 'user_123' });
         });
 
         it('should call increment_rate_limit RPC correctly', async () => {
@@ -150,20 +193,29 @@ describe('Smart Rate Limiter (RPC Version)', () => {
             // Mock Limit Checks within processing
             // Monthly check (table) -> 50 used
             const mockLimitChain = {
-                select: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockReturnValue({
-                        gte: vi.fn().mockResolvedValue({ data: [{ dm_count: 50 }] })
-                    })
-                }),
-                // Catch-all for other table ops
-                update: vi.fn().mockReturnValue({ eq: vi.fn(), in: vi.fn() }),
-                insert: vi.fn()
+                eq: vi.fn().mockReturnValue({
+                    gte: vi.fn().mockResolvedValue({ data: [{ dm_count: 50 }] })
+                })
             };
 
             mockFrom.mockImplementation((table) => {
-                if (table === 'dm_queue') return mockSelectChain;
-                if (table === 'rate_limits') return mockLimitChain.select(); // simplified
-                return mockLimitChain;
+                if (table === 'dm_queue') return {
+                    select: vi.fn().mockReturnValue(mockSelectChain),
+                    update: vi.fn().mockReturnValue({ eq: vi.fn(), in: vi.fn() })
+                };
+                if (table === 'rate_limits') return { select: vi.fn().mockReturnValue(mockLimitChain) };
+                // Default fallback (dm_logs etc)
+                const mockChain = {
+                    eq: vi.fn().mockReturnThis(),
+                    maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+                    insert: vi.fn().mockResolvedValue({ error: null }),
+                    update: vi.fn().mockReturnThis()
+                };
+                return {
+                    select: vi.fn().mockReturnValue(mockChain),
+                    insert: vi.fn().mockResolvedValue({ error: null }),
+                    update: vi.fn().mockReturnValue(mockChain)
+                };
             });
 
             // Hourly check (RPC) -> 10 used

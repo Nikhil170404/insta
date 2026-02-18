@@ -247,6 +247,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+
+-- Decrement rate limit function (rollback phantom increments)
+CREATE OR REPLACE FUNCTION decrement_rate_limit(p_user_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  current_hour TIMESTAMPTZ := date_trunc('hour', NOW());
+  new_count INTEGER;
+BEGIN
+  UPDATE public.rate_limits
+  SET dm_count = GREATEST(dm_count - 1, 0)
+  WHERE user_id = p_user_id AND hour_bucket = current_hour
+  RETURNING dm_count INTO new_count;
+
+  RETURN COALESCE(new_count, 0);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Get current rate limit function
 CREATE OR REPLACE FUNCTION get_rate_limit(p_user_id UUID)
 RETURNS INTEGER AS $$
