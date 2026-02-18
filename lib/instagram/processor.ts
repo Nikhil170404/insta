@@ -634,6 +634,19 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     // User is not following - send follow-gate card
                     logger.info("User clicked but not following, sending follow-gate", { senderIgsid });
 
+                    // Rate Limit Check (Prevent Abuse of Button Clicks)
+                    const planLimits = getPlanLimits(user.plan_type || 'free');
+                    const limitCheck = await smartRateLimit(user.id, {
+                        hourlyLimit: planLimits.dmsPerHour,
+                        monthlyLimit: planLimits.dmsPerMonth || 1000,
+                        spreadDelay: false
+                    });
+
+                    if (!limitCheck.allowed) {
+                        logger.warn("Rate limit hit during follow-gate click", { userId: user.id });
+                        return; // Silently fail or maybe queue? For buttons, silent fail is often better than delayed surprise
+                    }
+
                     const followGateMsg = automation.follow_gate_message ||
                         `To unlock this, please follow us first! 👋`;
 
@@ -668,8 +681,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                                 .eq("id", latestLog.id);
                         }
 
-                        // Log as follow-gate attempt
-                        // Use username from previous log if available
+                        // Log as follow-gate attempt (Internal Log only, doesn't count as new conversation)
                         const username = latestLog?.instagram_username || "";
 
                         await supabase.from("dm_logs").insert({
@@ -691,6 +703,20 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             }
 
             // User is following (or no follow-gate required) - send final link
+
+            // Rate Limit Check
+            const planLimits = getPlanLimits(user.plan_type || 'free');
+            const limitCheck = await smartRateLimit(user.id, {
+                hourlyLimit: planLimits.dmsPerHour,
+                monthlyLimit: planLimits.dmsPerMonth || 1000,
+                spreadDelay: false
+            });
+
+            if (!limitCheck.allowed) {
+                logger.warn("Rate limit hit during final link send", { userId: user.id });
+                return;
+            }
+
             const dmSent = await sendInstagramDM(
                 user.instagram_access_token,
                 instagramUserId,
@@ -704,10 +730,13 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             );
 
             if (dmSent) {
-                await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                // FIXED: Do NOT increment dm_sent_count here to avoid double-counting in Analytics
+                // The "conversation" was already counted when the Greeting was sent.
+                // We DO increment click_count though.
                 await incrementAutomationCount(supabase, automation.id, "click_count");
 
                 // FIX: Only update the specific log for this interaction
+
                 const { data: latestLog } = await supabase
                     .from("dm_logs")
                     .select("id")
@@ -759,6 +788,19 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 // They are following! Send FINAL message with actual link
                 logger.info("User verified as following, sending final link", { senderIgsid });
 
+                // Rate Limit Check
+                const planLimits = getPlanLimits(user.plan_type || 'free');
+                const limitCheck = await smartRateLimit(user.id, {
+                    hourlyLimit: planLimits.dmsPerHour,
+                    monthlyLimit: planLimits.dmsPerMonth || 1000,
+                    spreadDelay: false
+                });
+
+                if (!limitCheck.allowed) {
+                    logger.warn("Rate limit hit during verification send", { userId: user.id });
+                    return;
+                }
+
                 const dmSent = await sendInstagramDM(
                     user.instagram_access_token,
                     instagramUserId,
@@ -772,7 +814,9 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 );
 
                 if (dmSent) {
-                    await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    // FIXED: Do NOT increment dm_sent_count here (already counted in greeting)
+                    // await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+
                     // Update the follow-gate log to mark as converted
                     await supabase
                         .from("dm_logs")
