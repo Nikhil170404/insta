@@ -2,7 +2,48 @@
  * Tests for Instagram comment/message processor
  * @module tests/lib/processor.test.ts
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// --- Create a robust chainable Supabase mock ---
+// Each call to .from() returns a fresh chain, with responses controlled per-test.
+let singleResponses: any[] = [];
+let maybeSingleResponses: any[] = [];
+let selectAllResponses: any[] = [];
+let insertResponses: any[] = [];
+
+function createChainableMock() {
+    const chain: any = {
+        select: vi.fn(() => chain),
+        eq: vi.fn(() => chain),
+        gte: vi.fn(() => chain),
+        order: vi.fn(() => chain),
+        limit: vi.fn(() => chain),
+        insert: vi.fn((data: any) => {
+            const resp = insertResponses.shift() || { error: null };
+            // Return a thenable so `await supabase.from(...).insert(...)` works
+            return { ...chain, then: (resolve: any) => resolve(resp) };
+        }),
+        update: vi.fn(() => chain),
+        single: vi.fn(() => {
+            const resp = singleResponses.shift() || { data: null, error: null };
+            return Promise.resolve(resp);
+        }),
+        maybeSingle: vi.fn(() => {
+            const resp = maybeSingleResponses.shift() || { data: null, error: null };
+            return Promise.resolve(resp);
+        }),
+        // Support `await supabase.from().select().eq().eq()` (returns array data)
+        then: function (resolve: any) {
+            const resp = selectAllResponses.shift() || { data: [], error: null };
+            return resolve(resp);
+        }
+    };
+    return chain;
+}
+
+const mockSupabase: any = {
+    from: vi.fn(() => createChainableMock()),
+};
 
 // Mock all dependencies BEFORE importing processor
 vi.mock('@/lib/supabase/client', () => ({
@@ -17,7 +58,8 @@ vi.mock('@/lib/instagram/service', () => ({
     getUniqueMessage: vi.fn((msg: string) => msg),
     incrementAutomationCount: vi.fn(),
     sendFollowGateCard: vi.fn(),
-    hasReceivedFollowGate: vi.fn()
+    hasReceivedFollowGate: vi.fn(),
+    getMediaDetails: vi.fn()
 }));
 
 vi.mock('@/lib/smart-rate-limiter', () => ({
@@ -39,18 +81,9 @@ vi.mock('@/lib/pricing', () => ({
     }))
 }));
 
-// Mock Supabase client - typed as any because it's a test mock
-const mockSupabase: any = {
-    from: vi.fn(() => mockSupabase),
-    select: vi.fn(() => mockSupabase),
-    insert: vi.fn(() => mockSupabase),
-    update: vi.fn(() => mockSupabase),
-    eq: vi.fn(() => mockSupabase),
-    single: vi.fn(() => ({ data: null, error: null })),
-    maybeSingle: vi.fn(() => ({ data: null, error: null })),
-    order: vi.fn(() => mockSupabase),
-    limit: vi.fn(() => mockSupabase)
-};
+vi.mock('@/lib/notifications/push', () => ({
+    notifyUser: vi.fn()
+}));
 
 import { handleCommentEvent, handleMessageEvent } from '@/lib/instagram/processor';
 import { sendInstagramDM, replyToComment, checkIsFollowing, incrementAutomationCount } from '@/lib/instagram/service';
@@ -60,14 +93,10 @@ import { getCachedUser, setCachedUser, getCachedAutomation, setCachedAutomation 
 describe('processor.ts', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        // Reset mock chain
-        mockSupabase.from.mockReturnValue(mockSupabase);
-        mockSupabase.select.mockReturnValue(mockSupabase);
-        mockSupabase.insert.mockReturnValue(mockSupabase);
-        mockSupabase.update.mockReturnValue(mockSupabase);
-        mockSupabase.eq.mockReturnValue(mockSupabase);
-        mockSupabase.order.mockReturnValue(mockSupabase);
-        mockSupabase.limit.mockReturnValue(mockSupabase);
+        singleResponses = [];
+        maybeSingleResponses = [];
+        selectAllResponses = [];
+        insertResponses = [];
     });
 
     describe('handleCommentEvent', () => {
@@ -82,6 +111,7 @@ describe('processor.ts', () => {
             id: 'user_uuid_123',
             instagram_access_token: 'mock_token',
             instagram_user_id: 'owner_123',
+            instagram_username: 'owner_user',
             plan_type: 'starter'
         };
 
@@ -106,8 +136,8 @@ describe('processor.ts', () => {
                 from: { id: 'owner_123', username: 'owner' }
             };
 
-            vi.mocked(getCachedUser).mockResolvedValue(null);
-            mockSupabase.single.mockResolvedValueOnce({ data: mockUser, error: null } as any);
+            // User found from cache
+            vi.mocked(getCachedUser).mockResolvedValue(mockUser as any);
 
             await handleCommentEvent('owner_123', selfCommentEvent, mockSupabase);
 
@@ -115,10 +145,10 @@ describe('processor.ts', () => {
         });
 
         it('should skip duplicate comment IDs (idempotency)', async () => {
-            vi.mocked(getCachedUser).mockResolvedValue(mockUser);
-            // First call is for user, second for dm_logs check
-            mockSupabase.single
-                .mockResolvedValueOnce({ data: { id: 'existing_log' }, error: null }); // Existing log found
+            vi.mocked(getCachedUser).mockResolvedValue(mockUser as any);
+
+            // Idempotency check: dm_logs query returns existing log
+            singleResponses.push({ data: { id: 'existing_log' }, error: null });
 
             await handleCommentEvent('owner_123', baseEventData, mockSupabase);
 
@@ -126,19 +156,14 @@ describe('processor.ts', () => {
         });
 
         it('should skip if no matching automation found', async () => {
-            vi.mocked(getCachedUser).mockResolvedValue(mockUser);
+            vi.mocked(getCachedUser).mockResolvedValue(mockUser as any);
             vi.mocked(getCachedAutomation).mockResolvedValue(null);
 
-            // dm_logs check - no existing log
-            mockSupabase.single.mockResolvedValueOnce({ data: null, error: null });
+            // Idempotency check: no existing log
+            singleResponses.push({ data: null, error: null });
 
-            // Return empty automations array
-            mockSupabase.select.mockReturnValue({
-                ...mockSupabase,
-                eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockResolvedValue({ data: [], error: null })
-                })
-            });
+            // Automations query: no active automations
+            selectAllResponses.push({ data: [], error: null });
 
             await handleCommentEvent('owner_123', baseEventData, mockSupabase);
 
@@ -170,22 +195,29 @@ describe('processor.ts', () => {
                 text: 'hello world'
             };
 
-            vi.mocked(getCachedUser).mockResolvedValue(mockUser);
-            vi.mocked(getCachedAutomation).mockResolvedValue(keywordAutomation);
-            mockSupabase.single.mockResolvedValue({ data: null, error: null });
+            vi.mocked(getCachedUser).mockResolvedValue(mockUser as any);
+            vi.mocked(getCachedAutomation).mockResolvedValue(keywordAutomation as any);
+
+            // Idempotency check
+            singleResponses.push({ data: null, error: null });
 
             await handleCommentEvent('owner_123', nonMatchingEvent, mockSupabase);
 
-            // Should not send DM because keyword doesn't match
             expect(sendInstagramDM).not.toHaveBeenCalled();
         });
 
         it('should queue DM when rate limit is hit', async () => {
-            vi.mocked(getCachedUser).mockResolvedValue(mockUser);
-            vi.mocked(getCachedAutomation).mockResolvedValue(mockAutomation);
-            mockSupabase.single.mockResolvedValue({ data: null, error: null });
-            mockSupabase.maybeSingle.mockResolvedValue({ data: null, error: null });
-            mockSupabase.insert.mockResolvedValue({ error: null });
+            vi.mocked(getCachedUser).mockResolvedValue(mockUser as any);
+            vi.mocked(getCachedAutomation).mockResolvedValue(mockAutomation as any);
+
+            // Idempotency check - no existing log
+            singleResponses.push({ data: null, error: null });
+
+            // One-DM-per-user check
+            maybeSingleResponses.push({ data: null, error: null });
+
+            // Insert placeholder
+            insertResponses.push({ error: null });
 
             vi.mocked(smartRateLimit).mockResolvedValue({
                 allowed: false,
@@ -200,11 +232,17 @@ describe('processor.ts', () => {
         });
 
         it('should send DM successfully when all checks pass', async () => {
-            vi.mocked(getCachedUser).mockResolvedValue(mockUser);
-            vi.mocked(getCachedAutomation).mockResolvedValue(mockAutomation);
-            mockSupabase.single.mockResolvedValue({ data: null, error: null });
-            mockSupabase.maybeSingle.mockResolvedValue({ data: null, error: null });
-            mockSupabase.insert.mockResolvedValue({ error: null });
+            vi.mocked(getCachedUser).mockResolvedValue(mockUser as any);
+            vi.mocked(getCachedAutomation).mockResolvedValue(mockAutomation as any);
+
+            // Idempotency check
+            singleResponses.push({ data: null, error: null });
+
+            // One-DM-per-user check
+            maybeSingleResponses.push({ data: null, error: null });
+
+            // Insert placeholder
+            insertResponses.push({ error: null });
 
             vi.mocked(smartRateLimit).mockResolvedValue({
                 allowed: true,
@@ -230,11 +268,17 @@ describe('processor.ts', () => {
         });
 
         it('should send public comment reply if configured', async () => {
-            vi.mocked(getCachedUser).mockResolvedValue(mockUser);
-            vi.mocked(getCachedAutomation).mockResolvedValue(mockAutomation);
-            mockSupabase.single.mockResolvedValue({ data: null, error: null });
-            mockSupabase.maybeSingle.mockResolvedValue({ data: null, error: null });
-            mockSupabase.insert.mockResolvedValue({ error: null });
+            vi.mocked(getCachedUser).mockResolvedValue(mockUser as any);
+            vi.mocked(getCachedAutomation).mockResolvedValue(mockAutomation as any);
+
+            // Idempotency check
+            singleResponses.push({ data: null, error: null });
+
+            // One-DM-per-user check
+            maybeSingleResponses.push({ data: null, error: null });
+
+            // Insert placeholder
+            insertResponses.push({ error: null });
 
             vi.mocked(smartRateLimit).mockResolvedValue({
                 allowed: true,
@@ -259,14 +303,16 @@ describe('processor.ts', () => {
                 sender: { id: 'sender_123' },
                 message: {
                     text: 'Great story!',
-                    reply_to: { story_id: 'story_456' }
+                    reply_to: { story: { id: 'story_456' } }
                 }
             };
 
             const mockUser = {
                 id: 'user_uuid_123',
                 instagram_access_token: 'mock_token',
-                instagram_user_id: 'owner_123'
+                instagram_user_id: 'owner_123',
+                instagram_username: 'owner_user',
+                plan_type: 'free'
             };
 
             const storyAutomation = {
@@ -277,8 +323,20 @@ describe('processor.ts', () => {
             };
 
             vi.mocked(getCachedUser).mockResolvedValue(null);
-            mockSupabase.single.mockResolvedValueOnce({ data: mockUser, error: null });
-            mockSupabase.maybeSingle.mockResolvedValueOnce({ data: storyAutomation, error: null });
+
+            // User lookup
+            singleResponses.push({ data: mockUser, error: null });
+
+            // Story automation lookup
+            maybeSingleResponses.push({ data: storyAutomation, error: null });
+
+            // Idempotency check for story
+            maybeSingleResponses.push({ data: null, error: null });
+
+            vi.mocked(smartRateLimit).mockResolvedValue({
+                allowed: true,
+                remaining: { hourly: 199, monthly: 999 }
+            });
 
             vi.mocked(sendInstagramDM).mockResolvedValue(true);
 
@@ -299,18 +357,26 @@ describe('processor.ts', () => {
                 user_id: 'user_uuid_123',
                 link_url: 'https://example.com/resource',
                 final_message: 'Here is your link!',
-                final_button_text: 'Open Now'
+                final_button_text: 'Open Now',
+                require_follow: false,
+                media_thumbnail_url: undefined
             };
 
             const mockUser = {
-                instagram_access_token: 'mock_token'
+                id: 'user_uuid_123',
+                instagram_access_token: 'mock_token',
+                instagram_username: 'owner_user'
             };
 
-            mockSupabase.single
-                .mockResolvedValueOnce({ data: mockAutomation, error: null })
-                .mockResolvedValueOnce({ data: mockUser, error: null });
+            // Automation lookup
+            singleResponses.push({ data: mockAutomation, error: null });
+            // User lookup
+            singleResponses.push({ data: mockUser, error: null });
 
             vi.mocked(sendInstagramDM).mockResolvedValue(true);
+
+            // For the dm_logs update query (latestLog)
+            singleResponses.push({ data: { id: 'log_123' }, error: null });
 
             await handleMessageEvent('owner_123', clickLinkMessaging, mockSupabase);
 
@@ -337,7 +403,11 @@ describe('processor.ts', () => {
                 id: 'automation_uuid_123',
                 user_id: 'user_uuid_123',
                 reply_message: 'Thanks for following!',
-                button_text: 'Get Access'
+                button_text: 'Get Access',
+                link_url: 'https://example.com',
+                final_message: 'Here is the link!',
+                final_button_text: 'Open Link',
+                media_thumbnail_url: undefined
             };
 
             const mockUser = {
@@ -346,9 +416,10 @@ describe('processor.ts', () => {
                 instagram_username: 'owner'
             };
 
-            mockSupabase.single
-                .mockResolvedValueOnce({ data: mockAutomation, error: null })
-                .mockResolvedValueOnce({ data: mockUser, error: null });
+            // Automation lookup
+            singleResponses.push({ data: mockAutomation, error: null });
+            // User lookup
+            singleResponses.push({ data: mockUser, error: null });
 
             vi.mocked(checkIsFollowing).mockResolvedValue(true);
             vi.mocked(sendInstagramDM).mockResolvedValue(true);

@@ -11,3 +11,6 @@ process.env.WEBHOOK_VERIFY_TOKEN = 'test-webhook-token';
 process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID = 'rzp_test_123';
 process.env.RAZORPAY_KEY_SECRET = 'test-razorpay-secret';
 process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = 'BPvlO0awtlrWKrD9testkey123456789012345678901234567890';
+process.env.VAPID_PRIVATE_KEY = 'test-vapid-private-key-at-least-32-chars';
+process.env.RESEND_API_KEY = 're_test_key_setup';

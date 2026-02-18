@@ -38,7 +38,7 @@ export async function smartRateLimit(
     userId: string,
     config: RateLimitConfig = {
         hourlyLimit: 200,
-        monthlyLimit: 1000, // Default to free tier
+        monthlyLimit: 1000,
         spreadDelay: true,
     }
 ): Promise<{
@@ -50,81 +50,79 @@ export async function smartRateLimit(
     const supabase = getSupabaseAdmin();
     const now = new Date();
 
-    // Check current usage
-    const hourStart = new Date(now);
-    hourStart.setUTCMinutes(0, 0, 0); // Use UTC for consistent windows (#129)
-
+    // 1. Monthly Check (Read-Only Sum)
+    // We check this first to avoid incrementing hourly if monthly is already blocked
     const monthStart = new Date(now);
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
 
-    // Count DMs sent in current windows
-    const { count: hourlyCount } = await (supabase as any)
-        .from("dm_logs")
-        .select("*", { count: "exact", head: true })
+    const { data: monthlyData, error: monthlyError } = await (supabase as any)
+        .from("rate_limits")
+        .select("dm_count")
         .eq("user_id", userId)
-        .eq("reply_sent", true)
-        .gte("created_at", hourStart.toISOString());
+        .gte("hour_bucket", monthStart.toISOString());
 
-    const { count: monthlyCount } = await (supabase as any)
-        .from("dm_logs")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .eq("reply_sent", true)
-        .gte("created_at", monthStart.toISOString());
-
-    const hourlyUsed = hourlyCount || 0;
-    const monthlyUsed = monthlyCount || 0;
-
-    const hourlyRemaining = Math.max(0, config.hourlyLimit - hourlyUsed);
+    const monthlyUsed = monthlyData?.reduce((sum: number, row: any) => sum + (row.dm_count || 0), 0) || 0;
     const monthlyRemaining = Math.max(0, config.monthlyLimit - monthlyUsed);
 
-    // Check if allowed
-    const allowed = hourlyRemaining > 0 && monthlyRemaining > 0;
-
-    if (!allowed) {
-        // Calculate when next slot available
-        const nextSlot =
-            hourlyRemaining === 0
-                ? new Date(hourStart.getTime() + 60 * 60 * 1000)
-                : new Date(monthStart.getTime() + 30 * 24 * 60 * 60 * 1000); // Next month approx
-
+    if (monthlyRemaining <= 0) {
         return {
             allowed: false,
-            estimatedSendTime: nextSlot,
-            remaining: {
-                hourly: hourlyRemaining,
-                monthly: monthlyRemaining,
-            },
+            estimatedSendTime: new Date(monthStart.getTime() + 30 * 24 * 60 * 60 * 1000), // Next month approx
+            remaining: { hourly: 0, monthly: 0 }
         };
     }
 
-    // If spreading enabled, add small delay to avoid "burst" spam
-    if (config.spreadDelay && hourlyUsed > 0) {
-        // Spread limits over 60 minutes
+    // 2. Hourly Check (Atomic Increment)
+    // We use the RPC to atomically increment and check the result
+    // This prevents race conditions where 2 requests see "199" and both send
+    const { data: newHourlyCount, error: rpcError } = await (supabase as any)
+        .rpc("increment_rate_limit", { p_user_id: userId });
+
+    if (rpcError) {
+        logger.error("Rate limit RPC failed", { userId, error: rpcError, category: "rate-limiter" });
+        // Fail open or closed? Closed (queue it) is safer for rate limits.
+        return {
+            allowed: false,
+            remaining: { hourly: 0, monthly: monthlyRemaining }
+        };
+    }
+
+    const hourlyUsed = newHourlyCount as number;
+    const hourlyRemaining = Math.max(0, config.hourlyLimit - hourlyUsed);
+
+    // 3. Logic Check
+    if (hourlyRemaining < 0) {
+        // We exceeded limit (the increment pushed us over)
+        // We don't rollback the increment (it's a "penalized" attempt), but we block the specific action
+        const hourStart = new Date(now);
+        hourStart.setMinutes(0, 0, 0);
+
+        return {
+            allowed: false,
+            estimatedSendTime: new Date(hourStart.getTime() + 60 * 60 * 1000), // Next hour
+            remaining: { hourly: 0, monthly: monthlyRemaining }
+        };
+    }
+
+    // 4. Spread Delay (optional)
+    if (config.spreadDelay && hourlyUsed > 1) {
         const delaySeconds = Math.floor((60 * 60) / config.hourlyLimit);
         const estimatedSendTime = new Date(now.getTime() + delaySeconds * 1000);
 
         return {
             allowed: true,
-            queuePosition: hourlyUsed + 1,
+            queuePosition: hourlyUsed,
             estimatedSendTime,
-            remaining: {
-                hourly: hourlyRemaining,
-                monthly: monthlyRemaining,
-            },
+            remaining: { hourly: hourlyRemaining, monthly: monthlyRemaining }
         };
     }
 
     return {
         allowed: true,
-        remaining: {
-            hourly: hourlyRemaining,
-            monthly: monthlyRemaining,
-        },
+        remaining: { hourly: hourlyRemaining, monthly: monthlyRemaining }
     };
 }
-
 
 /**
  * Queue a DM for later sending
@@ -215,39 +213,33 @@ export async function processQueuedDMs() {
         const planType = user.plan_type || "free";
         const limits = getPlanLimits(planType);
 
-        // B. Check Counters (Hourly & Monthly)
-        // 3.1: Use UTC for consistent windows across timezones
-        const hourStart = new Date();
-        hourStart.setUTCMinutes(0, 0, 0);
+        // B. Check Counters (Optimized: Rate Limits Table)
 
-        // Monthly Window
+        // Monthly Window (Read-Only Sum)
         const monthStart = new Date();
         monthStart.setUTCDate(1);
         monthStart.setUTCHours(0, 0, 0, 0);
 
-        const { count: hourlyCount } = await (supabase as any)
-            .from("dm_logs")
-            .select("*", { count: "exact", head: true })
+        const { data: monthlyData } = await (supabase as any)
+            .from("rate_limits")
+            .select("dm_count")
             .eq("user_id", userId)
-            .eq("reply_sent", true)
-            .gte("created_at", hourStart.toISOString());
+            .gte("hour_bucket", monthStart.toISOString());
 
-        const { count: monthlyCount } = await (supabase as any)
-            .from("dm_logs")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", userId)
-            .eq("reply_sent", true)
-            .gte("created_at", monthStart.toISOString());
+        const monthlyUsed = monthlyData?.reduce((sum: number, row: any) => sum + (row.dm_count || 0), 0) || 0;
 
-        const currentHourly = hourlyCount || 0;
-        const currentMonthly = monthlyCount || 0;
+        // Hourly Window (Read-Only RPC)
+        const { data: hourlyUsedData } = await (supabase as any)
+            .rpc("get_rate_limit", { p_user_id: userId });
+
+        const hourlyUsed = (hourlyUsedData as number) || 0;
 
         const hourlyLimit = limits.dmsPerHour || 200;
         const monthlyLimit = limits.dmsPerMonth || 1000;
 
         // C. Calculate Availability
-        const hourlySlots = Math.max(0, hourlyLimit - currentHourly);
-        const monthlySlots = Math.max(0, monthlyLimit - currentMonthly);
+        const hourlySlots = Math.max(0, hourlyLimit - hourlyUsed);
+        const monthlySlots = Math.max(0, monthlyLimit - monthlyUsed);
 
         // Strict available is min of both
         const availableSlots = Math.min(hourlySlots, monthlySlots);
@@ -256,7 +248,7 @@ export async function processQueuedDMs() {
         const dmsToSend = userDMs.slice(0, availableSlots);
         const dmsToReschedule = userDMs.slice(availableSlots);
 
-        // E. Reschedule Excess DMs (The "Brutal" Part)
+        // E. Reschedule Excess DMs
         if (dmsToReschedule.length > 0) {
             let nextAvailableTime: Date;
 
@@ -268,9 +260,11 @@ export async function processQueuedDMs() {
                 logger.warn("User hit MONTHLY limit during queue processing", { userId, rescheduleCount: dmsToReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
             } else {
                 // Reschedule to next hour
+                const hourStart = new Date();
+                hourStart.setMinutes(0, 0, 0);
                 const nextHour = new Date(hourStart);
                 nextHour.setHours(nextHour.getHours() + 1);
-                // Add jitter to avoid thundering herd at top of hour
+                // Add jitter
                 const jitterMinutes = Math.floor(Math.random() * 10);
                 nextHour.setMinutes(jitterMinutes);
                 nextAvailableTime = nextHour;
@@ -283,7 +277,7 @@ export async function processQueuedDMs() {
                 .from("dm_queue")
                 .update({
                     scheduled_send_at: nextAvailableTime.toISOString(),
-                    priority: limits.priorityQueue ? 10 : 5 // Bump priority for delayed items? Maybe keep same.
+                    priority: limits.priorityQueue ? 10 : 5
                 })
                 .in("id", idsToReschedule);
         }
@@ -307,9 +301,13 @@ export async function processQueuedDMs() {
                     );
 
                     if (dmSent) {
+                        // CRITICAL: Atomically increment rate limit after successful send
+                        // This ensures the rate_limits table stays in sync with actual sends
+                        await (supabase as any).rpc("increment_rate_limit", { p_user_id: dm.user_id });
+
                         await incrementAutomationCount(supabase, dm.automation_id, "dm_sent_count");
-                        // ATOMIC CLAIM FIX: Check if we already have a placeholder log for this comment
-                        // If so, update it to "success" instead of creating a duplicate
+
+                        // ATOMIC CLAIM FIX: Check placeholder logs
                         let existingLog = null;
                         if (dm.instagram_comment_id) {
                             const { data } = await (supabase as any)
@@ -325,18 +323,16 @@ export async function processQueuedDMs() {
                             await (supabase as any).from("dm_logs").update({
                                 reply_sent: true,
                                 reply_sent_at: new Date().toISOString(),
-                                keyword_matched: "QUEUED", // Mark as queued so user knows
+                                keyword_matched: "QUEUED",
                                 comment_text: "Processed from queue",
                             }).eq("id", existingLog.id);
                         } else {
-                            // Fallback: Insert new if no placeholder (e.g. strict mode or missed claim)
-                            // 3.2 + 3.3: Include automation_id and instagram_username for analytics
                             await (supabase as any).from("dm_logs").insert({
                                 user_id: dm.user_id,
                                 instagram_comment_id: dm.instagram_comment_id,
                                 instagram_user_id: dm.instagram_user_id,
-                                automation_id: dm.automation_id,
                                 instagram_username: dm.instagram_username || null,
+                                automation_id: dm.automation_id,
                                 keyword_matched: "QUEUED",
                                 comment_text: "Processed from queue",
                                 reply_sent: true,
@@ -349,7 +345,6 @@ export async function processQueuedDMs() {
                     }
                 } catch (error) {
                     logger.error("Failed to send queued DM", { dmId: dm.id, category: "rate-limiter" }, error as Error);
-                    // Mark failed, but maybe retry logic could go here later
                     await (supabase as any).from("dm_queue").update({ status: "failed", error_message: (error as Error).message }).eq("id", dm.id);
                     await incrementAutomationCount(supabase, dm.automation_id, "dm_failed_count");
                 }
@@ -360,3 +355,5 @@ export async function processQueuedDMs() {
     await Promise.allSettled(userPromises);
     logger.info("Queue Processing Complete", { category: "rate-limiter" });
 }
+
+
