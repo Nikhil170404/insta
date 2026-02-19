@@ -469,19 +469,42 @@ export default function BillingPage() {
                                 </div>
 
                                 <div className="py-2">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-3xl font-black text-slate-900 tracking-tighter">
-                                            {plan.price === "0"
-                                                ? "FREE"
-                                                : billingInterval === "yearly" && plan.yearlyPrice
-                                                    ? `₹${Math.round(parseInt(plan.yearlyPrice) / 12)}` // Show effective monthly price
+                                    {userData?.waitlist_discount_until && new Date(userData.waitlist_discount_until) > new Date() && plan.price !== "0" ? (
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-slate-400 line-through decoration-rose-500/50">
+                                                {billingInterval === "yearly" && plan.yearlyPrice
+                                                    ? `₹${Math.round(parseInt(plan.yearlyPrice) / 12)}`
                                                     : `₹${plan.price}`
-                                            }
-                                        </span>
-                                        {plan.price !== "0" && (
-                                            <span className="text-slate-400 font-bold text-sm">/ mo</span>
-                                        )}
-                                    </div>
+                                                }
+                                            </span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-black text-emerald-600 tracking-tighter">
+                                                    {billingInterval === "yearly" && plan.yearlyPrice
+                                                        ? `₹${Math.round((parseInt(plan.yearlyPrice) / 12) * 0.9)}`
+                                                        : `₹${Math.round(parseInt(plan.price) * 0.9)}`
+                                                    }
+                                                </span>
+                                                <span className="text-slate-400 font-bold text-sm">/ mo</span>
+                                            </div>
+                                            <Badge className="w-fit mt-1 bg-emerald-100 text-emerald-700 border-none px-2 py-0.5 rounded-md text-[9px] font-black uppercase">
+                                                Waitlist: 10% OFF
+                                            </Badge>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-black text-slate-900 tracking-tighter">
+                                                {plan.price === "0"
+                                                    ? "FREE"
+                                                    : billingInterval === "yearly" && plan.yearlyPrice
+                                                        ? `₹${Math.round(parseInt(plan.yearlyPrice) / 12)}`
+                                                        : `₹${plan.price}`
+                                                }
+                                            </span>
+                                            {plan.price !== "0" && (
+                                                <span className="text-slate-400 font-bold text-sm">/ mo</span>
+                                            )}
+                                        </div>
+                                    )}
                                     {billingInterval === "yearly" && plan.yearlyPrice && (
                                         <div className="text-xs font-bold text-slate-400 mt-1">
                                             Billed ₹{plan.yearlyPrice} yearly
