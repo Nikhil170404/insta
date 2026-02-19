@@ -27,7 +27,22 @@ export async function GET() {
         // Get plan limits
         const planLimits = getPlanLimits(session.plan_type);
         const used = monthlyCount || 0;
-        const limit = planLimits.dmsPerMonth;
+        let limit = planLimits.dmsPerMonth;
+
+        // Check for waitlist DM boost (discount tier users get 15K for 1 month)
+        const { data: userBoost } = await (supabase as any)
+            .from("users")
+            .select("waitlist_dms_per_month, waitlist_discount_until")
+            .eq("id", session.id)
+            .single();
+
+        if (userBoost?.waitlist_dms_per_month && userBoost?.waitlist_discount_until) {
+            const discountExpiry = new Date(userBoost.waitlist_discount_until);
+            if (discountExpiry > now) {
+                limit = userBoost.waitlist_dms_per_month;
+            }
+        }
+
         const isUnlimited = limit >= 1000000; // Pro plan has 1M which is essentially unlimited
         const percentage = isUnlimited ? 0 : Math.min(Math.round((used / limit) * 100), 100);
 

@@ -209,8 +209,8 @@ export default function WaitlistPage() {
                                 <p className="text-[10px] font-bold text-slate-400">Positions 31-1000</p>
                             </div>
                         </div>
-                        <p className="text-sm font-bold text-slate-700 mb-2"><span className="text-emerald-600 font-black">10% OFF</span> all plans</p>
-                        <p className="text-[11px] text-slate-400 font-medium">For 3 months after launch</p>
+                        <p className="text-sm font-bold text-slate-700 mb-2"><span className="text-emerald-600 font-black">15,000 DMs FREE</span> for 1 month</p>
+                        <p className="text-[11px] text-slate-400 font-medium">+ 10% off all plans for 3 months</p>
                         <div className="mt-3 flex items-center gap-2">
                             <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
                                 <div

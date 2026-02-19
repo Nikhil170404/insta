@@ -495,7 +495,53 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_media_per_user_active
   WHERE is_archived = false;
 
 
+-- ============================================
+-- MIGRATION: 2026-02-19 - Waitlist System Fixes
+-- ============================================
 
+-- Unique position constraint
+CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_position_unique ON public.waitlist(position);
 
+-- Waitlist DMs boost column
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS waitlist_dms_per_month INTEGER;
+
+-- Atomic waitlist position claim function
+CREATE OR REPLACE FUNCTION claim_waitlist_position(
+    p_username VARCHAR,
+    p_whatsapp VARCHAR
+)
+RETURNS TABLE(
+    out_position INTEGER,
+    out_tier VARCHAR,
+    out_id UUID
+) AS $$
+DECLARE
+    v_position INTEGER;
+    v_tier VARCHAR;
+    v_id UUID;
+BEGIN
+    LOCK TABLE public.waitlist IN EXCLUSIVE MODE;
+    SELECT COALESCE(MAX(position), 0) + 1 INTO v_position FROM public.waitlist;
+
+    IF v_position <= 10 THEN
+        v_tier := 'pro';
+    ELSIF v_position <= 30 THEN
+        v_tier := 'starter';
+    ELSIF v_position <= 1000 THEN
+        v_tier := 'discount';
+    ELSE
+        RAISE EXCEPTION 'WAITLIST_FULL' USING ERRCODE = 'P0001';
+    END IF;
+
+    INSERT INTO public.waitlist (instagram_username, whatsapp_number, position, tier)
+    VALUES (p_username, p_whatsapp, v_position, v_tier)
+    RETURNING id INTO v_id;
+
+    out_position := v_position;
+    out_tier := v_tier;
+    out_id := v_id;
+    RETURN NEXT;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 

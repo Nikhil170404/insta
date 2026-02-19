@@ -108,52 +108,42 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get current count atomically
+        // Atomic position claim via RPC (prevents race conditions)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { count } = await (supabase as any)
-            .from("waitlist")
-            .select("*", { count: "exact", head: true });
-
-        const position = (count || 0) + 1;
-        const tier = getTier(position);
-
-        if (!tier) {
-            return NextResponse.json(
-                { error: "Sorry, the waitlist is full! All 1,000 spots have been claimed." },
-                { status: 410 }
-            );
-        }
-
-        // Insert entry
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: entry, error: insertError } = await (supabase as any)
-            .from("waitlist")
-            .insert({
-                instagram_username,
-                whatsapp_number,
-                position,
-                tier,
+        const { data: claimResult, error: claimError } = await (supabase as any)
+            .rpc("claim_waitlist_position", {
+                p_username: instagram_username,
+                p_whatsapp: whatsapp_number,
             })
-            .select()
             .single();
 
-        if (insertError) {
-            // Handle race condition duplicate
-            if (insertError.code === "23505") {
+        if (claimError) {
+            // Handle waitlist full
+            if (claimError.message?.includes("WAITLIST_FULL")) {
+                return NextResponse.json(
+                    { error: "Sorry, the waitlist is full! All 1,000 spots have been claimed." },
+                    { status: 410 }
+                );
+            }
+            // Handle race condition duplicate (unique constraint violation)
+            if (claimError.code === "23505") {
                 return NextResponse.json(
                     { error: "This username or number is already on the waitlist!" },
                     { status: 409 }
                 );
             }
-            console.error("Waitlist insert error:", insertError);
-            throw insertError;
+            console.error("Waitlist claim error:", claimError);
+            throw claimError;
         }
+
+        const position = claimResult.out_position;
+        const tier = claimResult.out_tier;
 
         return NextResponse.json({
             success: true,
-            position: entry.position,
-            tier: entry.tier,
-            message: getTierMessage(entry.tier, entry.position),
+            position,
+            tier,
+            message: getTierMessage(tier, position),
             totalSignups: position,
         });
     } catch (error) {

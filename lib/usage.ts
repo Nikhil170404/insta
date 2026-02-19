@@ -42,13 +42,28 @@ export async function checkUsageLimits(userId: string, planType: string): Promis
 
     const monthlyCount = monthlyUsed || 0;
 
+    // Check for waitlist DM boost (discount tier: 15K for 1 month)
+    let effectiveMonthlyLimit = plan.limits.dmsPerMonth;
+    const { data: userBoost } = await (supabase as any)
+        .from("users")
+        .select("waitlist_dms_per_month, waitlist_discount_until")
+        .eq("id", userId)
+        .single();
+
+    if (userBoost?.waitlist_dms_per_month && userBoost?.waitlist_discount_until) {
+        const discountExpiry = new Date(userBoost.waitlist_discount_until);
+        if (discountExpiry > new Date()) {
+            effectiveMonthlyLimit = userBoost.waitlist_dms_per_month;
+        }
+    }
+
     // CHECK: Only monthly limit (NO daily limits!)
-    if (monthlyCount >= plan.limits.dmsPerMonth) {
+    if (monthlyCount >= effectiveMonthlyLimit) {
         return {
             allowed: false,
-            reason: `Monthly limit reached (${plan.limits.dmsPerMonth.toLocaleString()} DMs). Upgrade for more!`,
+            reason: `Monthly limit reached (${effectiveMonthlyLimit.toLocaleString()} DMs). Upgrade for more!`,
             monthlyUsed: monthlyCount,
-            monthlyLimit: plan.limits.dmsPerMonth,
+            monthlyLimit: effectiveMonthlyLimit,
         };
     }
 
@@ -69,7 +84,7 @@ export async function checkUsageLimits(userId: string, planType: string): Promis
             allowed: false,
             reason: `Instagram rate limit (${plan.limits.dmsPerHour}/hour). Queued for processing.`,
             monthlyUsed: monthlyCount,
-            monthlyLimit: plan.limits.dmsPerMonth,
+            monthlyLimit: effectiveMonthlyLimit,
             hourlyUsed: hourlyCount,
             hourlyLimit: plan.limits.dmsPerHour,
             retryAfterMinutes: minutesUntilReset,
@@ -79,7 +94,7 @@ export async function checkUsageLimits(userId: string, planType: string): Promis
     return {
         allowed: true,
         monthlyUsed: monthlyCount,
-        monthlyLimit: plan.limits.dmsPerMonth,
+        monthlyLimit: effectiveMonthlyLimit,
         hourlyUsed: hourlyCount,
         hourlyLimit: plan.limits.dmsPerHour,
     };

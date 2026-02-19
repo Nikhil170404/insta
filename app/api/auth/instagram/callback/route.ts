@@ -207,6 +207,11 @@ export async function GET(request: NextRequest) {
             updateData.plan_expires_at = planExpiry.toISOString();
           }
 
+          // Discount tier: boost free plan to 15K DMs/month for 1 month
+          if (waitlistEntry.tier === "discount") {
+            updateData.waitlist_dms_per_month = 15000;
+          }
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase as any)
             .from("users")
