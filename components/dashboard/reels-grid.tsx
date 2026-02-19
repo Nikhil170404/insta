@@ -474,7 +474,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
                                             <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
                                                 <Badge className="bg-slate-900/60 backdrop-blur-xl text-white border-white/10 font-black text-[7px] md:text-[8px] px-2 py-0.5 uppercase tracking-widest">
-                                                    {item.media_type === "REELS" ? "🎬 REEL" : "📸 PHOTO"}
+                                                    {(item.media_type === "REELS" || item.media_type === "VIDEO") ? "🎬 REEL" : "📸 PHOTO"}
                                                 </Badge>
                                                 {hasAutomation && (
                                                     <div className={cn(

@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface Media {
     id: string;
@@ -154,19 +155,27 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                             <button
                                                 onClick={() => setTriggerType("specific")}
                                                 className={cn(
-                                                    "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-4",
+                                                    "w-full text-left p-3 md:p-4 rounded-2xl border-2 transition-all flex items-start gap-3 md:gap-4",
                                                     triggerType === "specific" ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "border-slate-100 hover:border-slate-200"
                                                 )}
                                             >
                                                 <div className={cn("mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all", triggerType === "specific" ? "border-primary" : "border-slate-300")}>
                                                     {triggerType === "specific" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                                                 </div>
-                                                <div>
+                                                <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-bold text-slate-900">A specific post or reel</p>
                                                     {selectedMedia && triggerType === "specific" && (
-                                                        <div className="mt-4 flex gap-3 p-3 bg-white rounded-xl border border-primary/10">
-                                                            <img src={selectedMedia.thumbnail_url || selectedMedia.media_url} className="w-12 h-16 object-cover rounded-lg" alt="" />
-                                                            <p className="text-xs text-slate-500 line-clamp-3">{selectedMedia.caption || "No caption provided"}</p>
+                                                        <div className="mt-3 md:mt-4 flex gap-3 p-2 md:p-3 bg-white rounded-xl border border-primary/10 items-center">
+                                                            <div className="w-10 h-10 md:w-12 md:h-16 flex-shrink-0 bg-slate-100 rounded-lg overflow-hidden">
+                                                                <SafeImage
+                                                                    src={selectedMedia.thumbnail_url || selectedMedia.media_url}
+                                                                    className="w-full h-full object-cover"
+                                                                    alt=""
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[10px] md:text-xs text-slate-500 line-clamp-2 leading-relaxed">{selectedMedia.caption || "No caption provided"}</p>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -521,7 +530,7 @@ export default function AutomationWizard({ selectedMedia, initialData, onClose, 
                                                             <div className="flex gap-3">
                                                                 <div className="w-16 h-16 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400 flex-shrink-0 overflow-hidden">
                                                                     {selectedMedia?.thumbnail_url || selectedMedia?.media_url ? (
-                                                                        <img src={selectedMedia.thumbnail_url || selectedMedia.media_url} className="w-full h-full object-cover" alt="" />
+                                                                        <SafeImage src={selectedMedia.thumbnail_url || selectedMedia.media_url} className="w-full h-full object-cover" alt="" />
                                                                     ) : (
                                                                         <Zap className="w-6 h-6" />
                                                                     )}

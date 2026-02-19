@@ -21,6 +21,14 @@ export async function GET() {
             .eq("is_archived", false)
             .order("created_at", { ascending: false });
 
+        // Fetch user token for refreshing media
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: user } = await (supabase as any)
+            .from("users")
+            .select("instagram_access_token")
+            .eq("id", session.id)
+            .single();
+
         if (error) {
             console.error("Error fetching automations:", error);
             return NextResponse.json({ error: error.message }, { status: 500 });
@@ -40,6 +48,14 @@ export async function GET() {
             .eq("reply_sent", true)
             .gte("created_at", monthStart.toISOString());
 
+        // Refresh media URLs if token exists
+        if (user?.instagram_access_token && automations) {
+            // Run without awaiting to not block the response? 
+            // Better to await for the first few to show correct images immediately.
+            // Let's await it for a better user experience on the "broken" screen.
+            await refreshAutomationMedia(supabase, automations, user.instagram_access_token);
+        }
+
         return NextResponse.json({
             automations: automations || [],
             monthlyCount: monthlyCount || 0,
@@ -57,6 +73,69 @@ export async function GET() {
             { error: "Internal server error" },
             { status: 500 }
         );
+    }
+}
+
+// Helper to refresh expired media URLs
+async function refreshAutomationMedia(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    supabase: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    automations: any[],
+    accessToken: string
+) {
+    if (!automations || automations.length === 0 || !accessToken) return;
+
+    const updates = [];
+    const now = Date.now();
+    const PROVISION_TIME = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+    for (const automation of automations) {
+        // Skip special IDs or if last updated recently (less than 3 days)
+        if (
+            !automation.media_id ||
+            ["ALL_MEDIA", "NEXT_MEDIA", "STORY_AUTOMATION"].includes(automation.media_id)
+        ) {
+            continue;
+        }
+
+        // Check if we need to refresh (simple heuristic: if it has a URL, check if it works? No, let's just refresh if older than X days, or always for now to be safe since user reported issues)
+        // For this fix, let's try to verify if the URL is expired or just refresh 
+        // Better strategy: Just refresh for active automations to ensure they are always live.
+
+        try {
+            const response = await fetch(
+                `https://graph.instagram.com/v21.0/${automation.media_id}?fields=media_url,thumbnail_url&access_token=${accessToken}`
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.media_url || data.thumbnail_url) {
+                    updates.push(
+                        supabase
+                            .from("automations")
+                            .update({
+                                media_url: data.media_url || automation.media_url,
+                                media_thumbnail_url: data.thumbnail_url || data.media_url || automation.media_thumbnail_url, // Use media_url as thumbnail for images
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq("id", automation.id)
+                    );
+
+                    // Update the local object so the UI gets the new URL immediately
+                    automation.media_url = data.media_url || automation.media_url;
+                    automation.media_thumbnail_url = data.thumbnail_url || data.media_url || automation.media_thumbnail_url;
+                }
+            } else {
+                console.warn(`Failed to refresh media for automation ${automation.id}:`, await response.text());
+            }
+        } catch (e) {
+            console.error(`Error refreshing media ${automation.media_id}:`, e);
+        }
+    }
+
+    if (updates.length > 0) {
+        await Promise.allSettled(updates);
     }
 }
 

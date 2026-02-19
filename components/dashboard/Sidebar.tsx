@@ -195,9 +195,16 @@ export function DashboardSidebar({ user }: SidebarProps) {
 
         <div className="p-6 border-t border-slate-50 bg-slate-50/30 rounded-b-[2.5rem]">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold">
-              {user.instagram_username.charAt(0).toUpperCase()}
-            </div>
+            <SafeImage
+              src={user.profile_picture_url}
+              alt={user.instagram_username}
+              fallbackComponent={
+                <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold">
+                  {user.instagram_username.charAt(0).toUpperCase()}
+                </div>
+              }
+              className="w-10 h-10 rounded-xl object-cover"
+            />
             <div className="flex-1">
               <p className="text-sm font-bold text-slate-900">@{user.instagram_username}</p>
               <p className="text-xs text-slate-500 uppercase font-black tracking-wider">{user.plan_type} plan</p>
