@@ -13,7 +13,7 @@ export default function TermsPage() {
       {/* Content */}
       <main className="container mx-auto px-4 pt-24 md:pt-32 pb-12 max-w-4xl">
         <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
-        <p className="text-gray-500 mb-8">Last updated: January 2025</p>
+        <p className="text-gray-500 mb-8">Last updated: February 2026</p>
 
         <div className="prose prose-gray max-w-none">
           <section className="mb-8">
@@ -169,7 +169,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">12. Governing Law</h2>
             <p className="text-gray-600 mb-4">
-              These Terms are governed by the laws of India. Any disputes shall be resolved in the courts of [Your City], India.
+              These Terms are governed by the laws of India. Any disputes shall be resolved in the courts of Mumbai, India.
             </p>
           </section>
 

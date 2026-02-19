@@ -286,7 +286,26 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
             </div>
 
             {/* Controls */}
-            <div className="space-y-4">
+            <div className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-3">
+                        <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500",
+                            activeAutomationsCount > 0
+                                ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30 animate-pulse"
+                                : "bg-slate-100 text-slate-400"
+                        )}>
+                            <Zap className={cn("h-5 w-5 fill-current", activeAutomationsCount > 0 && "text-white")} />
+                        </div>
+                        <h2 className={cn(
+                            "text-xl font-black tracking-tight transition-colors duration-500",
+                            activeAutomationsCount > 0 ? "text-blue-600 drop-shadow-sm" : "text-slate-900"
+                        )}>
+                            Active Automations
+                        </h2>
+                    </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
                     <h2 className="text-base md:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
                         <LayoutGrid className="h-4 w-4 md:h-5 md:w-5 text-primary" />

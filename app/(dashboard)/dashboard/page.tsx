@@ -77,16 +77,6 @@ export default async function DashboardPage() {
 
       {/* Reels Grid with Automation */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
-              <Zap className="h-5 w-5 fill-current" />
-            </div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Active Automations
-            </h2>
-          </div>
-        </div>
         <ReelsGrid planType={session.plan_type} />
       </div>
     </div>

@@ -11,7 +11,7 @@ export default function PrivacyPolicyPage() {
       {/* Content */}
       <main className="container mx-auto px-4 pt-24 md:pt-32 pb-12 max-w-4xl">
         <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-gray-500 mb-8">Last updated: January 29, 2025</p>
+        <p className="text-gray-500 mb-8">Last updated: February 2026</p>
 
         <div className="prose prose-gray max-w-none space-y-8">
 

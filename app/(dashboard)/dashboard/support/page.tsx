@@ -1,10 +1,37 @@
 "use client";
 
-import { Mail, Instagram, MessageCircle, ArrowRight, HelpCircle } from "lucide-react";
+import { Mail, Instagram, HelpCircle, ChevronDown, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+const FAQS = [
+    {
+        question: "How do I connect my Instagram account?",
+        answer: "Go to the 'Settings' tab in the sidebar and click 'Connect Account'. Make sure you have an Instagram Business or Creator account connected to a Facebook Page. This is required by Meta's API."
+    },
+    {
+        question: "Why aren't my DMs sending?",
+        answer: "First, check your 'Logs' page for errors. Common reasons include: 1) Permissions missing (reconnect your account), 2) Rate limits reached (wait a few hours), or 3) The user has privacy settings that block DMs."
+    },
+    {
+        question: "Is using ReplyKaro safe for my account?",
+        answer: "Yes! We use the official Instagram Graph API approved by Meta. We don't ask for your password and we strictly follow all safety guidelines. Your account is 100% secure with us."
+    },
+    {
+        question: "How does the billing & refund policy work?",
+        answer: "We offer a Free Forever plan to test everything. Paid plans are billed monthly. You can cancel anytime from the 'Billing' tab. Since we offer a free tier, we have a strict no-refund policy for partial months."
+    },
+    {
+        question: "Can I use this for multiple accounts?",
+        answer: "Currently, each ReplyKaro subscription is linked to one Instagram account. To manage multiple accounts, you'll need to create separate workspaces or contact our support for an Agency Plan."
+    }
+];
 
 export default function SupportPage() {
+    const [openIndex, setOpenIndex] = useState<number | null>(null);
+
     return (
         <div className="max-w-5xl mx-auto space-y-12 pb-20">
             {/* Header */}
@@ -70,18 +97,35 @@ export default function SupportPage() {
                     </div>
 
                     <div className="space-y-4">
-                        <div className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between group cursor-pointer hover:border-primary/20 hover:shadow-md transition-all">
-                            <span className="font-bold text-slate-700 text-sm">How do I connect my Instagram account?</span>
-                            <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
-                        </div>
-                        <div className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between group cursor-pointer hover:border-primary/20 hover:shadow-md transition-all">
-                            <span className="font-bold text-slate-700 text-sm">Why aren't my DMs sending?</span>
-                            <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
-                        </div>
-                        <div className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between group cursor-pointer hover:border-primary/20 hover:shadow-md transition-all">
-                            <span className="font-bold text-slate-700 text-sm">Billing & Refund Policy</span>
-                            <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
-                        </div>
+                        {FAQS.map((faq, index) => (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "bg-white rounded-2xl border border-slate-100 overflow-hidden transition-all duration-300",
+                                    openIndex === index ? "shadow-md ring-1 ring-primary/5" : "hover:border-slate-200"
+                                )}
+                            >
+                                <button
+                                    onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                                    className="w-full flex items-center justify-between p-5 text-left"
+                                >
+                                    <span className="font-bold text-slate-700 text-sm">{faq.question}</span>
+                                    <ChevronDown className={cn(
+                                        "h-4 w-4 text-slate-300 transition-transform duration-300",
+                                        openIndex === index && "rotate-180 text-primary"
+                                    )} />
+                                </button>
+
+                                <div className={cn(
+                                    "px-5 pb-5 text-sm text-slate-500 font-medium leading-relaxed transition-all duration-300",
+                                    openIndex === index ? "block opacity-100" : "hidden opacity-0"
+                                )}>
+                                    <div className="pt-2 border-t border-slate-50 mt-2">
+                                        {faq.answer}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
