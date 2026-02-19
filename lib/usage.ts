@@ -46,13 +46,13 @@ export async function checkUsageLimits(userId: string, planType: string): Promis
     let effectiveMonthlyLimit = plan.limits.dmsPerMonth;
     const { data: userBoost } = await (supabase as any)
         .from("users")
-        .select("waitlist_dms_per_month, waitlist_discount_until")
+        .select("waitlist_dms_per_month, waitlist_dms_boost_until")
         .eq("id", userId)
         .single();
 
-    if (userBoost?.waitlist_dms_per_month && userBoost?.waitlist_discount_until) {
-        const discountExpiry = new Date(userBoost.waitlist_discount_until);
-        if (discountExpiry > new Date()) {
+    if (userBoost?.waitlist_dms_per_month && userBoost?.waitlist_dms_boost_until) {
+        const boostExpiry = new Date(userBoost.waitlist_dms_boost_until);
+        if (boostExpiry > new Date()) {
             effectiveMonthlyLimit = userBoost.waitlist_dms_per_month;
         }
     }
@@ -123,13 +123,28 @@ export async function getUsageStats(userId: string, planType: string) {
         .eq("user_id", userId)
         .eq("is_active", true);
 
+    // Check for waitlist DM boost (same as checkUsageLimits)
+    let effectiveDmsLimit = plan.limits.dmsPerMonth;
+    const { data: statsBoost } = await (supabase as any)
+        .from("users")
+        .select("waitlist_dms_per_month, waitlist_dms_boost_until")
+        .eq("id", userId)
+        .single();
+
+    if (statsBoost?.waitlist_dms_per_month && statsBoost?.waitlist_dms_boost_until) {
+        const boostExpiry = new Date(statsBoost.waitlist_dms_boost_until);
+        if (boostExpiry > new Date()) {
+            effectiveDmsLimit = statsBoost.waitlist_dms_per_month;
+        }
+    }
+
     return {
         dms_sent: monthlyDms || 0,
-        dms_limit: plan.limits.dmsPerMonth,
+        dms_limit: effectiveDmsLimit,
         dms_per_hour: plan.limits.dmsPerHour,
         automations_active: automationsCount || 0,
         automations_limit: plan.limits.automations,
         accounts_limit: plan.limits.accounts,
-        percentage_used: Math.round(((monthlyDms || 0) / plan.limits.dmsPerMonth) * 100),
+        percentage_used: Math.round(((monthlyDms || 0) / effectiveDmsLimit) * 100),
     };
 }

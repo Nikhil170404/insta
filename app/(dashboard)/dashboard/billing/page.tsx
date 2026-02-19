@@ -348,6 +348,27 @@ export default function BillingPage() {
                 )}
             </div>
 
+            {/* Waitlist Discount Banner */}
+            {userData?.waitlist_discount_until && new Date(userData.waitlist_discount_until) > new Date() && (
+                <div className="max-w-3xl mx-auto px-4">
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-100 rounded-[2rem] p-6 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-emerald-500/20">
+                            <Gift className="h-6 w-6" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">Waitlist Reward Active</p>
+                            <p className="text-sm font-bold text-emerald-600 mt-0.5">
+                                You have <span className="font-black">10% off</span> all plans until{" "}
+                                <span className="font-black">{new Date(userData.waitlist_discount_until).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>
+                            </p>
+                        </div>
+                        <Badge className="bg-emerald-500 text-white border-none font-black text-[10px] px-3 py-1.5 rounded-xl uppercase tracking-widest shadow-lg shadow-emerald-500/20 flex-shrink-0">
+                            -10%
+                        </Badge>
+                    </div>
+                </div>
+            )}
+
             {/* Billing Toggle */}
             <div className="flex justify-center mb-8 relative z-10">
                 <div className="bg-white p-1.5 rounded-full border border-slate-100 flex items-center shadow-lg shadow-slate-200/50">
@@ -447,6 +468,13 @@ export default function BillingPage() {
                                         <div className="text-xs font-bold text-slate-400 mt-1">
                                             Billed ₹{plan.yearlyPrice} yearly
                                         </div>
+                                    )}
+                                    {plan.price !== "0" && userData?.waitlist_discount_until && new Date(userData.waitlist_discount_until) > new Date() && (
+                                        <Badge className="mt-2 bg-emerald-100 text-emerald-700 border-none font-black text-[9px] px-2 py-0.5 rounded-lg">
+                                            WAITLIST: 10% OFF &rarr; ₹{billingInterval === "yearly" && plan.yearlyPrice
+                                                ? Math.round((parseInt(plan.yearlyPrice) / 12) * 0.9)
+                                                : Math.round(parseInt(plan.price) * 0.9)}/mo
+                                        </Badge>
                                     )}
                                     {plan.savings && (
                                         <Badge variant="outline" className="mt-2 text-emerald-600 bg-emerald-50 border-emerald-100 font-black text-[9px] rounded-md px-2 py-0.5">

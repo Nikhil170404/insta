@@ -32,15 +32,20 @@ export async function GET() {
         // Check for waitlist DM boost (discount tier users get 15K for 1 month)
         const { data: userBoost } = await (supabase as any)
             .from("users")
-            .select("waitlist_dms_per_month, waitlist_discount_until")
+            .select("waitlist_dms_per_month, waitlist_dms_boost_until, waitlist_discount_until")
             .eq("id", session.id)
             .single();
 
-        if (userBoost?.waitlist_dms_per_month && userBoost?.waitlist_discount_until) {
-            const discountExpiry = new Date(userBoost.waitlist_discount_until);
-            if (discountExpiry > now) {
+        let hasActiveDiscount = false;
+        if (userBoost?.waitlist_dms_per_month && userBoost?.waitlist_dms_boost_until) {
+            const boostExpiry = new Date(userBoost.waitlist_dms_boost_until);
+            if (boostExpiry > now) {
                 limit = userBoost.waitlist_dms_per_month;
             }
+        }
+        if (userBoost?.waitlist_discount_until) {
+            const discountExpiry = new Date(userBoost.waitlist_discount_until);
+            hasActiveDiscount = discountExpiry > now;
         }
 
         const isUnlimited = limit >= 1000000; // Pro plan has 1M which is essentially unlimited
@@ -54,6 +59,8 @@ export async function GET() {
             planName: planLimits.planName,
             planType: session.plan_type,
             hourlyLimit: planLimits.dmsPerHour, // Expose speed limit
+            hasWaitlistDiscount: hasActiveDiscount,
+            waitlistDiscountUntil: hasActiveDiscount ? userBoost.waitlist_discount_until : null,
         });
 
     } catch (error) {

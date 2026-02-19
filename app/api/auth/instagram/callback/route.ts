@@ -210,6 +210,7 @@ export async function GET(request: NextRequest) {
           // Discount tier: boost free plan to 15K DMs/month for 1 month
           if (waitlistEntry.tier === "discount") {
             updateData.waitlist_dms_per_month = 15000;
+            updateData.waitlist_dms_boost_until = planExpiry.toISOString(); // 30 days (not 90)
           }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -22,7 +22,7 @@ function getTierMessage(tier: string, position: number): string {
         case "starter":
             return `⚡ You're #${position}! You'll get 1 month FREE Starter Pack + 10% off for 3 months!`;
         case "discount":
-            return `🎯 You're #${position}! You'll get 10% off all plans for 3 months!`;
+            return `🎯 You're #${position}! You'll get 15,000 FREE DMs for 1 month + 10% off all plans for 3 months!`;
         default:
             return "";
     }
