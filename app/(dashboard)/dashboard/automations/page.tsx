@@ -28,6 +28,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import UpgradeModal from "@/components/UpgradeModal";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface Automation {
     id: string;
@@ -341,7 +342,14 @@ export default function AutomationsPage() {
                                 {/* Media Thumbnail */}
                                 <div className="w-20 h-28 bg-slate-100 rounded-3xl overflow-hidden shadow-sm flex-shrink-0 relative group/thumb transition-transform group-hover:scale-105">
                                     {automation.media_thumbnail_url ? (
-                                        <img src={automation.media_thumbnail_url} alt="Reel" className="w-full h-full object-cover" />
+                                        <SafeImage
+                                            src={automation.media_thumbnail_url}
+                                            alt="Reel"
+                                            className="w-full h-full object-cover"
+                                            fallbackComponent={
+                                                <div className="w-full h-full flex items-center justify-center"><Play className="h-6 w-6 text-slate-300" /></div>
+                                            }
+                                        />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center"><Play className="h-6 w-6 text-slate-300" /></div>
                                     )}
@@ -436,7 +444,7 @@ export default function AutomationsPage() {
                         <div className="flex-1 overflow-y-auto p-8 space-y-8">
                             {/* Mini Preview */}
                             <div className="bg-slate-50/50 p-4 rounded-3xl flex gap-4 border border-slate-100">
-                                <img src={editingAutomation.media_thumbnail_url} className="w-16 h-24 object-cover rounded-xl shadow-sm" alt="" />
+                                <SafeImage src={editingAutomation.media_thumbnail_url} className="w-16 h-24 object-cover rounded-xl shadow-sm" alt="" />
                                 <div className="flex-1 py-1">
                                     <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black uppercase mb-1.5 tracking-wider">{editingAutomation.media_type}</Badge>
                                     <p className="text-xs font-bold text-slate-600 line-clamp-3 leading-relaxed tracking-tight underline italic opacity-60">

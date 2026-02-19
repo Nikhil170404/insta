@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AutomationWizard from "./AutomationWizard";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface Media {
     id: string;
@@ -463,8 +464,8 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                                         )}
                                     >
                                         <div className="flex-1 overflow-hidden relative group-hover:scale-[1.02] transition-transform duration-700 min-h-[300px]">
-                                            <img
-                                                src={item.thumbnail_url || item.media_url || "/placeholder-reel.jpg"}
+                                            <SafeImage
+                                                src={item.thumbnail_url || item.media_url}
                                                 alt={item.caption || "Reel"}
                                                 className="w-full h-full object-cover"
                                             />

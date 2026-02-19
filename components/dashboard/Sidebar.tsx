@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
 import { UsageBar } from "./UsageBar";
+import { SafeImage } from "@/components/ui/safe-image";
 
 interface SidebarProps {
   user: SessionUser;
@@ -100,18 +101,16 @@ export function DashboardSidebar({ user }: SidebarProps) {
           <div className="border-t border-slate-50 p-6 bg-slate-50/30">
             <div className="flex items-center gap-4">
               <div className="relative transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-                {user.profile_picture_url ? (
-                  <img
-                    src={user.profile_picture_url}
-                    alt={user.instagram_username}
-                    referrerPolicy="no-referrer"
-                    className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-primary/10 ring-2 ring-white"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/10">
-                    {user.instagram_username.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                <SafeImage
+                  src={user.profile_picture_url}
+                  alt={user.instagram_username}
+                  className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-primary/10 ring-2 ring-white"
+                  fallbackComponent={
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/10 ring-2 ring-white">
+                      {user.instagram_username.charAt(0).toUpperCase()}
+                    </div>
+                  }
+                />
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" title="Active" />
               </div>
               <div className="flex-1 min-w-0">
