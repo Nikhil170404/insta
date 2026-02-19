@@ -179,64 +179,62 @@ export async function GET(request: NextRequest) {
       user = newUser as User;
     }
 
-    // Step 4.5: Check waitlist for promo redemption (new users only)
-    if (!userRecord) {
-      try {
+    // Step 4.5: Check waitlist for promo redemption (ALL users, based on username match)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: waitlistEntry } = await (supabase as any)
+        .from("waitlist")
+        .select("*")
+        .eq("instagram_username", profile.username.toLowerCase())
+        .eq("redeemed", false)
+        .single();
+
+      if (waitlistEntry) {
+        logger.info("Waitlist match found", { tier: waitlistEntry.tier, position: waitlistEntry.position, category: "auth" });
+        const now = new Date();
+        const planExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const discountExpiry = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 days
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: waitlistEntry } = await (supabase as any)
-          .from("waitlist")
-          .select("*")
-          .eq("instagram_username", profile.username.toLowerCase())
-          .eq("redeemed", false)
-          .single();
+        const updateData: any = {
+          waitlist_discount_until: discountExpiry.toISOString(), // 90 days for 10% off
+        };
 
-        if (waitlistEntry) {
-          logger.info("Waitlist match found", { tier: waitlistEntry.tier, position: waitlistEntry.position, category: "auth" });
-          const now = new Date();
-          const planExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
-          const discountExpiry = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 days
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const updateData: any = {
-            waitlist_discount_until: discountExpiry.toISOString(), // 90 days for 10% off
-          };
-
-          // Free plan upgrade for pro/starter tiers
-          if (waitlistEntry.tier === "pro" || waitlistEntry.tier === "starter") {
-            updateData.plan_type = waitlistEntry.tier;
-            updateData.plan_expires_at = planExpiry.toISOString();
-          }
-
-          // Discount tier: boost free plan to 15K DMs/month for 1 month only
-          if (waitlistEntry.tier === "discount") {
-            updateData.waitlist_dms_per_month = 15000;
-            updateData.waitlist_discount_until = planExpiry.toISOString(); // 30 days, NOT 90
-          }
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from("users")
-            .update(updateData)
-            .eq("id", user.id);
-
-          // Mark waitlist entry as redeemed
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from("waitlist")
-            .update({ redeemed: true, redeemed_at: now.toISOString() })
-            .eq("id", waitlistEntry.id);
-
-          // Update user object for session
-          if (waitlistEntry.tier === "pro" || waitlistEntry.tier === "starter") {
-            user = { ...user, plan_type: waitlistEntry.tier, plan_expires_at: planExpiry.toISOString() } as User;
-          }
-
-          logger.info("Waitlist promo applied", { tier: waitlistEntry.tier, category: "auth" });
+        // Free plan upgrade for pro/starter tiers
+        if (waitlistEntry.tier === "pro" || waitlistEntry.tier === "starter") {
+          updateData.plan_type = waitlistEntry.tier;
+          updateData.plan_expires_at = planExpiry.toISOString();
         }
-      } catch (waitlistError) {
-        // Non-critical: don't block login if waitlist check fails
-        logger.error("Waitlist redemption check error (non-critical)", { category: "auth" }, waitlistError as Error);
+
+        // Discount tier: boost free plan to 15K DMs/month for 1 month only
+        if (waitlistEntry.tier === "discount") {
+          updateData.waitlist_dms_per_month = 15000;
+          updateData.waitlist_discount_until = planExpiry.toISOString(); // 30 days, NOT 90
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("users")
+          .update(updateData)
+          .eq("id", user.id);
+
+        // Mark waitlist entry as redeemed
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("waitlist")
+          .update({ redeemed: true, redeemed_at: now.toISOString() })
+          .eq("id", waitlistEntry.id);
+
+        // Update user object for session
+        if (waitlistEntry.tier === "pro" || waitlistEntry.tier === "starter") {
+          user = { ...user, plan_type: waitlistEntry.tier, plan_expires_at: planExpiry.toISOString() } as User;
+        }
+
+        logger.info("Waitlist promo applied", { tier: waitlistEntry.tier, category: "auth" });
       }
+    } catch (waitlistError) {
+      // Non-critical: don't block login if waitlist check fails
+      logger.error("Waitlist redemption check error (non-critical)", { category: "auth" }, waitlistError as Error);
     }
 
     // Step 5: Create session and set cookie

@@ -308,7 +308,7 @@ export default function WaitlistPage() {
 
                             <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100">
                                 <p className="text-sm font-medium text-slate-500 mb-4 leading-relaxed">
-                                    Go to our Instagram <span className="text-slate-900 font-black">@replykaro1704</span> and comment on our <span className="text-primary font-black">first reel</span>.
+                                    Go to our Instagram <span className="text-slate-900 font-black">@replykaro.ai</span> and comment on our <span className="text-primary font-black">first reel</span>.
                                 </p>
                                 <div className="flex items-center justify-center gap-2 mb-2">
                                     <Badge className="bg-emerald-100 text-emerald-700 border-none px-3 py-1 rounded-lg font-black text-xs uppercase tracking-widest">
@@ -327,7 +327,7 @@ export default function WaitlistPage() {
                                 asChild
                                 className="w-full h-14 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:opacity-90 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-pink-500/25 transition-all gap-3 active:scale-[0.98]"
                             >
-                                <a href="https://www.instagram.com/replykaro1704/" target="_blank" rel="noopener noreferrer">
+                                <a href="https://www.instagram.com/replykaro.ai/" target="_blank" rel="noopener noreferrer">
                                     <Instagram className="h-5 w-5" /> Go to Instagram
                                 </a>
                             </Button>
