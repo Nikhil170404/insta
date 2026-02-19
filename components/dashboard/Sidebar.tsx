@@ -104,6 +104,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
                   <img
                     src={user.profile_picture_url}
                     alt={user.instagram_username}
+                    referrerPolicy="no-referrer"
                     className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-primary/10 ring-2 ring-white"
                   />
                 ) : (

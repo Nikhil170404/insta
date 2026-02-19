@@ -160,7 +160,7 @@ export default function ReelsGrid({ planType }: ReelsGridProps) {
                     media_type: data.media_id ? (data.media_id === "STORY_AUTOMATION" ? "STORY" : "REELS") : selectedMedia.media_type,
                     media_url: data.media_id ? "" : selectedMedia.media_url,
                     media_thumbnail_url: data.media_id ? "" : (selectedMedia.thumbnail_url || selectedMedia.media_url),
-                    media_caption: data.media_id ? (data.media_id === "ALL_MEDIA" ? "Any Post" : (data.media_id === "NEXT_MEDIA" ? "Next Post" : "Story Automation")) : selectedMedia.caption?.substring(0, 200),
+                    media_caption: data.media_id ? (data.media_id === "ALL_MEDIA" ? "Any Post" : (data.media_id === "NEXT_MEDIA" ? "Next Post" : (data.media_id === "STORY_AUTOMATION" ? "Story Automation" : selectedMedia.caption?.substring(0, 200) || "Untitled Post"))) : selectedMedia.caption?.substring(0, 200),
                 }),
             });
 

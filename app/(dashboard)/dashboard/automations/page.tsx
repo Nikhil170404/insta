@@ -277,7 +277,7 @@ export default function AutomationsPage() {
                         </div>
                         <div>
                             <p className="text-white font-bold">
-                                {limits.current} of {limits.max} automations used
+                                {limits.current} of {limits.max >= 999 ? "Unlimited" : limits.max} automations used
                             </p>
                             <p className={cn("text-sm", limits.canCreate ? "text-slate-400" : "text-white/70")}>
                                 {limits.canCreate
