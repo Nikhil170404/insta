@@ -507,7 +507,14 @@ export default function BillingPage() {
                                     )}
                                     {billingInterval === "yearly" && plan.yearlyPrice && (
                                         <div className="text-xs font-bold text-slate-400 mt-1">
-                                            Billed ₹{plan.yearlyPrice} yearly
+                                            {userData?.waitlist_discount_until && new Date(userData.waitlist_discount_until) > new Date() ? (
+                                                <>
+                                                    Billed <span className="line-through decoration-rose-500/50 mr-1">₹{plan.yearlyPrice}</span>
+                                                    <span className="text-emerald-600">₹{Math.round(parseInt(plan.yearlyPrice) * 0.9)}</span> yearly
+                                                </>
+                                            ) : (
+                                                `Billed ₹${plan.yearlyPrice} yearly`
+                                            )}
                                         </div>
                                     )}
                                     {plan.savings && (
