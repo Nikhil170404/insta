@@ -19,7 +19,8 @@ import {
   Users,
   ChevronDown,
   Check,
-  MessageSquare
+  MessageSquare,
+  HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -35,6 +36,7 @@ const navigation = [
   { name: "Comments", href: "/dashboard/comments", icon: MessageSquare },
   { name: "Insights", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
+  { name: "Support", href: "/dashboard/support", icon: HelpCircle },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
