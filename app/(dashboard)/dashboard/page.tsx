@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ReelsGrid from "@/components/dashboard/reels-grid";
 import { Badge } from "@/components/ui/badge";
+import { QueueStatus } from "@/components/dashboard/QueueStatus";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -70,6 +71,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Live Queue Status */}
+      <QueueStatus />
 
       {/* Reels Grid with Automation */}
       <div className="space-y-6">
