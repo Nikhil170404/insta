@@ -16,7 +16,8 @@ import {
     CreditCard,
     Loader2,
     HelpCircle,
-    ShieldAlert
+    ShieldAlert,
+    Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ export default function BillingPage() {
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
+    const [waitlistBoost, setWaitlistBoost] = useState<{ active: boolean; limit: number; expiresAt: string | null }>({ active: false, limit: 0, expiresAt: null });
 
     // Fetch data
     useEffect(() => {
@@ -58,6 +60,20 @@ export default function BillingPage() {
                 }
             })
             .catch(err => console.error("Failed to fetch plan:", err));
+
+        // Fetch waitlist DM boost status
+        fetch("/api/usage")
+            .then(res => res.json())
+            .then(data => {
+                if (data?.monthlyLimit && data.monthlyLimit > 1000 && data.planType === "free") {
+                    setWaitlistBoost({
+                        active: true,
+                        limit: data.monthlyLimit,
+                        expiresAt: data.boostExpiresAt || null,
+                    });
+                }
+            })
+            .catch(() => { });
 
         // Fetch Payment History (Initial)
         fetchHistory(1);
@@ -348,6 +364,29 @@ export default function BillingPage() {
                 )}
             </div>
 
+            {/* Waitlist DM Boost Banner */}
+            {waitlistBoost.active && (
+                <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border-2 border-emerald-200/50 rounded-[2.5rem] p-8 md:p-10 max-w-3xl mx-auto mt-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                            <Zap className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.25em]">Waitlist Bonus Active 🎉</p>
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">{waitlistBoost.limit.toLocaleString()} DMs/month</h3>
+                        </div>
+                    </div>
+                    <p className="text-sm font-bold text-slate-500">
+                        Your waitlist reward is active! You have <span className="text-emerald-600 font-black">{waitlistBoost.limit.toLocaleString()} DMs/month</span> instead of the usual 1,000.
+                        {waitlistBoost.expiresAt && (
+                            <span className="block mt-1 text-xs text-slate-400">
+                                Expires: {new Date(waitlistBoost.expiresAt!).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                            </span>
+                        )}
+                    </p>
+                </div>
+            )}
+
             {/* Billing Toggle */}
             <div className="flex justify-center mb-8 relative z-10">
                 <div className="bg-white p-1.5 rounded-full border border-slate-100 flex items-center shadow-lg shadow-slate-200/50">
@@ -593,6 +632,6 @@ export default function BillingPage() {
                     <Sparkles className="h-5 w-5" /> 100% Secure
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

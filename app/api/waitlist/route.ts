@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { ratelimit } from "@/lib/ratelimit";
 
 const WAITLIST_LIMITS = {
     PRO: 10,       // positions 1-10
@@ -22,7 +23,7 @@ function getTierMessage(tier: string, position: number): string {
         case "starter":
             return `⚡ You're #${position}! You'll get 1 month FREE Starter Pack + 10% off for 3 months!`;
         case "discount":
-            return `🎯 You're #${position}! You'll get 10% off all plans for 3 months!`;
+            return `🎯 You're #${position}! You'll get 15,000 DMs FREE for 1 month + 10% off all plans for 3 months!`;
         default:
             return "";
     }
@@ -31,8 +32,42 @@ function getTierMessage(tier: string, position: number): string {
 // POST - Join waitlist
 export async function POST(request: NextRequest) {
     try {
+        // === SECURITY LAYER 1: IP Rate Limiting (3 attempts per hour) ===
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+            || request.headers.get("x-real-ip")
+            || "unknown";
+
+        const { success: rateLimitOk } = await ratelimit.limit(`waitlist:${ip}`);
+        if (!rateLimitOk) {
+            return NextResponse.json(
+                { error: "Too many attempts. Please try again later." },
+                { status: 429 }
+            );
+        }
+
+        // === SECURITY LAYER 2: Cookie-based duplicate check ===
+        const alreadyJoined = request.cookies.get("wl_joined")?.value;
+        if (alreadyJoined === "1") {
+            return NextResponse.json(
+                { error: "You have already joined the waitlist from this device!" },
+                { status: 409 }
+            );
+        }
+
         const body = await request.json();
         let { instagram_username, whatsapp_number } = body;
+
+        // === SECURITY LAYER 3: Honeypot — bots fill hidden fields ===
+        if (body.website || body.company || body.email_confirm) {
+            // Silent success for bots — don't reveal it's a trap
+            return NextResponse.json({
+                success: true,
+                position: Math.floor(Math.random() * 900) + 50,
+                tier: "discount",
+                message: "You're on the list!",
+                totalSignups: 500,
+            });
+        }
 
         // Validate instagram username
         if (!instagram_username || typeof instagram_username !== "string") {
@@ -108,12 +143,28 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // === SECURITY LAYER 4: IP-based duplicate check ===
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existingByIp } = await (supabase as any)
+            .from("waitlist")
+            .select("id")
+            .eq("signup_ip", ip)
+            .single();
+
+        if (existingByIp) {
+            return NextResponse.json(
+                { error: "A signup has already been made from this device/network!" },
+                { status: 409 }
+            );
+        }
+
         // Atomic position claim via RPC (prevents race conditions)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: claimResult, error: claimError } = await (supabase as any)
             .rpc("claim_waitlist_position", {
                 p_username: instagram_username,
                 p_whatsapp: whatsapp_number,
+                p_ip: ip,
             })
             .single();
 
@@ -139,13 +190,24 @@ export async function POST(request: NextRequest) {
         const position = claimResult.out_position;
         const tier = claimResult.out_tier;
 
-        return NextResponse.json({
+        // Set anti-duplicate cookie (expires in 1 year)
+        const response = NextResponse.json({
             success: true,
             position,
             tier,
             message: getTierMessage(tier, position),
             totalSignups: position,
         });
+
+        response.cookies.set("wl_joined", "1", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 365, // 1 year
+            path: "/",
+        });
+
+        return response;
     } catch (error) {
         console.error("Waitlist POST error:", error);
         return NextResponse.json(

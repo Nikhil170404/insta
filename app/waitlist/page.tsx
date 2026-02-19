@@ -45,6 +45,7 @@ export default function WaitlistPage() {
         message: string;
     } | null>(null);
     const [error, setError] = useState("");
+    const [honeypot, setHoneypot] = useState("");
 
     useEffect(() => {
         fetchStats();
@@ -72,6 +73,7 @@ export default function WaitlistPage() {
                 body: JSON.stringify({
                     instagram_username: username,
                     whatsapp_number: whatsapp,
+                    website: honeypot, // honeypot field — bots fill this
                 }),
             });
 
@@ -289,6 +291,51 @@ export default function WaitlistPage() {
                                 </div>
                             </div>
                         </div>
+                    ) : stats && stats.total >= 1000 ? (
+                        /* Waitlist Full - Instagram CTA */
+                        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 md:p-10 text-center animate-in fade-in zoom-in-95 duration-500">
+                            <div className="w-20 h-20 rounded-[1.5rem] mx-auto mb-6 flex items-center justify-center bg-rose-100 shadow-xl shadow-rose-500/20">
+                                <Instagram className="h-10 w-10 text-rose-500" />
+                            </div>
+
+                            <h2 className="text-2xl md:text-3xl font-[900] text-slate-900 tracking-tight mb-2">
+                                Waitlist is Full! 🚫
+                            </h2>
+
+                            <p className="text-lg font-bold text-slate-600 mb-6">
+                                But you can still unlock a discount!
+                            </p>
+
+                            <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100">
+                                <p className="text-sm font-medium text-slate-500 mb-4 leading-relaxed">
+                                    Go to our Instagram <span className="text-slate-900 font-black">@replykaro1704</span> and comment on our <span className="text-primary font-black">first reel</span>.
+                                </p>
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <Badge className="bg-emerald-100 text-emerald-700 border-none px-3 py-1 rounded-lg font-black text-xs uppercase tracking-widest">
+                                        Community Target
+                                    </Badge>
+                                </div>
+                                <p className="text-2xl font-[900] text-slate-900 tracking-tighter">
+                                    1,000 Comments
+                                </p>
+                                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                                    to unlock the offer
+                                </p>
+                            </div>
+
+                            <Button
+                                asChild
+                                className="w-full h-14 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:opacity-90 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-pink-500/25 transition-all gap-3 active:scale-[0.98]"
+                            >
+                                <a href="https://www.instagram.com/replykaro1704/" target="_blank" rel="noopener noreferrer">
+                                    <Instagram className="h-5 w-5" /> Go to Instagram
+                                </a>
+                            </Button>
+
+                            <p className="mt-6 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                                Follow us for launch updates
+                            </p>
+                        </div>
                     ) : (
                         /* Form */
                         <form onSubmit={handleSubmit} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 md:p-10 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-500">
@@ -333,6 +380,20 @@ export default function WaitlistPage() {
                                         className="w-full h-14 px-6 bg-slate-50 rounded-2xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-primary focus:bg-white shadow-sm text-sm font-bold text-slate-700 placeholder:text-slate-300 transition-all"
                                     />
                                     <p className="text-[10px] text-slate-300 font-medium px-1">We&apos;ll send launch updates here</p>
+                                </div>
+
+                                {/* Honeypot — invisible to users, bots auto-fill it */}
+                                <div className="absolute" style={{ left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }} aria-hidden="true" tabIndex={-1}>
+                                    <label htmlFor="website">Website</label>
+                                    <input
+                                        id="website"
+                                        type="text"
+                                        name="website"
+                                        value={honeypot}
+                                        onChange={(e) => setHoneypot(e.target.value)}
+                                        autoComplete="off"
+                                        tabIndex={-1}
+                                    />
                                 </div>
                             </div>
 

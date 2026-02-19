@@ -505,10 +505,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_position_unique ON public.waitlis
 -- Waitlist DMs boost column
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS waitlist_dms_per_month INTEGER;
 
--- Atomic waitlist position claim function
+-- IP tracking for anti-abuse
+ALTER TABLE public.waitlist ADD COLUMN IF NOT EXISTS signup_ip VARCHAR(45);
+CREATE INDEX IF NOT EXISTS idx_waitlist_signup_ip ON public.waitlist(signup_ip);
+
+-- Atomic waitlist position claim function (with IP tracking)
 CREATE OR REPLACE FUNCTION claim_waitlist_position(
     p_username VARCHAR,
-    p_whatsapp VARCHAR
+    p_whatsapp VARCHAR,
+    p_ip VARCHAR DEFAULT NULL
 )
 RETURNS TABLE(
     out_position INTEGER,
@@ -533,8 +538,8 @@ BEGIN
         RAISE EXCEPTION 'WAITLIST_FULL' USING ERRCODE = 'P0001';
     END IF;
 
-    INSERT INTO public.waitlist (instagram_username, whatsapp_number, position, tier)
-    VALUES (p_username, p_whatsapp, v_position, v_tier)
+    INSERT INTO public.waitlist (instagram_username, whatsapp_number, position, tier, signup_ip)
+    VALUES (p_username, p_whatsapp, v_position, v_tier, p_ip)
     RETURNING id INTO v_id;
 
     out_position := v_position;

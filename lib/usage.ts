@@ -117,6 +117,21 @@ export async function getUsageStats(userId: string, planType: string) {
         .eq("user_id", userId)
         .gte("created_at", startOfMonth.toISOString());
 
+    // Check for waitlist DM boost (same as checkUsageLimits)
+    let effectiveDmsPerMonth = plan.limits.dmsPerMonth;
+    const { data: userBoost } = await (supabase as any)
+        .from("users")
+        .select("waitlist_dms_per_month, waitlist_discount_until")
+        .eq("id", userId)
+        .single();
+
+    if (userBoost?.waitlist_dms_per_month && userBoost?.waitlist_discount_until) {
+        const discountExpiry = new Date(userBoost.waitlist_discount_until);
+        if (discountExpiry > new Date()) {
+            effectiveDmsPerMonth = userBoost.waitlist_dms_per_month;
+        }
+    }
+
     const { count: automationsCount } = await (supabase as any)
         .from("automations")
         .select("id", { count: "exact", head: true })
@@ -125,11 +140,11 @@ export async function getUsageStats(userId: string, planType: string) {
 
     return {
         dms_sent: monthlyDms || 0,
-        dms_limit: plan.limits.dmsPerMonth,
+        dms_limit: effectiveDmsPerMonth,
         dms_per_hour: plan.limits.dmsPerHour,
         automations_active: automationsCount || 0,
         automations_limit: plan.limits.automations,
         accounts_limit: plan.limits.accounts,
-        percentage_used: Math.round(((monthlyDms || 0) / plan.limits.dmsPerMonth) * 100),
+        percentage_used: Math.round(((monthlyDms || 0) / effectiveDmsPerMonth) * 100),
     };
 }

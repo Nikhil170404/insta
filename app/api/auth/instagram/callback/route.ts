@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const updateData: any = {
-            waitlist_discount_until: discountExpiry.toISOString(),
+            waitlist_discount_until: discountExpiry.toISOString(), // 90 days for 10% off
           };
 
           // Free plan upgrade for pro/starter tiers
@@ -207,9 +207,10 @@ export async function GET(request: NextRequest) {
             updateData.plan_expires_at = planExpiry.toISOString();
           }
 
-          // Discount tier: boost free plan to 15K DMs/month for 1 month
+          // Discount tier: boost free plan to 15K DMs/month for 1 month only
           if (waitlistEntry.tier === "discount") {
             updateData.waitlist_dms_per_month = 15000;
+            updateData.waitlist_discount_until = planExpiry.toISOString(); // 30 days, NOT 90
           }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
