@@ -161,6 +161,9 @@ export async function POST(request: NextRequest) {
             button_text,
             link_url,
             require_follow,
+            final_message,
+            final_button_text,
+            follow_gate_message,
         } = body;
 
         // Validation
@@ -241,6 +244,9 @@ export async function POST(request: NextRequest) {
                 button_text: body.button_text || null,
                 link_url: body.link_url || null,
                 require_follow: require_follow || false,
+                final_message: final_message || undefined,
+                final_button_text: final_button_text || undefined,
+                follow_gate_message: follow_gate_message || undefined,
                 respond_to_replies: body.respond_to_replies ?? false,
                 ignore_self_comments: body.ignore_self_comments ?? true,
             })

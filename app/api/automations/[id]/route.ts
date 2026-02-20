@@ -23,6 +23,9 @@ export async function PUT(
             button_text,
             link_url,
             require_follow,
+            final_message,
+            final_button_text,
+            follow_gate_message,
             is_active,
         } = body;
 
@@ -55,6 +58,9 @@ export async function PUT(
         if (button_text !== undefined) updateData.button_text = button_text;
         if (link_url !== undefined) updateData.link_url = link_url;
         if (require_follow !== undefined) updateData.require_follow = require_follow;
+        if (final_message !== undefined) updateData.final_message = final_message;
+        if (final_button_text !== undefined) updateData.final_button_text = final_button_text;
+        if (follow_gate_message !== undefined) updateData.follow_gate_message = follow_gate_message;
         if (body.respond_to_replies !== undefined) updateData.respond_to_replies = body.respond_to_replies;
         if (body.ignore_self_comments !== undefined) updateData.ignore_self_comments = body.ignore_self_comments;
         if (is_active !== undefined) updateData.is_active = is_active;
