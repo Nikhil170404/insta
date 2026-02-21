@@ -20,6 +20,7 @@ export const PRICING_PLANS = {
             automations: 3,
             dmsPerMonth: 1000,
             dmsPerHour: 190, // Ultra-Safe Starter Speed
+            commentsPerHour: 190,
             queueEnabled: true,
             priorityQueue: false,
         },
@@ -55,6 +56,7 @@ export const PRICING_PLANS = {
             automations: 10,
             dmsPerMonth: 50000,
             dmsPerHour: 250, // Safe Production Speed
+            commentsPerHour: 190,
             queueEnabled: true,
             priorityQueue: false,
         },
@@ -91,6 +93,7 @@ export const PRICING_PLANS = {
             automations: 999,
             dmsPerMonth: 1000000,
             dmsPerHour: 350, // Peak Safe Speed (Meta BUC allows more, but we stay safe)
+            commentsPerHour: 190,
             queueEnabled: true,
             priorityQueue: true,
         },
@@ -159,6 +162,7 @@ export function getPlanLimits(planType: string): {
     automations: number;
     dmsPerMonth: number;
     dmsPerHour: number;
+    commentsPerHour: number;
     planName: string;
     queueEnabled?: boolean;
     priorityQueue?: boolean;

@@ -178,9 +178,9 @@ export async function smartRateLimit(
  */
 function getNonUniformDelay(): number {
     const roll = Math.random();
-    if (roll < 0.6) return Math.floor(Math.random() * 60) + 30; // 30-90s
-    if (roll < 0.9) return Math.floor(Math.random() * 210) + 90; // 90-300s
-    return Math.floor(Math.random() * 300) + 300; // 300-600s
+    // User tuned: 10-30s (Avg 18s)
+    if (roll < 0.6) return Math.floor(Math.random() * 9) + 10; // 10-18s (Avg 14)
+    return Math.floor(Math.random() * 13) + 18; // 18-30s (Avg 24)
 }
 
 /**
@@ -226,9 +226,9 @@ export async function queueDM(
 
             if (existing && (existing as any).scheduled_send_at) {
                 const existingTime = new Date((existing as any).scheduled_send_at).getTime();
-                // If it's scheduled within 120s of this, push this one 30-90s further
-                if (Math.abs(existingTime - scheduledTime.getTime()) < 120000) {
-                    const staggerDelay = Math.floor(Math.random() * 60) + 30;
+                // If it's scheduled within 60s of this, push this one 5-15s further
+                if (Math.abs(existingTime - scheduledTime.getTime()) < 60000) {
+                    const staggerDelay = Math.floor(Math.random() * 11) + 5;
                     scheduledTime = new Date(existingTime + staggerDelay * 1000);
                     logger.debug("[Anti-Ban] Micro-staggering applied to lead interaction", { userId, commentId: dmData.commentId });
                 }
@@ -289,12 +289,11 @@ export async function processQueuedDMs() {
         .order("scheduled_send_at", { ascending: true })
         .limit(200); // Fetch sizeable batch
 
-    if (candidateError) {
-        logger.error("Error fetching queue candidates", { category: "rate-limiter" }, candidateError);
+    if (!candidates || candidates.length === 0) {
+        // Log at debug level to avoid spam, but provide clarity if user is looking
+        logger.debug("No DMs ready for delivery (Safety delays active)", { category: "rate-limiter" });
         return;
     }
-
-    if (!candidates || candidates.length === 0) return;
 
     // ATOMIC LOCK: Only rows that are CURRENTLY "pending" get updated to "processing"
     const idsToLock = candidates.map((c: any) => c.id);
@@ -440,7 +439,9 @@ export async function processQueuedDMs() {
                             dm.automation_id,
                             dm.automations.button_text,
                             dm.automations.link_url,
-                            dm.automations.link_url ? dm.automations.media_thumbnail_url : undefined
+                            dm.automations.link_url ? dm.automations.media_thumbnail_url : undefined,
+                            supabase,
+                            dm.user_id
                         );
                     }
 

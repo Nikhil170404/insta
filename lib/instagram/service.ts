@@ -271,24 +271,25 @@ export async function sendInstagramDM(
         // Validated URL
         const validatedLinkUrl = ensureUrlProtocol(linkUrl);
 
-        // Use Generic Templates (Structured Cards) for a premium feel
-        if (validatedLinkUrl && (buttonText || thumbnailUrl)) {
-            // Build element - EXPLICITLY creating a SINGLE button array
-            const singleButton = {
+        if (thumbnailUrl && (buttonText || validatedLinkUrl || (buttonText && !linkUrl && automationId))) {
+            // Use Generic Template (Required for Images)
+            // Note: Title is limited to 80 chars
+            const button = validatedLinkUrl ? {
                 type: "web_url",
                 url: validatedLinkUrl,
                 title: (buttonText || "Open Link").substring(0, 20)
+            } : {
+                type: "postback",
+                title: (buttonText || "Get Link").substring(0, 20),
+                payload: `CLICK_LINK_${automationId || 'UNKNOWN'}`
             };
 
             const element: any = {
-                title: message.substring(0, 80) || "You have a message!",
-                subtitle: (buttonText || "Tap below to continue ✨").substring(0, 80),
-                buttons: [singleButton]
+                title: (buttonText || "Open Link").substring(0, 80),
+                subtitle: message.substring(0, 80) || "Tap below to continue ✨",
+                image_url: thumbnailUrl,
+                buttons: [button]
             };
-
-            if (thumbnailUrl) {
-                element.image_url = thumbnailUrl;
-            }
 
             body = {
                 recipient,
@@ -302,23 +303,17 @@ export async function sendInstagramDM(
                     }
                 }
             };
-        } else if (buttonText && automationId && !linkUrl) {
-            // Greeting card with postback button (no direct link)
-            const postbackButton = {
+        } else if (buttonText || validatedLinkUrl || (buttonText && !linkUrl && automationId)) {
+            // Use Button Template (Better for long text, up to 640 chars)
+            const button = validatedLinkUrl ? {
+                type: "web_url",
+                url: validatedLinkUrl,
+                title: (buttonText || "Open Link").substring(0, 20)
+            } : {
                 type: "postback",
-                title: buttonText.substring(0, 20),
-                payload: `CLICK_LINK_${automationId}`
+                title: (buttonText || "Get Link").substring(0, 20),
+                payload: `CLICK_LINK_${automationId || 'UNKNOWN'}`
             };
-
-            const element: any = {
-                title: message.substring(0, 80) || "You have a message!",
-                subtitle: "Tap below to continue ✨",
-                buttons: [postbackButton]
-            };
-
-            if (thumbnailUrl) {
-                element.image_url = thumbnailUrl;
-            }
 
             body = {
                 recipient,
@@ -326,8 +321,9 @@ export async function sendInstagramDM(
                     attachment: {
                         type: "template",
                         payload: {
-                            template_type: "generic",
-                            elements: [element]
+                            template_type: "button",
+                            text: message.substring(0, 640) || "You have a message!",
+                            buttons: [button]
                         }
                     }
                 }

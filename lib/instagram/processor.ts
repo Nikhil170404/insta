@@ -47,7 +47,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         if (!user || !user.instagram_username) {
             const { data: dbUser } = await supabase
                 .from("users")
-                .select("id, instagram_access_token, instagram_user_id, instagram_username, plan_type")
+                .select("id, instagram_access_token, instagram_user_id, instagram_username, plan_type, created_at")
                 .eq("instagram_user_id", instagramUserId)
                 .single();
 
@@ -203,19 +203,30 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         }
 
         if (selectedReply) {
-            // Queue as a special Public Reply type using the prefix hack
-            await queueDM(
+            // Check Rate Limit for Public Reply
+            const limits = getPlanLimits(user.plan_type || "free");
+            const rateLimit = await smartRateLimit(
                 user.id,
-                {
-                    commentId,
-                    commenterId,
-                    message: `__PUBLIC_REPLY__:${selectedReply}`,
-                    automation_id: automation.id
-                },
-                undefined, // Use default random delay
-                user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
+                { hourlyLimit: limits.commentsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+                user.created_at
             );
-            logger.info("Public reply added to Safety Queue", { commenterUsername, automationId: automation.id });
+
+            if (rateLimit.allowed) {
+                const replySent = await replyToComment(
+                    user.instagram_access_token,
+                    commentId,
+                    selectedReply,
+                    supabase,
+                    user.id
+                );
+
+                if (replySent) {
+                    await incrementAutomationCount(supabase, automation.id, "comment_count");
+                    logger.info("Public reply sent instantly", { commenterUsername, automationId: automation.id });
+                }
+            } else {
+                logger.warn("Public reply skipped: Rate limit reached", { userId: user.id });
+            }
         }
 
         // 8. ONE DM PER USER CHECK + ATOMIC CLAIM
@@ -269,40 +280,41 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         let dmMessage = getUniqueMessage(automation.reply_message, commenterUsername);
         let buttonText = automation.button_text || "Get Link";
-        let directLink = undefined;
+        let directLink = automation.link_url || undefined;
+        // The Opening DM ALWAYS uses a postback button.
+        // We never send the direct link in step 1, matching the wizard flow explicitly.
+        const finalLinkUrlToSend = undefined;
 
-        // Follow-Gate Logic Decision
-        if (automation.require_follow) {
-            // Check if user is already following (real-time check)
-            const isFollowing = await checkIsFollowing(user.instagram_access_token, commenterId);
-
-            if (isFollowing) {
-                logger.info("User already following, queuing greeting with button", { commenterUsername });
-                // We still send the greeting with button (ManyChat pattern 1)
-                // but we mark it as follow-verified in our placeholder if we wanted to.
-            } else {
-                logger.info("User not following, queuing greeting with button", { commenterUsername });
-                // Same gift as followers, but the button will trigger follow-gate later
-            }
-        } else {
-            // No follow-gate, we could technically send direct link,
-            // but the current UX is Greeting -> Click -> Link.
-            // We'll stick to queuing the Greeting message.
-        }
-
-        await queueDM(
+        const limits = getPlanLimits(user.plan_type || "free");
+        const rateLimit = await smartRateLimit(
             user.id,
-            {
-                commentId,
-                commenterId,
-                message: dmMessage,
-                automation_id: automation.id
-            },
-            undefined, // Use default random delay (30-120s)
-            user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
+            { hourlyLimit: limits.dmsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+            user.created_at
         );
 
-        logger.info("Lead interaction moved to Safety Queue", { commenterUsername, automationId: automation.id });
+        if (rateLimit.allowed) {
+            // STEP 1: Send exact wizard match (Text + Button in one card)
+            const dmSent = await sendInstagramDM(
+                user.instagram_access_token,
+                user.instagram_user_id,
+                commentId,
+                commenterId,
+                dmMessage,
+                automation.id,
+                buttonText,
+                finalLinkUrlToSend,
+                automation.media_thumbnail_url || undefined,
+                supabase,
+                user.id
+            );
+
+            if (dmSent) {
+                await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                logger.info("Direct DM sent (Wizard Matched Card)", { commenterUsername, automationId: automation.id });
+            }
+        } else {
+            logger.warn("Direct DM skipped: Rate limit reached", { userId: user.id });
+        }
 
     } catch (error) {
         logger.error("Error in handleCommentEvent", { instagramUserId }, error as Error);
@@ -427,21 +439,42 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 return;
             }
 
-            // 9. QUEUE THE STORY DM (Safety First - Human Delay)
-            // Even for story replies, we use the safety queue to avoid "instant bot" signals.
-            await queueDM(
+            // 9. Send the Story DM (Safety First - Rate Limit check)
+            const limits = getPlanLimits(user.plan_type || "free");
+            const rateLimit = await smartRateLimit(
                 user.id,
-                {
-                    commentId: storyInteractionId,
-                    commenterId: senderIgsid,
-                    message: getUniqueMessage(automation.reply_message, messaging.sender?.username),
-                    automation_id: automation.id
-                },
-                undefined, // Use default random delay (30-120s)
-                user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
+                { hourlyLimit: limits.dmsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+                user.created_at
             );
 
-            logger.info("Story interaction moved to Safety Queue", { senderIgsid, automationId: automation.id });
+            if (rateLimit.allowed) {
+                const dmMessage = getUniqueMessage(automation.reply_message, messaging.sender?.username);
+                const buttonText = automation.button_text || "View Link";
+
+                // STEP 1: Send exact wizard match (Text + Button in one card)
+                // The initial message ALWAYS uses a postback button, never a direct web_url.
+                const dmSent = await sendInstagramDM(
+                    user.instagram_access_token,
+                    user.instagram_user_id,
+                    storyInteractionId,
+                    senderIgsid,
+                    dmMessage,
+                    automation.id,
+                    buttonText,
+                    undefined, // Forces postback
+                    automation.media_thumbnail_url || undefined,
+                    supabase,
+                    user.id
+                );
+
+                if (dmSent) {
+                    await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    logger.info("Story interaction completed instantly (Wizard Matched Card)", { senderIgsid, automationId: automation.id });
+                }
+            } else {
+                logger.warn("Story DM skipped: Rate limit reached", { userId: user.id });
+            }
+
             return;
         }
 
