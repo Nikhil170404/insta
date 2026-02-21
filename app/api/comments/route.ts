@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { getMediaComments, createComment } from "@/lib/instagram/service";
+import { createRateLimitedHandler } from "@/lib/rate-limit-middleware";
 
-export async function GET(request: NextRequest) {
+export const GET = createRateLimitedHandler("api", () => undefined)(async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) {
@@ -42,9 +43,9 @@ export async function GET(request: NextRequest) {
         console.error("Error in GET /api/comments:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = createRateLimitedHandler("api", () => undefined)(async function POST(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) {
@@ -82,4 +83,4 @@ export async function POST(request: NextRequest) {
         console.error("Error in POST /api/comments:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
-}
+});

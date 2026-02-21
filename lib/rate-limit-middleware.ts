@@ -116,12 +116,12 @@ export async function checkRateLimit(
             reset: result.reset,
         };
     } catch (error) {
-        // On error, allow request (fail open)
-        logger.error("Rate limit check failed", { type, identifier }, error as Error);
+        // On error (e.g., Redis down), FAIL CLOSED to prevent DDoS
+        logger.error("Rate limit check failed (FAIL CLOSED)", { type, identifier }, error as Error);
         return {
-            success: true,
-            limit: -1,
-            remaining: -1,
+            success: false, // DO NOT FAIL OPEN
+            limit: 0,
+            remaining: 0,
             reset: Date.now(),
         };
     }
@@ -136,12 +136,15 @@ export function getRateLimitIdentifier(request: NextRequest, userId?: string): s
         return `user:${userId}`;
     }
 
-    // Try to get real IP from various headers
-    const forwarded = request.headers.get("x-forwarded-for");
+    // Anti-Spoofing: Prioritize Vercel's true client IP headers, then fallback to forwarded
     const realIp = request.headers.get("x-real-ip");
+    const forwarded = request.headers.get("x-forwarded-for");
 
-    const ip = forwarded?.split(",")[0].trim() ||
-        realIp ||
+    // Vercel strips malicious x-forwarded-for and injects its own real IP header.
+    // If running outside Vercel, take the FIRST IP in the forwarded chain (the client),
+    // but prioritize x-real-ip as the primary trusted header.
+    const ip = realIp ||
+        forwarded?.split(",")[0].trim() ||
         "unknown";
 
     return `ip:${ip}`;
@@ -203,10 +206,10 @@ export function createRateLimitedHandler(
     type: keyof typeof rateLimiters,
     getUserId: (request: NextRequest) => string | undefined
 ) {
-    return function <T>(
-        handler: (request: NextRequest) => Promise<NextResponse<T>>
+    return function (
+        handler: (request: NextRequest, context?: any) => Promise<NextResponse<any>> | NextResponse<any>
     ) {
-        return async (request: NextRequest): Promise<NextResponse> => {
+        return async (request: NextRequest, context?: any): Promise<NextResponse> => {
             const userId = getUserId(request);
             const identifier = getRateLimitIdentifier(request, userId);
             const result = await checkRateLimit(type, identifier);
@@ -223,7 +226,7 @@ export function createRateLimitedHandler(
                 return addRateLimitHeaders(response, result);
             }
 
-            const response = await handler(request);
+            const response = await handler(request, context);
             return addRateLimitHeaders(response, result);
         };
     };

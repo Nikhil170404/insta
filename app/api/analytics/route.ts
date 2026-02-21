@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { createRateLimitedHandler } from "@/lib/rate-limit-middleware";
 
-export async function GET(request: Request) {
+export const GET = createRateLimitedHandler("analytics", () => undefined)(async function GET(request: Request) {
     try {
         const session = await getSession();
         if (!session) {
@@ -150,4 +151,4 @@ export async function GET(request: Request) {
             { status: 500 }
         );
     }
-}
+});
