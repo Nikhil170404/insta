@@ -580,14 +580,13 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     );
 
                     if (cardSent) {
-                        await incrementAutomationCount(supabase, automation.id, "click_count");
-
                         // Mark the ORIGINAL interaction (Greeting) as clicked
                         const { data: latestLog } = await supabase
                             .from("dm_logs")
                             .select("id, instagram_username")
                             .eq("instagram_user_id", senderIgsid)
                             .eq("automation_id", automation.id)
+                            .eq("is_follow_gate", false) // Fixed: Always attribute to original
                             .order("created_at", { ascending: false })
                             .limit(1)
                             .maybeSingle();
@@ -599,15 +598,16 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                                 .eq("id", latestLog.id);
                         }
 
-                        // Log as follow-gate attempt (Internal Log only, doesn't count as new conversation)
-                        const username = latestLog?.instagram_username || "";
+                        // Log as follow-gate attempt (Internal Log only)
+                        // Use a deterministic ID for 15s window to prevent double-clicks
+                        const idempotencyKey = `${senderIgsid}_${automation.id}_gate_${Math.floor(Date.now() / 15000)}`;
 
                         await supabase.from("dm_logs").insert({
                             user_id: user.id,
                             automation_id: automation.id,
-                            instagram_comment_id: `${Date.now()}_followgate`,
+                            instagram_comment_id: idempotencyKey,
                             instagram_user_id: senderIgsid,
-                            instagram_username: username,
+                            instagram_username: latestLog?.instagram_username || "",
                             keyword_matched: automation.trigger_keyword || "ANY",
                             comment_text: "Button click - follow gate",
                             reply_sent: true,
@@ -615,6 +615,8 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                             is_follow_gate: true,
                             user_is_following: false,
                         });
+
+                        await incrementAutomationCount(supabase, automation.id, "click_count");
                     }
                     return;
                 }
@@ -661,6 +663,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     .select("id")
                     .eq("instagram_user_id", senderIgsid)
                     .eq("automation_id", automation.id)
+                    .eq("is_follow_gate", false) // Fixed: Attribute conversion to original
                     .order("created_at", { ascending: false })
                     .limit(1)
                     .maybeSingle();
