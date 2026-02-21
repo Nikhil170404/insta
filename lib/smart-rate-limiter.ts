@@ -5,14 +5,19 @@ import { logger } from "./logger";
 /**
  * Rate Limiting Strategy:
  *
- * Meta Platform Rate Limits (external):
- * - ~200 API calls per hour per user (via X-Business-Use-Case-Usage header)
- * - Monitored automatically via parseMetaRateLimitHeaders() in service.ts
- *
+ * META_RATE_LIMITS (Actual Meta Platform Limits):
+ * - Platform Rate Limit (app token): 200 * DAU / rolling 1hr (Per app)
+ * - Instagram BUC (content APIs): 4,800 * Impressions / 24hr (Per app+user pair)
+ * - Send API (DMs - text/links/stickers): 100 calls/second (Per IG pro account)
+ * - Send API (DMs - audio/video): 10 calls/second (Per IG pro account)
+ * - Private Replies API (posts/reels comments): 750 calls/HOUR (Per IG pro account)
+ * - Private Replies API (Live comments): 100 calls/second (Per IG pro account)
+ * - Conversations API: 2 calls/second (Per IG pro account)
+ * 
  * Our Internal Application Limits (this file):
- * - Hourly speed limit (plan-based): controls burst speed
- * - Monthly quota (plan-based): total DMs allowed per billing cycle
- * - These are INTERNAL limits; Meta's own throttling is handled separately
+ * - Hourly speed limit (plan-based): controls burst speed, safely beneath Meta's 750/hr limit.
+ * - Monthly quota (plan-based): total DMs allowed per billing cycle.
+ * - These are INTERNAL limits; Meta's own throttling is handled separately.
  */
 
 let upstashLimiter: any = null;
@@ -338,88 +343,97 @@ export async function processQueuedDMs() {
 
         // B. Check Counters (Optimized: Rate Limits Table)
 
-        // Monthly Window (Read-Only Sum)
+        // Monthly Window (Read-Only Sum) - Applies only to DMs per user plan
         const monthStart = new Date();
         monthStart.setUTCDate(1);
         monthStart.setUTCHours(0, 0, 0, 0);
 
         const { data: monthlyData } = await (supabase as any)
             .from("rate_limits")
-            .select("dm_count")
+            .select("dm_count") // Comments don't count towards plan quotas, but we track them
             .eq("user_id", userId)
             .gte("hour_bucket", monthStart.toISOString());
 
         const monthlyUsed = monthlyData?.reduce((sum: number, row: any) => sum + (row.dm_count || 0), 0) || 0;
 
-        // Hourly Window (Read-Only RPC)
+        // Hourly Window limit fetches
         const { data: hourlyUsedData } = await (supabase as any)
             .rpc("get_rate_limit", { p_user_id: userId });
+        const hourlyDMUsed = (hourlyUsedData as number) || 0;
 
-        const hourlyUsed = (hourlyUsedData as number) || 0;
+        const { data: hourlyCommentData } = await (supabase as any)
+            .rpc("get_comment_rate_limit", { p_user_id: userId });
+        const hourlyCommentUsed = (hourlyCommentData as number) || 0;
 
-        const hourlyLimit = limits.dmsPerHour || 200;
-        const monthlyLimit = limits.dmsPerMonth || 1000;
+        const hourlyDMLimit = limits.dmsPerHour || 200;
+        const monthlyDMLimit = limits.dmsPerMonth || 1000;
+        const hourlyCommentLimit = limits.commentsPerHour || 190;
 
-        // C. Calculate Availability
-        const hourlySlots = Math.max(0, hourlyLimit - hourlyUsed);
-        const monthlySlots = Math.max(0, monthlyLimit - monthlyUsed);
+        // C. Split Logic (DMs vs Comment Replies have separate Meta pools)
+        const allDMs = userDMs.filter((dm: any) => !dm.message.startsWith("__PUBLIC_REPLY__:"));
+        const allReplies = userDMs.filter((dm: any) => dm.message.startsWith("__PUBLIC_REPLY__:"));
 
-        // Strict available is min of both
-        const availableSlots = Math.min(hourlySlots, monthlySlots);
+        // D. Calculate Availability Separately
+        const dmSlots = Math.min(
+            Math.max(0, hourlyDMLimit - hourlyDMUsed),
+            Math.max(0, monthlyDMLimit - monthlyUsed)
+        );
+        const commentSlots = Math.max(0, hourlyCommentLimit - hourlyCommentUsed);
 
-        // D. Split into "Send Now" and "Reschedule"
-        const dmsToSend = userDMs.slice(0, availableSlots);
-        const dmsToReschedule = userDMs.slice(availableSlots);
+        // E. Filter "Send Now" and "Reschedule"
+        const dmsToSend = allDMs.slice(0, dmSlots);
+        const repliesToSend = allReplies.slice(0, commentSlots);
 
-        // E. Reschedule Excess DMs
-        if (dmsToReschedule.length > 0) {
+        const dmsToReschedule = allDMs.slice(dmSlots);
+        const repliesToReschedule = allReplies.slice(commentSlots);
+        const toReschedule = [...dmsToReschedule, ...repliesToReschedule];
+
+        // F. Reschedule Excess Actions
+        if (toReschedule.length > 0) {
             let nextAvailableTime: Date;
 
-            if (monthlySlots <= 0) {
-                // Reschedule to next month
+            if (monthlyDMLimit - monthlyUsed <= 0 && dmsToReschedule.length > 0) {
+                // Reschedule to next month if monthly limit triggered it
                 const nextMonth = new Date(monthStart);
                 nextMonth.setMonth(nextMonth.getMonth() + 1);
                 nextAvailableTime = nextMonth;
-                logger.warn("User hit MONTHLY limit during queue processing", { userId, rescheduleCount: dmsToReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
+                logger.warn("User hit MONTHLY DM limit during queue processing", { userId, rescheduleCount: dmsToReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
             } else {
                 // Reschedule to next hour
                 const hourStart = new Date();
                 hourStart.setMinutes(0, 0, 0);
                 const nextHour = new Date(hourStart);
                 nextHour.setHours(nextHour.getHours() + 1);
-                // Add jitter
                 const jitterMinutes = Math.floor(Math.random() * 10);
                 nextHour.setMinutes(jitterMinutes);
                 nextAvailableTime = nextHour;
-                logger.warn("User hit HOURLY limit during queue processing", { userId, rescheduleCount: dmsToReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
+                logger.warn("User hit HOURLY limit during queue processing", { userId, rescheduleCount: toReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
             }
 
-            // Bulk Update Rescheduled DMs (from 'processing' back to 'pending' + delay)
-            const idsToReschedule = dmsToReschedule.map((d: any) => d.id);
+            const idsToReschedule = toReschedule.map((d: any) => d.id);
             await (supabase as any)
                 .from("dm_queue")
                 .update({
-                    status: "pending", // Unlock them for the future
+                    status: "pending",
                     scheduled_send_at: nextAvailableTime.toISOString(),
                     priority: limits.priorityQueue ? 10 : 5
                 })
                 .in("id", idsToReschedule);
         }
 
-        // F. Send Allowed DMs
-        if (dmsToSend.length > 0) {
-            logger.info("Sending queued DMs", { userId, count: dmsToSend.length, planType, category: "rate-limiter" });
+        const toSend = [...dmsToSend, ...repliesToSend];
 
-            await Promise.allSettled(dmsToSend.map(async (dm: any) => {
+        // G. Send Allowed Actions
+        if (toSend.length > 0) {
+            logger.info("Sending queued actions", { userId, count: toSend.length, planType, category: "rate-limiter" });
+
+            await Promise.allSettled(toSend.map(async (dm: any) => {
                 try {
                     const isPublicReply = dm.message.startsWith("__PUBLIC_REPLY__:");
                     const actualMessage = isPublicReply ? dm.message.replace("__PUBLIC_REPLY__:", "") : dm.message;
                     let actionSent = false;
 
                     if (isPublicReply) {
-                        // Handle Public Reply
-                        // Note: replyToComment will handle its own logging/incrementing internally
-                        // but we need to ensure the queue status is updated.
                         const { replyToComment } = await import("./instagram/service");
                         actionSent = await replyToComment(
                             dm.users.instagram_access_token,
@@ -429,7 +443,6 @@ export async function processQueuedDMs() {
                             dm.user_id
                         );
                     } else {
-                        // Handle Private DM
                         actionSent = await sendInstagramDM(
                             dm.users.instagram_access_token,
                             dm.users.instagram_user_id,
@@ -447,36 +460,36 @@ export async function processQueuedDMs() {
 
                     if (actionSent) {
                         // CRITICAL: Atomically increment rate limit after successful send
-                        await (supabase as any).rpc("increment_rate_limit", { p_user_id: dm.user_id });
-
-                        if (!isPublicReply) {
-                            await incrementAutomationCount(supabase, dm.automation_id, "dm_sent_count");
-                        } else {
-                            // Public replies use comment_count in automation stats
+                        if (isPublicReply) {
+                            await (supabase as any).rpc("increment_comment_rate_limit", { p_user_id: dm.user_id });
                             await incrementAutomationCount(supabase, dm.automation_id, "comment_count");
-                        }
+                        } else {
+                            await (supabase as any).rpc("increment_rate_limit", { p_user_id: dm.user_id });
+                            await incrementAutomationCount(supabase, dm.automation_id, "dm_sent_count");
 
-                        // Update or Create logs
-                        await (supabase as any).from("dm_queue").update({
-                            status: "sent",
-                            sent_at: new Date().toISOString()
-                        }).eq("id", dm.id);
-
-                        if (!isPublicReply) {
-                            // Update DM Log only for DM actions
+                            // Update DM Log only for private messages
                             await (supabase as any).from("dm_logs").update({
                                 reply_sent: true,
                                 reply_sent_at: new Date().toISOString(),
                                 keyword_matched: "QUEUED",
                             }).eq("instagram_comment_id", dm.instagram_comment_id);
                         }
+
+                        // Update queue log
+                        await (supabase as any).from("dm_queue").update({
+                            status: "sent",
+                            sent_at: new Date().toISOString()
+                        }).eq("id", dm.id);
                     } else {
                         throw new Error("Action delivery failed");
                     }
                 } catch (error) {
                     logger.error(`Failed to process queued ${dm.message.startsWith("__PUBLIC_REPLY__:") ? 'Reply' : 'DM'}`, { dmId: dm.id, category: "rate-limiter" }, error as Error);
                     await (supabase as any).from("dm_queue").update({ status: "failed", error_message: (error as Error).message }).eq("id", dm.id);
-                    await incrementAutomationCount(supabase, dm.automation_id, "dm_failed_count");
+
+                    if (!dm.message.startsWith("__PUBLIC_REPLY__:_")) {
+                        await incrementAutomationCount(supabase, dm.automation_id, "dm_failed_count");
+                    }
                 }
             }));
         }

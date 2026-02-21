@@ -17,7 +17,9 @@ export interface MetaRateLimitInfo {
 
 /**
  * Parse Meta rate limit headers from API response.
- * Reads X-Business-Use-Case-Usage (BUC) or X-App-Usage (Platform).
+ * Meta uses different headers for different pools:
+ * - X-Business-Use-Case-Usage (BUC): Content APIs (Instagram error 80002, Messenger 80006)
+ * - X-App-Usage (Platform): App token APIs (Error 4, 17, 32)
  */
 export async function parseMetaRateLimitHeaders(response: Response, accountId?: string): Promise<MetaRateLimitInfo | null> {
     try {
@@ -84,6 +86,8 @@ export async function parseMetaRateLimitHeaders(response: Response, accountId?: 
 
 /**
  * Check if we should throttle API calls based on cached rate limit info.
+ * Enforces safety thresholds: 95% (Hard Pause), 80% (Soft Delay), 50% (Log).
+ * Uses Redis with 5-min TTL to match the minimum Meta regaining window.
  * Returns delay in ms to wait (0 = no throttle).
  */
 export async function shouldThrottle(accountId?: string): Promise<{ throttled: boolean; delayMs: number; info?: MetaRateLimitInfo }> {
@@ -194,7 +198,11 @@ export async function checkIsFollowing(
 }
 
 /**
- * Send a direct message via Instagram API
+ * Send a direct message via Instagram Send API
+ * 
+ * META RATE LIMITS (Send API):
+ * - 100 calls/second per IG professional account for Text, Links, Stickers
+ * - 10 calls/second per IG professional account for Audio, Video, Images
  * 
  * PRO SAAS SAFETY (Level 9.5/10):
  * - Implements "typing_on" sender action to mimic human presence
@@ -514,7 +522,12 @@ export async function sendFollowGateCard(
 }
 
 /**
- * Reply to a comment publicly via Instagram API
+ * Reply to a comment publicly via Instagram Private Replies API
+ * 
+ * META RATE LIMITS (Private Replies API):
+ * - 750 calls/HOUR per IG professional account for Posts/Reels comments
+ * - 100 calls/second per IG professional account for Live comments
+ * Note: This rate limit pool is entirely separate from the Send API.
  */
 export async function replyToComment(
     accessToken: string,

@@ -20,6 +20,7 @@ export const PRICING_PLANS = {
             automations: 3,
             dmsPerMonth: 1000,
             dmsPerHour: 190, // Ultra-Safe Starter Speed
+            // INTERNAL SAFETY: 190 comments/hr. Meta's official Private Replies API limit is 750/hour. We stay well under.
             commentsPerHour: 190,
             queueEnabled: true,
             priorityQueue: false,
@@ -56,6 +57,7 @@ export const PRICING_PLANS = {
             automations: 10,
             dmsPerMonth: 50000,
             dmsPerHour: 250, // Safe Production Speed
+            // INTERNAL SAFETY: 190 comments/hr. Meta's official Private Replies API limit is 750/hour. We stay well under.
             commentsPerHour: 190,
             queueEnabled: true,
             priorityQueue: false,
@@ -93,6 +95,7 @@ export const PRICING_PLANS = {
             automations: 999,
             dmsPerMonth: 1000000,
             dmsPerHour: 350, // Peak Safe Speed (Meta BUC allows more, but we stay safe)
+            // INTERNAL SAFETY: 190 comments/hr. Meta's official Private Replies API limit is 750/hour. We stay well under.
             commentsPerHour: 190,
             queueEnabled: true,
             priorityQueue: true,
