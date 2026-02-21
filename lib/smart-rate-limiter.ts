@@ -180,27 +180,49 @@ export async function processQueuedDMs() {
 
     logger.info("Default Cron Processing Started", { category: "rate-limiter" });
 
-    // 1. Fetch Processable DMs
-    // Join with users and automations
-    const { data: queuedDMs, error } = await (supabase as any)
+    // 1. Fetch Processable DMs ATOMICALLY to prevent Race Conditions
+    // We cannot just SELECT here, because two simultaneous crons would fetch the same rows.
+    // We must UPDATE their status to 'processing' atomically and return them.
+    // Note: Supabase JS doesn't have a direct UPDATE ... LIMIT RETURNING.
+    // Instead of raw RPC, we first fetch ID candidates, then attempt to atomically lock them.
+    const { data: candidates, error: candidateError } = await (supabase as any)
         .from("dm_queue")
-        .select(`
-      *,
-      users (id, plan_type, instagram_access_token, instagram_user_id),
-      automations (button_text, link_url, media_thumbnail_url)
-    `)
+        .select("id")
         .eq("status", "pending")
         .lte("scheduled_send_at", now.toISOString())
         .order("priority", { ascending: false }) // Process High Priority First
         .order("scheduled_send_at", { ascending: true })
         .limit(200); // Fetch sizeable batch
 
-    if (error) {
-        logger.error("Error fetching queue", { category: "rate-limiter" }, error);
+    if (candidateError) {
+        logger.error("Error fetching queue candidates", { category: "rate-limiter" }, candidateError);
         return;
     }
 
-    if (!queuedDMs || queuedDMs.length === 0) return;
+    if (!candidates || candidates.length === 0) return;
+
+    // ATOMIC LOCK: Only rows that are CURRENTLY "pending" get updated to "processing"
+    const idsToLock = candidates.map((c: any) => c.id);
+    const { data: queuedDMs, error } = await (supabase as any)
+        .from("dm_queue")
+        .update({ status: "processing" })
+        .eq("status", "pending") // Strict condition: must still be pending
+        .in("id", idsToLock)
+        .select(`
+      *,
+      users (id, plan_type, instagram_access_token, instagram_user_id),
+      automations (button_text, link_url, media_thumbnail_url)
+    `);
+
+    if (error) {
+        logger.error("Error securing atomic lock on queue", { category: "rate-limiter" }, error);
+        return;
+    }
+
+    if (!queuedDMs || queuedDMs.length === 0) {
+        logger.info("Cron: Another process already claimed the queue batch", { category: "rate-limiter" });
+        return;
+    }
 
     logger.info("Processing queued DMs in PARALLEL", { count: queuedDMs.length, category: "rate-limiter" });
 
@@ -278,11 +300,12 @@ export async function processQueuedDMs() {
                 logger.warn("User hit HOURLY limit during queue processing", { userId, rescheduleCount: dmsToReschedule.length, nextAvailableTime: nextAvailableTime.toISOString(), category: "rate-limiter" });
             }
 
-            // Bulk Update Rescheduled DMs
+            // Bulk Update Rescheduled DMs (from 'processing' back to 'pending' + delay)
             const idsToReschedule = dmsToReschedule.map((d: any) => d.id);
             await (supabase as any)
                 .from("dm_queue")
                 .update({
+                    status: "pending", // Unlock them for the future
                     scheduled_send_at: nextAvailableTime.toISOString(),
                     priority: limits.priorityQueue ? 10 : 5
                 })
