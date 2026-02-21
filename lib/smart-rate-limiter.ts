@@ -451,8 +451,8 @@ export async function processQueuedDMs() {
                             actualMessage,
                             dm.automation_id,
                             dm.automations.button_text,
-                            dm.automations.link_url,
-                            dm.automations.link_url ? dm.automations.media_thumbnail_url : undefined,
+                            undefined, // FORCES POSTBACK for follow-gate check
+                            dm.automations.media_thumbnail_url || undefined,
                             supabase,
                             dm.user_id
                         );
