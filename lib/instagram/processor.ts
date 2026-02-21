@@ -203,12 +203,36 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         }
 
         if (selectedReply) {
-            await queueDM(user.id, {
-                commentId: commentId,
-                commenterId: commenterId,
-                message: `__PUBLIC_REPLY__:${selectedReply}`,
-                automation_id: automation.id
-            });
+            // Check Rate Limit for Public Reply
+            const limits = getPlanLimits(user.plan_type || "free");
+            const rateLimit = await smartRateLimit(
+                user.id,
+                { hourlyLimit: limits.commentsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+                user.created_at
+            );
+
+            if (rateLimit.allowed) {
+                const replySent = await replyToComment(
+                    user.instagram_access_token,
+                    commentId,
+                    selectedReply,
+                    supabase,
+                    user.id
+                );
+
+                if (replySent) {
+                    await incrementAutomationCount(supabase, automation.id, "comment_count");
+                    logger.info("Public reply sent instantly", { commenterUsername, automationId: automation.id });
+                }
+            } else {
+                logger.warn("Public reply rate limited, pushing to queue", { userId: user.id });
+                await queueDM(user.id, {
+                    commentId: commentId,
+                    commenterId: commenterId,
+                    message: `__PUBLIC_REPLY__:${selectedReply}`,
+                    automation_id: automation.id
+                });
+            }
         }
 
         // 8. ONE DM PER USER CHECK + ATOMIC CLAIM
@@ -261,12 +285,48 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         // This ensures every lead gets a random delay, which is safer than ManyChat.
 
         let dmMessage = getUniqueMessage(automation.reply_message, commenterUsername);
-        await queueDM(user.id, {
-            commentId: commentId,
-            commenterId: commenterId,
-            message: dmMessage,
-            automation_id: automation.id
-        });
+        let buttonText = automation.button_text || "Get Link";
+        let directLink = automation.link_url || undefined;
+        // The Opening DM ALWAYS uses a postback button.
+        // We never send the direct link in step 1, matching the wizard flow explicitly.
+        const finalLinkUrlToSend = undefined;
+
+        const limits = getPlanLimits(user.plan_type || "free");
+        const rateLimit = await smartRateLimit(
+            user.id,
+            { hourlyLimit: limits.dmsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+            user.created_at
+        );
+
+        if (rateLimit.allowed) {
+            // STEP 1: Send exact wizard match (Text + Button in one card)
+            const dmSent = await sendInstagramDM(
+                user.instagram_access_token,
+                user.instagram_user_id,
+                commentId,
+                commenterId,
+                dmMessage,
+                automation.id,
+                buttonText,
+                finalLinkUrlToSend,
+                automation.media_thumbnail_url || undefined,
+                supabase,
+                user.id
+            );
+
+            if (dmSent) {
+                await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                logger.info("Direct DM sent instantly (Wizard Matched Card)", { commenterUsername, automationId: automation.id });
+            }
+        } else {
+            logger.warn("Direct DM rate limited, pushing to queue", { userId: user.id });
+            await queueDM(user.id, {
+                commentId: commentId,
+                commenterId: commenterId,
+                message: dmMessage,
+                automation_id: automation.id
+            });
+        }
 
     } catch (error) {
         logger.error("Error in handleCommentEvent", { instagramUserId }, error as Error);
@@ -392,14 +452,47 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             }
 
             // 9. Send the Story DM (Safety First - Rate Limit check)
-            const dmMessage = getUniqueMessage(automation.reply_message, messaging.sender?.username);
+            const limits = getPlanLimits(user.plan_type || "free");
+            const rateLimit = await smartRateLimit(
+                user.id,
+                { hourlyLimit: limits.dmsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+                user.created_at
+            );
 
-            await queueDM(user.id, {
-                commentId: storyInteractionId,
-                commenterId: senderIgsid,
-                message: dmMessage,
-                automation_id: automation.id
-            });
+            if (rateLimit.allowed) {
+                const dmMessage = getUniqueMessage(automation.reply_message, messaging.sender?.username);
+                const buttonText = automation.button_text || "View Link";
+
+                // STEP 1: Send exact wizard match (Text + Button in one card)
+                // The initial message ALWAYS uses a postback button, never a direct web_url.
+                const dmSent = await sendInstagramDM(
+                    user.instagram_access_token,
+                    user.instagram_user_id,
+                    storyInteractionId,
+                    senderIgsid,
+                    dmMessage,
+                    automation.id,
+                    buttonText,
+                    undefined, // Forces postback
+                    automation.media_thumbnail_url || undefined,
+                    supabase,
+                    user.id
+                );
+
+                if (dmSent) {
+                    await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    logger.info("Story interaction completed instantly (Wizard Matched Card)", { senderIgsid, automationId: automation.id });
+                }
+            } else {
+                logger.warn("Story DM rate limited, pushing to queue", { userId: user.id });
+                const dmMessage = getUniqueMessage(automation.reply_message, messaging.sender?.username);
+                await queueDM(user.id, {
+                    commentId: storyInteractionId,
+                    commenterId: senderIgsid,
+                    message: dmMessage,
+                    automation_id: automation.id
+                });
+            }
 
             return;
         }
