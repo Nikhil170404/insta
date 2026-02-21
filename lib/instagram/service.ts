@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { redis } from "@/lib/upstash"; // ADDED: Shared across Vercel functions
 
 const GRAPH_API_VERSION = "v21.0";
 
@@ -14,14 +15,11 @@ export interface MetaRateLimitInfo {
     type?: string;           // e.g. "instagram", "messenger"
 }
 
-// In-memory cache of last known rate limit state per account
-const rateLimitCache: Map<string, { info: MetaRateLimitInfo; updatedAt: number }> = new Map();
-
 /**
  * Parse Meta rate limit headers from API response.
  * Reads X-Business-Use-Case-Usage (BUC) or X-App-Usage (Platform).
  */
-export function parseMetaRateLimitHeaders(response: Response, accountId?: string): MetaRateLimitInfo | null {
+export async function parseMetaRateLimitHeaders(response: Response, accountId?: string): Promise<MetaRateLimitInfo | null> {
     try {
         // Try BUC header first (Instagram Platform uses this)
         const bucHeader = response.headers.get("x-business-use-case-usage");
@@ -39,7 +37,10 @@ export function parseMetaRateLimitHeaders(response: Response, accountId?: string
                     type: usage.type,
                 };
                 const cacheKey = accountId || "default";
-                rateLimitCache.set(cacheKey, { info, updatedAt: Date.now() });
+                // Background update Upstash Redis (5 min TTL)
+                redis.set(`meta_rate_limit:${cacheKey}`, { info, updatedAt: Date.now() }, { ex: 300 }).catch(err =>
+                    logger.debug("Failed to set meta_rate_limit cache", { err: err.message })
+                );
 
                 // Log warnings at different thresholds
                 if (info.callCount >= 95) {
@@ -64,7 +65,10 @@ export function parseMetaRateLimitHeaders(response: Response, accountId?: string
                 estimatedTimeToRegain: 0,
             };
             const cacheKey = accountId || "default";
-            rateLimitCache.set(cacheKey, { info, updatedAt: Date.now() });
+            // Background update Upstash Redis (5 min TTL)
+            redis.set(`meta_rate_limit:${cacheKey}`, { info, updatedAt: Date.now() }, { ex: 300 }).catch(err =>
+                logger.debug("Failed to set meta_rate_limit cache", { err: err.message })
+            );
 
             if (info.callCount >= 80) {
                 logger.warn("Meta API platform rate limit HIGH", { ...info, accountId, category: "instagram" });
@@ -82,15 +86,17 @@ export function parseMetaRateLimitHeaders(response: Response, accountId?: string
  * Check if we should throttle API calls based on cached rate limit info.
  * Returns delay in ms to wait (0 = no throttle).
  */
-export function shouldThrottle(accountId?: string): { throttled: boolean; delayMs: number; info?: MetaRateLimitInfo } {
+export async function shouldThrottle(accountId?: string): Promise<{ throttled: boolean; delayMs: number; info?: MetaRateLimitInfo }> {
     const cacheKey = accountId || "default";
-    const cached = rateLimitCache.get(cacheKey);
+
+    // Fetch from central Redis instead of broken memory Map
+    const cached = await redis.get<{ info: MetaRateLimitInfo; updatedAt: number }>(`meta_rate_limit:${cacheKey}`);
 
     if (!cached) return { throttled: false, delayMs: 0 };
 
-    // Cache is stale after 5 minutes — ignore
+    // Cache is stale after 5 minutes — ignore (Redis 'ex' also handles this)
     if (Date.now() - cached.updatedAt > 5 * 60 * 1000) {
-        rateLimitCache.delete(cacheKey);
+        await redis.del(`meta_rate_limit:${cacheKey}`);
         return { throttled: false, delayMs: 0 };
     }
 
@@ -216,7 +222,7 @@ export async function sendInstagramDM(
         }
 
         // Check Meta rate limit before sending
-        const throttle = shouldThrottle(senderId);
+        const throttle = await shouldThrottle(senderId);
         if (throttle.throttled) {
             logger.warn("Meta rate limit reached — skipping DM", {
                 senderId,
@@ -344,15 +350,16 @@ export async function sendInstagramDM(
                 });
                 // Force throttle by setting callCount to 100%
                 const cacheKey = senderId || "default";
-                rateLimitCache.set(cacheKey, {
+                const estimatedMins = errorData?.error?.estimated_time_to_regain_access || 5;
+                await redis.set(`meta_rate_limit:${cacheKey}`, {
                     info: {
                         callCount: 100,
                         totalCpuTime: 0,
                         totalTime: 0,
-                        estimatedTimeToRegain: errorData?.error?.estimated_time_to_regain_access || 5,
+                        estimatedTimeToRegain: estimatedMins,
                     },
                     updatedAt: Date.now(),
-                });
+                }, { ex: Math.max(300, estimatedMins * 60) }); // Enforce redis TTL to match regain time or 5min min
             }
 
             // 3.5: Auto-pause mechanism for Spam/Block errors
@@ -403,7 +410,7 @@ export async function sendFollowGateCard(
 ): Promise<boolean> {
     try {
         // Check Meta rate limit
-        const throttle = shouldThrottle(senderId);
+        const throttle = await shouldThrottle(senderId);
         if (throttle.throttled) {
             logger.warn("Meta rate limit reached — skipping follow-gate", {
                 senderId, recipientId, category: "instagram",

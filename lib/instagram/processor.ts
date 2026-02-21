@@ -321,6 +321,8 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
                     } else {
                         await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
+                        // [FIX] Rollback atomic increment on hard block
+                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
                     }
                     return;
                 } else {
@@ -349,6 +351,9 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                                 is_follow_gate: true
                             })
                             .eq("instagram_comment_id", commentId);
+                    } else {
+                        // [FIX] Rollback atomic increment on hard block
+                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
                     }
                     return;
                 }
@@ -390,6 +395,9 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
                     if (greetingSent) {
                         await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
+                    } else {
+                        // [FIX] Rollback atomic increment on hard block
+                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
                     }
 
                     return; // Stop here, follow-gate check happens on button click
@@ -425,6 +433,8 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
                     } else {
                         await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
+                        // [FIX] Rollback atomic increment on hard block
+                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
                     }
                     return;
                 }
@@ -469,6 +479,8 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             }
         } else {
             await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
+            // [FIX] Rollback atomic increment on hard block
+            await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
         }
 
     } catch (error) {
