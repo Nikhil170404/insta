@@ -92,7 +92,7 @@ export const PRICING_PLANS = {
         ],
         limits: {
             accounts: 1,
-            automations: 999,
+            automations: 9999999, // Defines Unlimited
             dmsPerMonth: 1000000,
             dmsPerHour: 350, // Peak Safe Speed (Meta BUC allows more, but we stay safe)
             // INTERNAL SAFETY: 190 comments/hr. Meta's official Private Replies API limit is 750/hour. We stay well under.
