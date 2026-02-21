@@ -1,0 +1,271 @@
+﻿[dotenv@17.2.4] injecting env (21) from .env.local -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+[dotenv@17.2.4] injecting env (0) from .env -- tip: Γ£à audit secrets and track compliance: https://dotenvx.com/ops
+≡ƒÜÇ Starting Rate Limit Separation Test...
+≡ƒæñ Using test user: c66f95a8-86e0-4f63-a39a-8f132f9f27e2
+≡ƒô¥ Inserting 10 Private DMs and 10 Public Replies into the queue...
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:52:59.925Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:00.243Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:00.557Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:00.848Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:01.164Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:01.473Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:01.766Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:02.060Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:02.582Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:02.894Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:03.196Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:03.490Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:03.791Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:04.161Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:04.471Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:04.771Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:05.091Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:05.405Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:05.707Z","category":"rate-limiter"}
+Γä╣∩╕Å [INFO] DM queued with human-like safety delay | {"scheduledFor":"2026-02-21T15:53:06.014Z","category":"rate-limiter"}
+Γ£à Queue prepped with 20 total pending items globally.
+≡ƒöÑ Running Queue Processor...
+Γä╣∩╕Å [INFO] Default Cron Processing Started | {"category":"rate-limiter"}
+Γä╣∩╕Å [INFO] Processing queued DMs in PARALLEL | {"count":20,"category":"rate-limiter"}
+npx : ΓÜá∩╕Å [WARN] User hit HOURLY limit during 
+queue processing | {"userId":"c66f95a8-86e0-4f63-a39
+a-8f132f9f27e2","rescheduleCount":10,"nextAvailableT
+ime":"2026-02-21T16:32:00.000Z","category":"rate-lim
+iter"}
+At line:1 char:1
++ npx tsx scripts/test-rate-limits.ts > 
+scripts/test-output.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá∩╕Å 
+    [WARN] U..."rate-limiter"}:String) [], RemoteE  
+  xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Γä╣∩╕Å [INFO] Sending queued actions | {"userId":"c66f95a8-86e0-4f63-a39a-8f132f9f27e2","count":10,"planType":"free","category":"rate-limiter"}
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689183791_2","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"cc441382-af18-444e-96c3-5cc059d95589","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 2)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689185707_8","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"7853319a-6feb-4e5f-b779-b11ef0564648","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 8)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689185091_6","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"1b7f8100-a330-43cb-bf6e-4b25031a03ea","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 6)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689183490_1","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"52815823-8ba4-4fb3-8cbc-9daca020e453","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 1)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689184161_3","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"1ef93c7c-155d-4aaf-9861-9489e072e2c8","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 3)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689183196_0","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"35ff5fdb-ecbd-4f7f-939c-ef7b6d4ecc86","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 0)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689185405_7","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"d79bfa13-5aa6-4eb3-870f-80f0998da955","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 7)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689184471_4","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"4b1b7fc5-231d-460b-bfc0-546a795a7fc9","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 4)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689184771_5","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"063dcf5b-edad-4df2-8610-2264205e1a57","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 5)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γ¥î [ERROR] Meta Public Reply API Error | {"errorCod
+e":100,"commentId":"test_reply_1771689186014_9","cat
+egory":"instagram"}
+Γ¥î [ERROR] Failed to process queued Reply | {"dmId"
+:"3b0143e7-d003-42c6-9d89-3299dc55fdd2","category":"
+rate-limiter"}
+   Error: Action delivery failed
+   Stack: Error: Action delivery failed
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:484:31)
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:95:5)
+    at async Promise.allSettled (index 9)
+    at <anonymous> (C:\Users\Prashant\OneDrive\Deskt
+op\instadm\lib\smart-rate-limiter.ts:430:13)
+    at async Promise.allSettled (index 0)
+    at processQueuedDMs (C:\Users\Prashant\OneDrive\
+Desktop\instadm\lib\smart-rate-limiter.ts:498:5)
+    at runRateLimitSeparationTest (C:\Users\Prashant
+\OneDrive\Desktop\instadm\scripts\test-rate-limits.t
+s:84:5)
+Γä╣∩╕Å [INFO] Queue Processing Complete | {"category":"rate-limiter"}
+Γ£à Processor finished.
+
+≡ƒôè Final Queue State (Integration Test):
+
+[PRIVATE DMs] (Limit was explicitly maxed out to 500/hr)
+- Rescheduled/Pending: 10 (Should be 10)
+- Processed: 0 (Should be 0)
+   Γ£à Private DMs correctly throttled!
+
+[PUBLIC REPLIES] (Limit was empty at 0/hr)
+- Rescheduled/Pending: 0 (Should be 0)
+- Processed: 10 (Should be 10)
+   Γ£à Public Replies correctly bypassed DM limit!
+
+≡ƒÄë SUCCESS: DM and Comment Rate Limits are 100% perfectly separated!
