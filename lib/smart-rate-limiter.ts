@@ -387,6 +387,15 @@ export async function processQueuedDMs() {
         const monthlyDMLimit = limits.dmsPerMonth || 1000;
         const hourlyCommentLimit = limits.commentsPerHour || 190;
 
+        // ─────────────────────────────────────────────────────────────────────────────
+        // SEPARATE META API POOLS — tracked independently in rate_limits table:
+        //   dm_count      → Send API              (100 calls/sec, plan-based hourly cap)
+        //   comment_count → Private Replies API   (Meta cap: 750/hr, our cap: 190/hr)
+        //
+        // hour_bucket = date_trunc('hour', NOW())  →  auto-resets every clock hour
+        // Monthly quota applies only to DMs (plan limit). Comments have no monthly cap.
+        // ─────────────────────────────────────────────────────────────────────────────
+
         // C. Split Logic (DMs vs Comment Replies have separate Meta pools)
         const allDMs = userDMs.filter((dm: any) => !dm.message.startsWith("__PUBLIC_REPLY__:"));
         const allReplies = userDMs.filter((dm: any) => dm.message.startsWith("__PUBLIC_REPLY__:"));

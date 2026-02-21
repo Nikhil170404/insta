@@ -189,8 +189,9 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         }
 
         // 7. QUEUE PUBLIC REPLY (Safety First - Human Delay)
-        // Meta counts both Public Replies and DMs towards the 200/hour limit.
-        // We now queue the reply to include a random human-like delay (30-120s).
+        // PUBLIC REPLY — Uses Meta's Private Replies API (separate pool from DMs).
+        // Meta limit: 750 calls/HOUR per IG account. Our internal cap: 190/hr.
+        // If over our hourly cap, push to queue (processed by cron every minute).
         const templates: string[] = automation.comment_reply_templates || [];
         const singleReply = automation.comment_reply;
         let selectedReply = "";
@@ -229,6 +230,10 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 if (replySent) {
                     await incrementAutomationCount(supabase, automation.id, "comment_count");
                     logger.info("Public reply sent instantly", { commenterUsername, automationId: automation.id });
+                } else {
+                    // Rollback: undo the counter increment from smartRateLimit so slot isn't wasted
+                    await (supabase as any).rpc("decrement_comment_rate_limit", { p_user_id: user.id });
+                    logger.warn("Public reply API failed — comment rate limit slot returned", { commenterUsername });
                 }
             } else {
                 logger.warn("Public reply rate limited, pushing to queue", { userId: user.id });
@@ -329,6 +334,10 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             if (dmSent) {
                 await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
                 logger.info("Direct DM sent instantly (Wizard Matched Card)", { commenterUsername, automationId: automation.id });
+            } else {
+                // Rollback: undo the counter increment from smartRateLimit so slot isn't wasted
+                await (supabase as any).rpc("decrement_rate_limit", { p_user_id: user.id });
+                logger.warn("DM API failed — DM rate limit slot returned", { commenterUsername });
             }
         } else {
             logger.warn("Direct DM rate limited, pushing to queue", { userId: user.id });
