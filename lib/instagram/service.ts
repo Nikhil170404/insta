@@ -205,7 +205,9 @@ export async function sendInstagramDM(
     automationId?: string,
     buttonText?: string,
     linkUrl?: string,
-    thumbnailUrl?: string
+    thumbnailUrl?: string,
+    supabase?: any,
+    userId?: string
 ): Promise<boolean> {
     try {
         if (!accessToken || accessToken.length < 20) {
@@ -353,6 +355,16 @@ export async function sendInstagramDM(
                 });
             }
 
+            // 3.5: Auto-pause mechanism for Spam/Block errors
+            if (errorCode === 368 || errorCode === 10 || errorCode === 32) {
+                logger.error("Meta API Critical Block — auto-pausing user automations", {
+                    errorCode, senderId, userId, category: "instagram"
+                });
+                if (supabase && userId) {
+                    await supabase.from("automations").update({ is_active: false }).eq("user_id", userId);
+                }
+            }
+
             logger.error("Meta API DM Error", {
                 errorCode,
                 errorMessage: errorData?.error?.message,
@@ -385,7 +397,9 @@ export async function sendFollowGateCard(
     automationId: string,
     profileUsername: string,
     thumbnailUrl?: string,
-    customMessage?: string
+    customMessage?: string,
+    supabase?: any,
+    userId?: string
 ): Promise<boolean> {
     try {
         // Check Meta rate limit
@@ -456,8 +470,20 @@ export async function sendFollowGateCard(
 
         if (!response.ok) {
             const errorData = await response.json();
+            const errorCode = errorData?.error?.code;
+
+            // Auto-pause mechanism for Spam/Block errors
+            if (errorCode === 368 || errorCode === 10 || errorCode === 32) {
+                logger.error("Meta API Critical Block on Follow-Gate — auto-pausing user automations", {
+                    errorCode, senderId, userId, category: "instagram"
+                });
+                if (supabase && userId) {
+                    await supabase.from("automations").update({ is_active: false }).eq("user_id", userId);
+                }
+            }
+
             logger.error("Follow-gate card error", {
-                errorCode: errorData?.error?.code,
+                errorCode,
                 errorMessage: errorData?.error?.message,
                 recipientId, category: "instagram",
             });
@@ -478,7 +504,9 @@ export async function sendFollowGateCard(
 export async function replyToComment(
     accessToken: string,
     commentId: string,
-    message: string
+    message: string,
+    supabase?: any,
+    userId?: string
 ): Promise<boolean> {
     try {
         if (!message || message.trim().length === 0) {
@@ -497,8 +525,20 @@ export async function replyToComment(
 
         if (!response.ok) {
             const errorData = await response.json();
+            const errorCode = errorData?.error?.code;
+
+            // Auto-pause mechanism for Spam/Block errors
+            if (errorCode === 368 || errorCode === 10 || errorCode === 32) {
+                logger.error("Meta API Critical Block on Public Reply — auto-pausing user automations", {
+                    errorCode, commentId, userId, category: "instagram"
+                });
+                if (supabase && userId) {
+                    await supabase.from("automations").update({ is_active: false }).eq("user_id", userId);
+                }
+            }
+
             logger.error("Meta Public Reply API Error", {
-                errorCode: errorData?.error?.code,
+                errorCode,
                 commentId,
                 category: "instagram",
             });
@@ -676,11 +716,52 @@ export async function hideComment(
 
 /**
  * Add random variation to message to bypass Meta's spam filters
+ * Supports {Option A|Option B} spintax and {username} variables
  */
-export function getUniqueMessage(message: string): string {
-    const variations = ["📬", "✨", "✅", "💬", "🚀", "📥", "💌", "🌟", "🔥", "💎"];
+export function getUniqueMessage(message: string, username?: string | null): string {
+    if (!message) return "";
+
+    // 1. Parse Spintax: {Hi|Hello|Hey}
+    let parsedMessage = message.replace(/\{([^{}]*)\}/g, (match, contents) => {
+        // Ignore known variables instead of treating them as spintax
+        const lowerContents = contents.toLowerCase();
+        if (lowerContents === 'username' || lowerContents === 'first_name') return match;
+
+        const options = contents.split('|');
+        if (options.length === 1) return match; // Not actual spintax
+        return options[Math.floor(Math.random() * options.length)];
+    });
+
+    // 2. Personalize Variables (fallback to "there" if no username)
+    if (username) {
+        parsedMessage = parsedMessage.replace(/\{username\}|\{first_name\}/gi, `@${username}`);
+    } else {
+        parsedMessage = parsedMessage.replace(/\{username\}|\{first_name\}/gi, `there`);
+    }
+
+    // 3. Add random invisible/zero-width space characters to guarantee 100% unique hash
+    // \u200B is Zero-Width Space, \u200C is Zero-Width Non-Joiner, \u200D is Zero-Width Joiner
+    const invisibleChars = ['\u200B', '\u200C', '\u200D'];
+    let invisiblePadding = '';
+    // Generate between 1 and 10 invisible characters randomly
+    const numInvisible = Math.floor(Math.random() * 10) + 1;
+    for (let i = 0; i < numInvisible; i++) {
+        invisiblePadding += invisibleChars[Math.floor(Math.random() * invisibleChars.length)];
+    }
+
+    // 4. Expanded emoji variations (over 30 standard friendly emojis)
+    const variations = [
+        "📬", "✨", "✅", "💬", "🚀", "📥", "💌", "🌟", "🔥", "💎",
+        "⭐", "💡", "⚡", "🎉", "🎊", "🎈", "👋", "🙌", "👏", "👍",
+        "💯", "🎯", "🏆", "🎁", "📝", "📌", "📍", "🔔", "📣", "🥳", ""
+    ];
     const randomVariation = variations[Math.floor(Math.random() * variations.length)];
-    return `${message} ${randomVariation}`;
+
+    // The invisible padding ensures that even if the text and emoji are identical 
+    // to a previous message, the underlying string bytes sent to Meta are completely unique.
+    return randomVariation
+        ? `${parsedMessage} ${randomVariation}${invisiblePadding}`
+        : `${parsedMessage}${invisiblePadding}`;
 }
 
 /**

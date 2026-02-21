@@ -18,7 +18,7 @@ import { logger } from "@/lib/logger";
 /**
  * Handle a comment event from the batch
  */
-export async function handleCommentEvent(instagramUserId: string, eventData: any, supabase: any) {
+export async function handleCommentEvent(instagramUserId: string, eventData: any, supabase: any, webhookCreatedAt?: string) {
     try {
         const { id: commentId, text: commentText, from, media, parent_id } = eventData;
         const commenterId = from?.id;
@@ -29,6 +29,16 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         // 1. IGNORE REPLIES (Prevent Loops) - Unless strictly configured (later)
         if (parent_id) return;
+
+        // 1b. ENFORCE 24-HOUR WINDOW (Meta Policy)
+        const eventTime = webhookCreatedAt ? new Date(webhookCreatedAt).getTime() : Date.now();
+        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+
+        // Add a 5-minute buffer for processing delays to be perfectly safe
+        if (eventTime < (twentyFourHoursAgo + 5 * 60 * 1000)) {
+            logger.warn("Skipping comment older than 24 hours", { instagramUserId, commenterId, eventTime: new Date(eventTime).toISOString() });
+            return;
+        }
 
         // 2. Find the user (with caching)
         let user = await getCachedUser(instagramUserId);
@@ -71,6 +81,21 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 
         if (existingLog) {
             logger.info("Skipping duplicate comment ID", { commentId });
+            return;
+        }
+
+        // 4b. ENFORCE FREQUENCY CAPPING (1 message per user per 24 hours)
+        const twentyFourHoursAgoISO = new Date(twentyFourHoursAgo).toISOString();
+        const { data: recentDms } = await supabase
+            .from("dm_logs")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("instagram_user_id", commenterId)
+            .gte("created_at", twentyFourHoursAgoISO)
+            .limit(1);
+
+        if (recentDms && recentDms.length > 0) {
+            logger.info("Frequency cap hit: User already received a DM in the last 24h", { commenterUsername, userId: user.id });
             return;
         }
 
@@ -163,11 +188,11 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         const singleReply = automation.comment_reply;
         if (templates.length > 0) {
             const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-            const uniqueReply = getUniqueMessage(randomTemplate);
-            await replyToComment(user.instagram_access_token, commentId, uniqueReply);
+            const uniqueReply = getUniqueMessage(randomTemplate, commenterUsername);
+            await replyToComment(user.instagram_access_token, commentId, uniqueReply, supabase, user.id);
         } else if (singleReply && singleReply.trim().length > 0) {
-            const uniqueReply = getUniqueMessage(singleReply);
-            await replyToComment(user.instagram_access_token, commentId, uniqueReply);
+            const uniqueReply = getUniqueMessage(singleReply, commenterUsername);
+            await replyToComment(user.instagram_access_token, commentId, uniqueReply, supabase, user.id);
         }
 
         // 8. ONE DM PER USER CHECK + ATOMIC CLAIM
@@ -237,7 +262,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                 {
                     commentId,
                     commenterId,
-                    message: automation.reply_message, // Use automation.reply_message directly
+                    message: getUniqueMessage(automation.reply_message, commenterUsername), // Use mapped message
                     automation_id: automation.id
                 },
                 rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000), // Default to 1 min later
@@ -274,11 +299,13 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         instagramUserId,
                         commentId,
                         commenterId,
-                        automation.final_message || automation.reply_message,
+                        getUniqueMessage(automation.final_message || automation.reply_message, commenterUsername),
                         automation.id,
                         automation.final_button_text || "Open Link",
                         automation.link_url, // Direct link - single button experience for followers
-                        automation.media_thumbnail_url
+                        automation.media_thumbnail_url,
+                        supabase,
+                        user.id
                     );
 
                     // Update placeholder record
@@ -307,7 +334,9 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         automation.id,
                         user.instagram_username || '',
                         undefined, // No thumbnail for follow-gate card
-                        `Hey ${commenterUsername}! 👀 Hmm, looks like you haven't followed yet. Please follow us first to unlock this!`
+                        `Hey ${commenterUsername}! 👀 Hmm, looks like you haven't followed yet. Please follow us first to unlock this!`,
+                        supabase,
+                        user.id
                     );
                     if (cardSent) {
                         await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
@@ -341,11 +370,13 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         instagramUserId,
                         commentId,
                         commenterId,
-                        automation.reply_message,
+                        getUniqueMessage(automation.reply_message, commenterUsername),
                         automation.id,
                         automation.button_text || "Get Link",
                         undefined, // No direct link - follow check happens on button click
-                        undefined // No thumbnail for initial greeting
+                        undefined, // No thumbnail for initial greeting
+                        supabase,
+                        user.id
                     );
 
                     // Log as non-follower greeting (placeholder was already created in step 8b)
@@ -372,11 +403,13 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
                         instagramUserId,
                         commentId,
                         commenterId,
-                        automation.reply_message,
+                        getUniqueMessage(automation.reply_message, commenterUsername),
                         automation.id,
                         automation.button_text || "Get Link",
                         undefined, // No direct link - user must click button to get link (for click tracking)
-                        undefined // No thumbnail for initial greeting
+                        undefined, // No thumbnail for initial greeting
+                        supabase,
+                        user.id
                     );
 
                     // Update placeholder record
@@ -404,11 +437,13 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             instagramUserId,
             commentId,
             commenterId,
-            automation.reply_message,
+            getUniqueMessage(automation.reply_message, commenterUsername),
             automation.id,
             automation.button_text,
             automation.link_url,
-            automation.media_thumbnail_url
+            automation.media_thumbnail_url,
+            supabase,
+            user.id
         );
 
         // 12. Update placeholder record with result (placeholder was inserted in step 8b)
@@ -444,7 +479,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
 /**
  * Handle messaging events
  */
-export async function handleMessageEvent(instagramUserId: string, messaging: any, supabase: any) {
+export async function handleMessageEvent(instagramUserId: string, messaging: any, supabase: any, webhookCreatedAt?: string) {
     try {
         const senderIgsid = messaging.sender?.id;
         const message = messaging.message;
@@ -457,6 +492,14 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             hasAttachments: !!message?.attachments,
             payload: JSON.stringify(messaging).substring(0, 500) // Log first 500 chars of payload
         });
+
+        // ENFORCE 24-HOUR WINDOW (Meta Policy)
+        const eventTime = webhookCreatedAt ? new Date(webhookCreatedAt).getTime() : Date.now();
+        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+        if (eventTime < (twentyFourHoursAgo + 5 * 60 * 1000)) {
+            logger.warn("Skipping message older than 24 hours", { instagramUserId, senderIgsid, eventTime: new Date(eventTime).toISOString() });
+            return;
+        }
 
         // Detect story interaction: reply_to.story object exists
         const isStoryReply = !!message?.reply_to?.story;
@@ -533,6 +576,21 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 return;
             }
 
+            // ENFORCE FREQUENCY CAPPING (1 message per user per 24 hours)
+            const twentyFourHoursAgoISO = new Date(twentyFourHoursAgo).toISOString();
+            const { data: recentDms } = await supabase
+                .from("dm_logs")
+                .select("id")
+                .eq("user_id", user.id)
+                .eq("instagram_user_id", senderIgsid)
+                .gte("created_at", twentyFourHoursAgoISO)
+                .limit(1);
+
+            if (recentDms && recentDms.length > 0) {
+                logger.info("Frequency cap hit: User already received a DM in the last 24h", { senderIgsid, userId: user.id });
+                return;
+            }
+
             // Rate limit check
             const planLimits = getPlanLimits(user.plan_type || 'free');
             const rateLimitResult = await smartRateLimit(user.id, {
@@ -551,7 +609,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     {
                         commentId: storyInteractionId,
                         commenterId: senderIgsid,
-                        message: automation.reply_message,
+                        message: getUniqueMessage(automation.reply_message, messaging.sender?.username),
                         automation_id: automation.id
                     },
                     rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000),
@@ -567,11 +625,13 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 instagramUserId,
                 null,
                 senderIgsid,
-                automation.reply_message,
+                getUniqueMessage(automation.reply_message, messaging.sender?.username),
                 automation.id,
                 automation.button_text,
                 undefined, // Force 2-step flow (Postback) so we can handle follow-gate logic
-                undefined
+                undefined,
+                supabase,
+                user.id
             );
 
             if (dmSent) {
@@ -658,7 +718,9 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                         automation.id,
                         user.instagram_username || '',
                         undefined, // No thumbnail for follow-gate card
-                        followGateMsg
+                        followGateMsg,
+                        supabase,
+                        user.id
                     );
 
                     if (cardSent) {
@@ -722,11 +784,13 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 instagramUserId,
                 null,
                 senderIgsid,
-                automation.final_message || "Here is the link you requested! ✨",
+                getUniqueMessage(automation.final_message || "Here is the link you requested! ✨", messaging.sender?.username),
                 automation.id,
                 automation.final_button_text || "Open Link",
                 automation.link_url,
-                automation.media_thumbnail_url
+                automation.media_thumbnail_url,
+                supabase,
+                user.id
             );
 
             if (dmSent) {
@@ -806,11 +870,13 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     instagramUserId,
                     null,
                     senderIgsid,
-                    automation.final_message || automation.reply_message,
+                    getUniqueMessage(automation.final_message || automation.reply_message, messaging.sender?.username),
                     automation.id,
                     automation.final_button_text || "Open Link",
                     automation.link_url, // Send actual link - creates single "Open Link" button
-                    automation.media_thumbnail_url
+                    automation.media_thumbnail_url,
+                    supabase,
+                    user.id
                 );
 
                 if (dmSent) {
@@ -837,7 +903,9 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     automation.id,
                     user.instagram_username || '',
                     undefined, // No thumbnail for follow-gate card
-                    "Hmm, looks like you haven't followed yet! 🤔\n\nPlease follow us first, then tap 'I'm Following' again!"
+                    "Hmm, looks like you haven't followed yet! 🤔\n\nPlease follow us first, then tap 'I'm Following' again!",
+                    supabase,
+                    user.id
                 );
             }
         }

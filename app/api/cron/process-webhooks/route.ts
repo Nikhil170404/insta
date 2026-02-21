@@ -47,9 +47,9 @@ export async function GET(request: NextRequest) {
                 subBatch.map(async (webhook: any) => {
                     try {
                         if (webhook.event_type === 'comment') {
-                            await handleCommentEvent(webhook.instagram_user_id, webhook.payload, supabase);
+                            await handleCommentEvent(webhook.instagram_user_id, webhook.payload, supabase, webhook.created_at);
                         } else {
-                            await handleMessageEvent(webhook.instagram_user_id, webhook.payload, supabase);
+                            await handleMessageEvent(webhook.instagram_user_id, webhook.payload, supabase, webhook.created_at);
                         }
 
                         // Mark as processed

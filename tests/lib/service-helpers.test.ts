@@ -51,7 +51,7 @@ describe('Instagram service helpers', () => {
 
         it('works with empty string', () => {
             const result = getUniqueMessage('');
-            expect(result.trim().length).toBeGreaterThan(0);
+            expect(result).toBe('');
         });
     });
 });
