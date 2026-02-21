@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { redis } from "@/lib/upstash";
+import { getPlanLimits } from "@/lib/pricing";
 
 export async function GET() {
     const session = await getSession();
@@ -20,14 +21,14 @@ export async function GET() {
     // 2. Fetch current hour's rate limit usage
     const { data: rateLimitRows } = await (supabase
         .from("rate_limits") as any)
-        .select("dm_count")
+        .select("dm_count, comment_count")
         .eq("user_id", userId)
         .gte("hour_bucket", new Date(new Date().setMinutes(0, 0, 0)).toISOString());
 
-    // 3. Fetch token expiry from users
+    // 3. Fetch token expiry and plan from users
     const { data: user } = await (supabase
         .from("users") as any)
-        .select("instagram_token_expires_at, instagram_user_id")
+        .select("instagram_token_expires_at, instagram_user_id, plan_type")
         .eq("id", userId)
         .single();
 
@@ -68,8 +69,14 @@ export async function GET() {
         activeCount > 0 ? 5 : 0;
 
     // --- Factor 3: Internal Rate Limit Health (15 pts) ---
-    const currentUsage = rateLimitRows?.reduce((s: number, r: any) => s + (r.dm_count || 0), 0) ?? 0;
-    const pct = currentUsage / 190;
+    const limits = getPlanLimits(user?.plan_type || "free");
+    const maxComboLimit = limits.dmsPerHour + limits.commentsPerHour;
+
+    const currentDMUsage = rateLimitRows?.reduce((s: number, r: any) => s + (r.dm_count || 0), 0) ?? 0;
+    const currentCommentUsage = rateLimitRows?.reduce((s: number, r: any) => s + (r.comment_count || 0), 0) ?? 0;
+    const currentUsage = currentDMUsage + currentCommentUsage;
+
+    const pct = currentUsage / maxComboLimit;
     let rateScore = pct < 0.50 ? 15 : pct < 0.75 ? 10 : pct < 0.90 ? 5 : 0;
 
     // --- Factor 4: Message Quality (15 pts) ---
@@ -116,7 +123,7 @@ export async function GET() {
             },
             rateLimitHealth: {
                 score: rateScore, maxPoints: 15,
-                value: `${currentUsage}/190 this hour`,
+                value: `${currentUsage}/${maxComboLimit} max limits`,
                 label: "Internal Rate Limits"
             },
             metaApiHealth: {
