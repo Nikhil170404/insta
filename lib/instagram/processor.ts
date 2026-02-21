@@ -207,7 +207,13 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             const limits = getPlanLimits(user.plan_type || "free");
             const rateLimit = await smartRateLimit(
                 user.id,
-                { hourlyLimit: limits.commentsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+                {
+                    hourlyLimit: limits.commentsPerHour || 190,
+                    monthlyLimit: limits.dmsPerMonth || 1000,
+                    spreadDelay: false,
+                    type: 'comment',
+                    dryRun: false // Increment instantly if sent
+                },
                 user.created_at
             );
 
@@ -294,7 +300,13 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
         const limits = getPlanLimits(user.plan_type || "free");
         const rateLimit = await smartRateLimit(
             user.id,
-            { hourlyLimit: limits.dmsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+            {
+                hourlyLimit: limits.dmsPerHour || 190,
+                monthlyLimit: limits.dmsPerMonth || 1000,
+                spreadDelay: false,
+                type: 'dm',
+                dryRun: false // Increment instantly if sent
+            },
             user.created_at
         );
 
@@ -455,7 +467,13 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             const limits = getPlanLimits(user.plan_type || "free");
             const rateLimit = await smartRateLimit(
                 user.id,
-                { hourlyLimit: limits.dmsPerHour || 190, monthlyLimit: limits.dmsPerMonth || 1000, spreadDelay: false },
+                {
+                    hourlyLimit: limits.dmsPerHour || 190,
+                    monthlyLimit: limits.dmsPerMonth || 1000,
+                    spreadDelay: false,
+                    type: 'dm',
+                    dryRun: false // Increment instantly if sent
+                },
                 user.created_at
             );
 
@@ -536,7 +554,8 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     const limitCheck = await smartRateLimit(user.id, {
                         hourlyLimit: planLimits.dmsPerHour,
                         monthlyLimit: planLimits.dmsPerMonth || 1000,
-                        spreadDelay: false
+                        spreadDelay: false,
+                        type: 'dm'
                     });
 
                     if (!limitCheck.allowed) {
@@ -603,12 +622,14 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
 
             // User is following (or no follow-gate required) - send final link
 
-            // Rate Limit Check
+            // Rate Limit Check (Instant Send - Must Increment)
             const planLimits = getPlanLimits(user.plan_type || 'free');
             const limitCheck = await smartRateLimit(user.id, {
                 hourlyLimit: planLimits.dmsPerHour,
                 monthlyLimit: planLimits.dmsPerMonth || 1000,
-                spreadDelay: false
+                spreadDelay: false,
+                type: 'dm',
+                dryRun: false // COMMIT INCREMENT for instant button click
             });
 
             if (!limitCheck.allowed) {
@@ -631,13 +652,10 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
             );
 
             if (dmSent) {
-                // FIXED: Do NOT increment dm_sent_count here to avoid double-counting in Analytics
-                // The "conversation" was already counted when the Greeting was sent.
-                // We DO increment click_count though.
+                // We DO increment click_count though as it's a conversion.
                 await incrementAutomationCount(supabase, automation.id, "click_count");
 
-                // FIX: Only update the specific log for this interaction
-
+                // Update the log for the interaction that led here
                 const { data: latestLog } = await supabase
                     .from("dm_logs")
                     .select("id")
@@ -645,7 +663,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     .eq("automation_id", automation.id)
                     .order("created_at", { ascending: false })
                     .limit(1)
-                    .single();
+                    .maybeSingle();
 
                 if (latestLog) {
                     await supabase
@@ -678,6 +696,20 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
 
             if (!user) return;
 
+            // Check if they already succeeded for this specific automation
+            const { data: alreadyDone } = await supabase
+                .from("dm_logs")
+                .select("id")
+                .eq("instagram_user_id", senderIgsid)
+                .eq("automation_id", automation.id)
+                .eq("followed_after_gate", true)
+                .maybeSingle();
+
+            if (alreadyDone) {
+                logger.info("User already followed for this automation, ignoring click", { senderIgsid });
+                return;
+            }
+
             // Check if they are NOW following via REAL-TIME Instagram API
             // This uses is_user_follow_business field (like ManyChat/SuperProfile)
             const isFollowing = await checkIsFollowing(
@@ -694,7 +726,8 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 const limitCheck = await smartRateLimit(user.id, {
                     hourlyLimit: planLimits.dmsPerHour,
                     monthlyLimit: planLimits.dmsPerMonth || 1000,
-                    spreadDelay: false
+                    spreadDelay: false,
+                    type: 'dm'
                 });
 
                 if (!limitCheck.allowed) {
@@ -751,6 +784,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
     }
 }
 
+// Helper function for keyword matching
 function checkKeywordMatch(triggerType: string, triggerKeyword: string | null, commentText: string): boolean {
     // If the trigger type explicitly says 'any', or if there's no keyword, it's a catch-all
     if (triggerType === "any" || !triggerKeyword || triggerKeyword.toLowerCase().trim() === 'any') return true;

@@ -36,89 +36,94 @@ async function getUpstashLimiter() {
 export interface RateLimitConfig {
     hourlyLimit: number;
     monthlyLimit: number; // monthly limit
-    spreadDelay: boolean; // Spread DMs over time
+    spreadDelay: boolean; // Spread actions over time
+    type?: 'dm' | 'comment'; // NEW: Separate tracking
+    dryRun?: boolean; // NEW: check without incrementing
+}
+
+/**
+ * Centralized safety logic for hourly limits
+ */
+export function getEffectiveHourlyLimit(baseLimit: number, userCreatedAt?: string): number {
+    let effectiveLimit = baseLimit;
+    const now = new Date();
+
+    // Safety Layer 6: Account Warm-up (Tenure Ramp)
+    if (userCreatedAt) {
+        const created = new Date(userCreatedAt);
+        const daysOld = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (daysOld < 3) {
+            effectiveLimit *= 0.15; // 15% speed for newborns
+        } else if (daysOld < 7) {
+            effectiveLimit *= 0.40; // 40% speed for week 1
+        } else if (daysOld < 14) {
+            effectiveLimit *= 0.70; // 70% speed for week 2
+        }
+    }
+
+    // Safety Layer 7: Behavior Mimicry (Circadian Diurnal Cycles)
+    const hour = now.getUTCHours();
+    if (hour >= 1 && hour <= 5) {
+        effectiveLimit *= 0.40; // Deep night (UTC): 40% speed
+    } else if (hour === 0 || hour === 6 || hour === 23) {
+        effectiveLimit *= 0.70; // Transition: 70% speed
+    } else if (hour >= 16 && hour <= 21) {
+        effectiveLimit *= 1.10; // Peak hours: 110% speed
+    }
+
+    return Math.max(1, Math.floor(effectiveLimit));
+}
+
+export interface RateLimitResult {
+    allowed: boolean;
+    queuePosition?: number;
+    estimatedSendTime?: Date;
+    remaining: {
+        hourly: number;
+        monthly: number;
+    };
 }
 
 export async function smartRateLimit(
     userId: string,
-    config: RateLimitConfig = {
-        hourlyLimit: 190,
-        monthlyLimit: 1000,
-        spreadDelay: true,
-    },
-    userCreatedDate?: string | Date // New: For Layer 6 Warm-up
-): Promise<{
-    allowed: boolean;
-    queuePosition?: number;
-    estimatedSendTime?: Date;
-    remaining: { hourly: number; monthly: number };
-}> {
+    config: RateLimitConfig,
+    userCreatedAt?: string
+): Promise<RateLimitResult> {
     const supabase = getSupabaseAdmin();
     const now = new Date();
 
     // ==========================================
     // ANTI-BAN ENGINE V2 (SaaS LEVEL)
     // ==========================================
-    let effectiveHourlyLimit = config.hourlyLimit;
-
-    // LAYER 6: Account Warm-up (Tenure Ramp)
-    if (userCreatedDate) {
-        const created = new Date(userCreatedDate);
-        const daysOld = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
-
-        if (daysOld < 3) {
-            effectiveHourlyLimit *= 0.15; // 15% speed for newborns
-        } else if (daysOld < 7) {
-            effectiveHourlyLimit *= 0.40; // 40% speed for week 1
-        } else if (daysOld < 14) {
-            effectiveHourlyLimit *= 0.70; // 70% speed for week 2
-        }
-    }
-
-    // LAYER 7: Behavior Mimicry (Circadian Diurnal Cycles)
-    const hour = now.getUTCHours();
-    let mimicryMultiplier = 1.0;
-
-    if (hour >= 0 && hour <= 4) {
-        mimicryMultiplier = 0.40; // Deep night: 40% speed
-    } else if (hour === 5 || hour === 23) {
-        mimicryMultiplier = 0.70; // Transition: 70% speed
-    } else if (hour >= 17 && hour <= 21) {
-        mimicryMultiplier = 1.10; // Peak hours: 10% boost (Meta allows slightly more session burst in evening)
-    }
-
-    effectiveHourlyLimit *= mimicryMultiplier;
-
-    // LAYER 5: Trust Factor Placeholder
-    // TODO: In future, multiply effectiveHourlyLimit by trustScore/100
-
-    // Final safety floor (cannot be less than 1/hr if plan allows any)
-    effectiveHourlyLimit = Math.max(1, Math.floor(effectiveHourlyLimit));
+    const effectiveHourlyLimit = getEffectiveHourlyLimit(config.hourlyLimit, userCreatedAt);
 
     if (effectiveHourlyLimit < config.hourlyLimit) {
         logger.debug("[Anti-Ban] Effective limit adjusted", {
             userId,
             original: config.hourlyLimit,
-            effective: effectiveHourlyLimit,
-            reason: mimicryMultiplier < 1 ? "Slow Period Active" : "Warm-up Active"
+            effective: effectiveHourlyLimit
         });
     }
 
-    // 1. Monthly Check... (remaining logic uses effectiveHourlyLimit)
+    // 1. Monthly Check (Quota enforced for DMs only)
     const monthStart = new Date(now);
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
 
+    const type = config.type || 'dm';
+    const countField = type === 'comment' ? 'comment_count' : 'dm_count';
+
     const { data: monthlyData, error: monthlyError } = await (supabase as any)
         .from("rate_limits")
-        .select("dm_count")
+        .select(countField)
         .eq("user_id", userId)
         .gte("hour_bucket", monthStart.toISOString());
 
-    const monthlyUsed = monthlyData?.reduce((sum: number, row: any) => sum + (row.dm_count || 0), 0) || 0;
+    const monthlyUsed = monthlyData?.reduce((sum: number, row: any) => sum + (row[countField] || 0), 0) || 0;
     const monthlyRemaining = Math.max(0, config.monthlyLimit - monthlyUsed);
 
-    if (monthlyRemaining <= 0) {
+    if (type === 'dm' && monthlyRemaining <= 0) {
         return {
             allowed: false,
             estimatedSendTime: new Date(monthStart.getTime() + 30 * 24 * 60 * 60 * 1000), // Next month approx
@@ -126,25 +131,38 @@ export async function smartRateLimit(
         };
     }
 
-    // 2. Hourly Check (Atomic Increment)
-    const { data: newHourlyCount, error: rpcError } = await (supabase as any)
-        .rpc("increment_rate_limit", { p_user_id: userId });
+    // 2. Hourly Check (Atomic Increment - Separate Pools)
+    let hourlyUsed = 0;
 
-    if (rpcError) {
-        logger.error("Rate limit RPC failed", { userId, error: rpcError, category: "rate-limiter" });
-        return {
-            allowed: false,
-            remaining: { hourly: 0, monthly: monthlyRemaining }
-        };
+    if (config.dryRun) {
+        // Just read current usage
+        const { data: currentCount } = await (supabase as any)
+            .rpc(type === 'comment' ? "get_comment_rate_limit" : "get_rate_limit", { p_user_id: userId });
+        hourlyUsed = (currentCount as number || 0) + 1; // Assume +1 if we were to proceed
+    } else {
+        const rpcName = type === 'comment' ? "increment_comment_rate_limit" : "increment_rate_limit";
+        const { data: newHourlyCount, error: rpcError } = await (supabase as any)
+            .rpc(rpcName, { p_user_id: userId });
+
+        if (rpcError) {
+            logger.error(`Rate limit RPC failed (${rpcName})`, { userId, error: rpcError, category: "rate-limiter" });
+            return {
+                allowed: false,
+                remaining: { hourly: 0, monthly: monthlyRemaining }
+            };
+        }
+        hourlyUsed = newHourlyCount as number;
     }
 
-    const hourlyUsed = newHourlyCount as number;
     const hourlyRemaining = Math.max(0, effectiveHourlyLimit - hourlyUsed);
 
     // 3. Logic Check
     if (hourlyUsed > effectiveHourlyLimit) {
-        // Rollback
-        await (supabase as any).rpc("decrement_rate_limit", { p_user_id: userId });
+        if (!config.dryRun) {
+            // Rollback only if we actually incremented
+            const rollbackRpc = type === 'comment' ? "decrement_comment_rate_limit" : "decrement_rate_limit";
+            await (supabase as any).rpc(rollbackRpc, { p_user_id: userId });
+        }
 
         const hourStart = new Date(now);
         hourStart.setMinutes(0, 0, 0);
@@ -373,12 +391,15 @@ export async function processQueuedDMs() {
         const allDMs = userDMs.filter((dm: any) => !dm.message.startsWith("__PUBLIC_REPLY__:"));
         const allReplies = userDMs.filter((dm: any) => dm.message.startsWith("__PUBLIC_REPLY__:"));
 
-        // D. Calculate Availability Separately
+        // D. Calculate Availability Separately (Using Shared Safety Logic)
+        const effectiveDMHourly = getEffectiveHourlyLimit(hourlyDMLimit, user.created_at);
+        const effectiveCommentHourly = getEffectiveHourlyLimit(hourlyCommentLimit, user.created_at);
+
         const dmSlots = Math.min(
-            Math.max(0, hourlyDMLimit - hourlyDMUsed),
+            Math.max(0, effectiveDMHourly - hourlyDMUsed),
             Math.max(0, monthlyDMLimit - monthlyUsed)
         );
-        const commentSlots = Math.max(0, hourlyCommentLimit - hourlyCommentUsed);
+        const commentSlots = Math.max(0, effectiveCommentHourly - hourlyCommentUsed);
 
         // E. Filter "Send Now" and "Reschedule"
         const dmsToSend = allDMs.slice(0, dmSlots);

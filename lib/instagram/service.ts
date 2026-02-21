@@ -279,68 +279,109 @@ export async function sendInstagramDM(
         // Validated URL
         const validatedLinkUrl = ensureUrlProtocol(linkUrl);
 
-        if (thumbnailUrl && (buttonText || validatedLinkUrl || (buttonText && !linkUrl && automationId))) {
-            // Use Generic Template (Required for Images)
-            // Note: Title is limited to 80 chars
-            const button = validatedLinkUrl ? {
+        let quickReplies = undefined;
+        const attachmentButtons: any[] = [];
+
+        if (validatedLinkUrl) {
+            attachmentButtons.push({
                 type: "web_url",
                 url: validatedLinkUrl,
                 title: (buttonText || "Open Link").substring(0, 20)
-            } : {
-                type: "postback",
+            });
+        } else if (buttonText && automationId && !linkUrl) {
+            // Convert to Quick Reply so it vanishes after one tap!
+            quickReplies = [{
+                content_type: "text",
                 title: (buttonText || "Get Link").substring(0, 20),
-                payload: `CLICK_LINK_${automationId || 'UNKNOWN'}`
-            };
+                payload: `CLICK_LINK_${automationId}`
+            }];
+        }
 
-            const element: any = {
-                title: (buttonText || "Open Link").substring(0, 80),
-                subtitle: message.substring(0, 80) || "Tap below to continue ✨",
-                image_url: thumbnailUrl,
-                buttons: [button]
-            };
+        // SPLIT MESSAGE STRATEGY: 
+        // Instagram rarely supports Quick Replies + Templates in one payload.
+        // If we have both, we send the attachment first, then the text+QR.
 
-            body = {
+        if (thumbnailUrl || attachmentButtons.length > 0) {
+            // --- MESSAGE 1: The Visual Attachment ---
+            const firstBody: any = {
                 recipient,
-                message: {
-                    attachment: {
-                        type: "template",
-                        payload: {
-                            template_type: "generic",
-                            elements: [element]
-                        }
-                    }
-                }
-            };
-        } else if (buttonText || validatedLinkUrl || (buttonText && !linkUrl && automationId)) {
-            // Use Button Template (Better for long text, up to 640 chars)
-            const button = validatedLinkUrl ? {
-                type: "web_url",
-                url: validatedLinkUrl,
-                title: (buttonText || "Open Link").substring(0, 20)
-            } : {
-                type: "postback",
-                title: (buttonText || "Get Link").substring(0, 20),
-                payload: `CLICK_LINK_${automationId || 'UNKNOWN'}`
+                message: {}
             };
 
-            body = {
-                recipient,
-                message: {
-                    attachment: {
-                        type: "template",
-                        payload: {
-                            template_type: "button",
-                            text: message.substring(0, 640) || "You have a message!",
-                            buttons: [button]
-                        }
+            if (thumbnailUrl && attachmentButtons.length > 0) {
+                // Generic Template
+                firstBody.message.attachment = {
+                    type: "template",
+                    payload: {
+                        template_type: "generic",
+                        elements: [{
+                            title: (buttonText || "Open Link").substring(0, 80),
+                            subtitle: message.substring(0, 80) || "Tap below to continue ✨",
+                            image_url: thumbnailUrl,
+                            buttons: attachmentButtons
+                        }]
                     }
-                }
-            };
+                };
+            } else if (thumbnailUrl) {
+                // Just Image
+                firstBody.message.attachment = {
+                    type: "image",
+                    payload: { url: thumbnailUrl, is_reusable: true }
+                };
+            } else {
+                // Just Buttons
+                firstBody.message.attachment = {
+                    type: "template",
+                    payload: {
+                        template_type: "button",
+                        text: message.substring(0, 640) || "You have a message!",
+                        buttons: attachmentButtons
+                    }
+                };
+            }
+
+            const res1 = await graphApiFetch(baseUrl, accessToken, {
+                method: "POST",
+                body: firstBody,
+                accountId: senderId,
+            });
+
+            if (!res1.ok) {
+                const err = await res1.json();
+                logger.error("Failed to send first part of DM", { err, recipientId: recipientIdForLog });
+                return false;
+            }
+
+            // --- MESSAGE 2: The Text + Quick Replies ---
+            // If we have quick replies or just plain text left to send
+            if (quickReplies || (thumbnailUrl && attachmentButtons.length > 0)) {
+                // Short delay to ensure order
+                await new Promise(r => setTimeout(r, 800));
+
+                const secondBody = {
+                    recipient,
+                    message: {
+                        text: message.length > 80 && thumbnailUrl ? message : (quickReplies ? "Tap below to continue:" : "✨"),
+                        quick_replies: quickReplies
+                    }
+                };
+
+                const res2 = await graphApiFetch(baseUrl, accessToken, {
+                    method: "POST",
+                    body: secondBody,
+                    accountId: senderId,
+                });
+                return res2.ok;
+            }
+            return true;
         } else {
-            // Plain text message
+            // Plain Text + optional Quick Replies (Single Payload)
             body = {
                 recipient,
-                message: { text: message }
+                message: {
+                    text: message || "You have a message!",
+                    quick_replies: quickReplies
+                }
             };
         }
 
@@ -450,49 +491,78 @@ export async function sendFollowGateCard(
         // Use /_u/ format to force open in Instagram app on mobile
         const profileUrl = `https://www.instagram.com/_u/${profileUsername.trim()}/`;
 
-        // Build element
-        const element: any = {
-            title: "Follow & Get Access",
-            subtitle: message,
-            buttons: [
-                {
-                    type: "web_url",
-                    url: profileUrl,
-                    title: "Follow & Get Access"
-                },
-                {
-                    type: "postback",
-                    title: "I'm Following ✓",
-                    payload: `VERIFY_FOLLOW_${automationId}`
-                }
-            ]
-        };
-        if (thumbnailUrl) {
-            element.image_url = thumbnailUrl;
-        }
+        // Profile Link Button (Stay in card)
+        const cardButtons = [
+            {
+                type: "web_url",
+                url: profileUrl,
+                title: "Follow & Access"
+            }
+        ];
 
-        // === SINGLE API CALL (was 3 before) ===
-        const body = {
+        // Verification Button (Quick Reply - Vanishes)
+        const verificationQR = [
+            {
+                content_type: "text",
+                title: "I'm Following ✓",
+                payload: `VERIFY_FOLLOW_${automationId}`
+            }
+        ];
+
+        // MESSAGE 1: The Profile Link Card
+        const cardPayload = {
             recipient,
             message: {
                 attachment: {
                     type: "template",
                     payload: {
-                        template_type: "generic",
-                        elements: [element]
+                        template_type: thumbnailUrl ? "generic" : "button",
+                        elements: thumbnailUrl ? [
+                            {
+                                title: "Follow & Get Access",
+                                subtitle: message.substring(0, 80),
+                                image_url: thumbnailUrl,
+                                buttons: cardButtons
+                            }
+                        ] : undefined,
+                        text: !thumbnailUrl ? message.substring(0, 640) : undefined,
+                        buttons: !thumbnailUrl ? cardButtons : undefined
                     }
                 }
             }
         };
 
-        const response = await graphApiFetch(baseUrl, accessToken, {
+        const res1 = await graphApiFetch(baseUrl, accessToken, {
             method: "POST",
-            body,
+            body: cardPayload,
             accountId: senderId,
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
+        if (!res1.ok) {
+            const errorData = await res1.json();
+            logger.error("Follow-gate card error", { errorData, recipientId });
+            return false;
+        }
+
+        // MESSAGE 2: The Verification Button (Quick Reply)
+        await new Promise(r => setTimeout(r, 800));
+
+        const qrPayload = {
+            recipient,
+            message: {
+                text: "Step 2: Tap below once you've followed! 👇",
+                quick_replies: verificationQR
+            }
+        };
+
+        const res2 = await graphApiFetch(baseUrl, accessToken, {
+            method: "POST",
+            body: qrPayload,
+            accountId: senderId,
+        });
+
+        if (!res2.ok) {
+            const errorData = await res2.json();
             const errorCode = errorData?.error?.code;
 
             // Auto-pause mechanism for Spam/Block errors
@@ -513,10 +583,10 @@ export async function sendFollowGateCard(
             return false;
         }
 
-        logger.info("Follow-gate card sent", { recipientId, automationId, category: "instagram" });
+        logger.info("Follow-gate sequence sent successfully", { recipientId, automationId, category: "instagram" });
         return true;
     } catch (error) {
-        logger.error("Exception sending follow-gate card", { category: "instagram" }, error as Error);
+        logger.error("Exception sending follow-gate sequence", { category: "instagram" }, error as Error);
         return false;
     }
 }
