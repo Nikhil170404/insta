@@ -48,7 +48,7 @@ export function QueueStatus({ className }: { className?: string }) {
                     {/* Animated shimmer */}
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_3s_ease-in-out_infinite] -translate-x-full" />
 
-                    <div className="relative z-10 flex items-center justify-between gap-4">
+                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                                 <Send className="h-5 w-5 text-primary" />
@@ -68,7 +68,7 @@ export function QueueStatus({ className }: { className?: string }) {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-xl border border-slate-100">
+                        <div className="self-start sm:self-auto flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-xl border border-slate-100">
                             <Clock className="h-3.5 w-3.5 text-slate-400" />
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                 Auto-Send
