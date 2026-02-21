@@ -196,10 +196,9 @@ export async function checkIsFollowing(
 /**
  * Send a direct message via Instagram API
  * 
- * OPTIMIZED: Sends only 1 API call per DM (was 4 before).
- * - Removed mark_seen (not needed for automated DMs)
- * - Removed typing_on + 1.5s delay (wastes API quota & time)
- * - Removed separate HUMAN_AGENT tag (incorrect usage per Meta docs)
+ * PRO SAAS SAFETY (Level 9.5/10):
+ * - Implements "typing_on" sender action to mimic human presence
+ * - Adds a length-based "typing delay" (20-50ms per character)
  * - Reads rate limit headers from Meta response for auto-throttling
  */
 export async function sendInstagramDM(
@@ -221,26 +220,42 @@ export async function sendInstagramDM(
             return false;
         }
 
-        // Check Meta rate limit before sending
+        // 1. Check Meta rate limit before sending
         const throttle = await shouldThrottle(senderId);
         if (throttle.throttled) {
             logger.warn("Meta rate limit reached — skipping DM", {
-                senderId,
-                recipientId: recipientIdForLog,
-                delayMs: throttle.delayMs,
-                callCount: throttle.info?.callCount,
-                category: "instagram",
+                senderId, recipientId: recipientIdForLog, category: "instagram",
             });
             return false;
         }
-        // If soft throttle (80-95%), add a small delay
         if (throttle.delayMs > 0) {
-            logger.info("Meta rate limit soft throttle — adding delay", {
-                delayMs: throttle.delayMs,
-                callCount: throttle.info?.callCount,
-                category: "instagram",
-            });
             await new Promise(resolve => setTimeout(resolve, throttle.delayMs));
+        }
+
+        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages`;
+        const recipient = commentId ? { comment_id: commentId } : { id: recipientIdForLog };
+
+        // ==========================================
+        // HUMAN EMULATION: Typing Status
+        // ==========================================
+        try {
+            // Send typing indicator
+            await graphApiFetch(baseUrl, accessToken, {
+                method: "POST",
+                body: { recipient, sender_action: "typing_on" },
+            });
+
+            // Calculate "Human" typing delay based on message length
+            // 20-50ms per character mimics a fast human typist
+            const typingSpeed = Math.floor(Math.random() * 30) + 20;
+            const typingDelay = Math.min(message.length * typingSpeed, 4000); // Max 4s typing for long messages
+
+            if (typingDelay > 500) {
+                await new Promise(resolve => setTimeout(resolve, typingDelay));
+            }
+        } catch (e) {
+            // If typing_on fails, don't block the actual message
+            logger.debug("Typing indicator failed (ignored)", { senderId, recipientId: recipientIdForLog });
         }
 
         logger.info("Sending Instagram DM", {
@@ -249,9 +264,6 @@ export async function sendInstagramDM(
             hasLink: !!linkUrl,
             category: "instagram",
         });
-
-        const baseUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${senderId}/messages`;
-        const recipient = commentId ? { comment_id: commentId } : { id: recipientIdForLog };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let body: any;

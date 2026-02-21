@@ -20,7 +20,8 @@ import {
   ChevronDown,
   Check,
   MessageSquare,
-  HelpCircle
+  HelpCircle,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -36,6 +37,7 @@ const navigation = [
   { name: "My Automations", href: "/dashboard/automations", icon: Zap },
   { name: "Comments", href: "/dashboard/comments", icon: MessageSquare },
   { name: "Insights", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "Account Health", href: "/dashboard/health", icon: ShieldCheck },
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { name: "Support", href: "/dashboard/support", icon: HelpCircle },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },

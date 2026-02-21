@@ -19,7 +19,7 @@ export const PRICING_PLANS = {
             accounts: 1,
             automations: 3,
             dmsPerMonth: 1000,
-            dmsPerHour: 190, // Max Speed for all (below Meta's 200 limit)
+            dmsPerHour: 190, // Ultra-Safe Starter Speed
             queueEnabled: true,
             priorityQueue: false,
         },
@@ -54,7 +54,7 @@ export const PRICING_PLANS = {
             accounts: 1,
             automations: 10,
             dmsPerMonth: 50000,
-            dmsPerHour: 190, // Max Speed
+            dmsPerHour: 250, // Safe Production Speed
             queueEnabled: true,
             priorityQueue: false,
         },
@@ -90,7 +90,7 @@ export const PRICING_PLANS = {
             accounts: 1,
             automations: 999,
             dmsPerMonth: 1000000,
-            dmsPerHour: 190,
+            dmsPerHour: 350, // Peak Safe Speed (Meta BUC allows more, but we stay safe)
             queueEnabled: true,
             priorityQueue: true,
         },

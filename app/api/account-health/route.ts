@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { redis } from "@/lib/upstash";
 
 export async function GET() {
     const session = await getSession();
@@ -26,32 +27,52 @@ export async function GET() {
     // 3. Fetch token expiry from users
     const { data: user } = await (supabase
         .from("users") as any)
-        .select("instagram_token_expires_at")
+        .select("instagram_token_expires_at, instagram_user_id")
         .eq("id", userId)
         .single();
 
-    // --- Factor 1: DM Success Rate ---
+    // 4. Fetch queue depth
+    const { count: pendingQueueCount } = await (supabase
+        .from("dm_queue") as any)
+        .select("*", { count: 'exact', head: true })
+        .eq("user_id", userId)
+        .eq("status", "pending");
+
+    // 5. Fetch Meta API Usage from Redis
+    let metaUsagePercent = 0;
+    if (user?.instagram_user_id) {
+        try {
+            const cached = await redis.get<{ info: any; updatedAt: number }>(`meta_rate_limit:${user.instagram_user_id}`);
+            if (cached && (Date.now() - cached.updatedAt <= 5 * 60 * 1000)) {
+                const info = cached.info;
+                metaUsagePercent = Math.max(info.callCount || 0, info.totalCpuTime || 0, info.totalTime || 0);
+            }
+        } catch (e) {
+            // Redis error or missing, default to 0
+        }
+    }
+
+    // --- Factor 1: DM Success Rate (15 pts) ---
     const totalSent = automations?.reduce((s: number, a: any) => s + (a.dm_sent_count || 0), 0) ?? 0;
     const totalFailed = automations?.reduce((s: number, a: any) => s + (a.dm_failed_count || 0), 0) ?? 0;
     const totalDMs = totalSent + totalFailed;
     let successRate = totalDMs === 0 ? null : totalSent / totalDMs;
-    let successScore = successRate === null ? 20 :
-        successRate >= 0.95 ? 30 : successRate >= 0.90 ? 25 :
-            successRate >= 0.80 ? 20 : successRate >= 0.70 ? 10 : 0; // Adjusted to match 30 max points per user spec
+    let successScore = successRate === null ? 15 :
+        successRate >= 0.95 ? 15 : successRate >= 0.85 ? 10 :
+            successRate >= 0.70 ? 5 : 0;
 
-    // --- Factor 2: Automation Status ---
+    // --- Factor 2: Automation Status (15 pts) ---
     const autoCount = automations?.length ?? 0;
     const activeCount = automations?.filter((a: any) => a.is_active).length ?? 0;
-    let autoScore = autoCount === 0 ? 15 : activeCount === autoCount ? 20 :
-        activeCount > 0 ? 10 : 0;
+    let autoScore = autoCount === 0 ? 10 : activeCount === autoCount ? 15 :
+        activeCount > 0 ? 5 : 0;
 
-    // --- Factor 3: Rate Limit Health ---
+    // --- Factor 3: Internal Rate Limit Health (15 pts) ---
     const currentUsage = rateLimitRows?.reduce((s: number, r: any) => s + (r.dm_count || 0), 0) ?? 0;
-    // Reduce safe upper limit to match revised safety patterns (190 baseline assumed)
     const pct = currentUsage / 190;
-    let rateScore = pct < 0.50 ? 20 : pct < 0.70 ? 15 : pct < 0.80 ? 10 : pct < 0.95 ? 5 : 0;
+    let rateScore = pct < 0.50 ? 15 : pct < 0.75 ? 10 : pct < 0.90 ? 5 : 0;
 
-    // --- Factor 4: Message Quality ---
+    // --- Factor 4: Message Quality (15 pts) ---
     const spintaxRegex = /\{[^{}|]+\|[^{}]+\}/;
     const personalizationRegex = /\{username\}|\{first_name\}/i;
     const hasSpintax = automations?.some((a: any) => spintaxRegex.test(a.reply_message || "")) ?? false;
@@ -59,13 +80,20 @@ export async function GET() {
     const hasButton = automations?.some((a: any) => !!a.link_url) ?? false;
     const qualityScore = (hasSpintax ? 5 : 0) + (hasPersonalization ? 5 : 0) + (hasButton ? 5 : 0);
 
-    // --- Factor 5: Token Health ---
+    // --- Factor 5: Token Health (10 pts) ---
     const expiresAt = user?.instagram_token_expires_at ? new Date(user.instagram_token_expires_at) : null;
     const daysLeft = expiresAt ? Math.floor((expiresAt.getTime() - Date.now()) / 86400000) : 0;
-    const tokenScore = daysLeft >= 30 ? 15 : daysLeft >= 14 ? 10 : daysLeft >= 7 ? 5 : 0;
+    const tokenScore = daysLeft >= 30 ? 10 : daysLeft >= 14 ? 5 : daysLeft >= 7 ? 2 : 0;
+
+    // --- Factor 6: Queue Health (15 pts) ---
+    const qCount = pendingQueueCount || 0;
+    let queueScore = qCount < 50 ? 15 : qCount < 200 ? 10 : qCount < 500 ? 5 : 0;
+
+    // --- Factor 7: Meta API Usage (15 pts) ---
+    let metaScore = metaUsagePercent < 50 ? 15 : metaUsagePercent < 80 ? 10 : metaUsagePercent < 95 ? 5 : 0;
 
     // --- Total Score ---
-    let score = successScore + autoScore + rateScore + qualityScore + tokenScore;
+    let score = successScore + autoScore + rateScore + qualityScore + tokenScore + queueScore + metaScore;
     if (score > 100) score = 100; // Cap just in case
 
     const label = score >= 85 ? "Excellent" : score >= 70 ? "Good" : score >= 50 ? "Fair" : score >= 30 ? "Poor" : "Critical";
@@ -77,19 +105,29 @@ export async function GET() {
         color,
         breakdown: {
             successRate: {
-                score: successScore, maxPoints: 30,
+                score: successScore, maxPoints: 15,
                 value: successRate === null ? "No DMs yet" : `${Math.round(successRate * 100)}%`,
                 label: "DM Success Rate"
             },
             automationStatus: {
-                score: autoScore, maxPoints: 20,
+                score: autoScore, maxPoints: 15,
                 value: autoCount === 0 ? "No automations" : `${activeCount}/${autoCount} active`,
                 label: "Automation Health"
             },
             rateLimitHealth: {
-                score: rateScore, maxPoints: 20,
+                score: rateScore, maxPoints: 15,
                 value: `${currentUsage}/190 this hour`,
-                label: "Rate Limit Safety"
+                label: "Internal Rate Limits"
+            },
+            metaApiHealth: {
+                score: metaScore, maxPoints: 15,
+                value: `${Math.round(metaUsagePercent)}% capacity`,
+                label: "Meta API Usage"
+            },
+            queueHealth: {
+                score: queueScore, maxPoints: 15,
+                value: `${qCount} pending DMs`,
+                label: "Queue Backlog"
             },
             messageQuality: {
                 score: qualityScore, maxPoints: 15,
@@ -97,7 +135,7 @@ export async function GET() {
                 label: "Message Quality"
             },
             tokenHealth: {
-                score: tokenScore, maxPoints: 15,
+                score: tokenScore, maxPoints: 10,
                 value: expiresAt ? `${daysLeft} days left` : "Unknown",
                 label: "Token Health"
             }

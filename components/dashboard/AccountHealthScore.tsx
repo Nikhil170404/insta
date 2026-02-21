@@ -60,7 +60,7 @@ export function AccountHealthScore() {
                 <CardContent className="flex flex-col md:flex-row gap-6 items-center">
                     <Skeleton className="h-24 w-24 rounded-full" />
                     <div className="space-y-2 flex-grow w-full">
-                        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-4 w-full" />)}
+                        {[1, 2, 3, 4, 5, 6, 7].map(i => <Skeleton key={i} className="h-4 w-full" />)}
                     </div>
                 </CardContent>
             </Card>

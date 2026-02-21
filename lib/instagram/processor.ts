@@ -84,20 +84,7 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             return;
         }
 
-        // 4b. ENFORCE FREQUENCY CAPPING (1 message per user per 24 hours)
-        const twentyFourHoursAgoISO = new Date(twentyFourHoursAgo).toISOString();
-        const { data: recentDms } = await supabase
-            .from("dm_logs")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("instagram_user_id", commenterId)
-            .gte("created_at", twentyFourHoursAgoISO)
-            .limit(1);
 
-        if (recentDms && recentDms.length > 0) {
-            logger.info("Frequency cap hit: User already received a DM in the last 24h", { commenterUsername, userId: user.id });
-            return;
-        }
 
         // 5. Find automation (with caching) - FAST SINGLE QUERY with Global Fallback
         const automationCacheKey = `automation:${user.id}:${mediaId}`;
@@ -183,16 +170,52 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             return;
         }
 
-        // 7. Send Public Reply (pick random template)
+        // ENFORCE FREQUENCY CAPPING (1 message per user per 24 hours PER AUTOMATION)
+        const twentyFourHoursAgoISO = new Date(twentyFourHoursAgo).toISOString();
+        const { data: recentDms, error: recentDmError } = await supabase
+            .from("dm_logs")
+            .select("id")
+            .eq("user_id", user.id) // From this Creator
+            .eq("instagram_user_id", commenterId) // To this specific commenter
+            .eq("automation_id", automation.id) // Scoped to THIS automation
+            .gte("created_at", twentyFourHoursAgoISO)
+            .limit(1);
+
+        if (recentDmError && recentDmError.code !== 'PGRST116') {
+            logger.warn("Error checking recent DMs", { error: recentDmError });
+        } else if (recentDms && recentDms.length > 0) {
+            logger.info("Frequency cap hit: User already received THIS automation DM in the last 24h", { commenterUsername, "automation_id": automation.id });
+            return;
+        }
+
+        // 7. QUEUE PUBLIC REPLY (Safety First - Human Delay)
+        // Meta counts both Public Replies and DMs towards the 200/hour limit.
+        // We now queue the reply to include a random human-like delay (30-120s).
         const templates: string[] = automation.comment_reply_templates || [];
         const singleReply = automation.comment_reply;
+        let selectedReply = "";
+
         if (templates.length > 0) {
             const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-            const uniqueReply = getUniqueMessage(randomTemplate, commenterUsername);
-            await replyToComment(user.instagram_access_token, commentId, uniqueReply, supabase, user.id);
+            selectedReply = getUniqueMessage(randomTemplate, commenterUsername);
         } else if (singleReply && singleReply.trim().length > 0) {
-            const uniqueReply = getUniqueMessage(singleReply, commenterUsername);
-            await replyToComment(user.instagram_access_token, commentId, uniqueReply, supabase, user.id);
+            selectedReply = getUniqueMessage(singleReply, commenterUsername);
+        }
+
+        if (selectedReply) {
+            // Queue as a special Public Reply type using the prefix hack
+            await queueDM(
+                user.id,
+                {
+                    commentId,
+                    commenterId,
+                    message: `__PUBLIC_REPLY__:${selectedReply}`,
+                    automation_id: automation.id
+                },
+                undefined, // Use default random delay
+                user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
+            );
+            logger.info("Public reply added to Safety Queue", { commenterUsername, automationId: automation.id });
         }
 
         // 8. ONE DM PER USER CHECK + ATOMIC CLAIM
@@ -240,248 +263,46 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             logger.error("Claim insert warning", { commenterUsername }, new Error(claimError.message));
         }
 
-        // 9. Rate Limit Check
-        const planLimits = getPlanLimits(user.plan_type || 'free');
+        // 9. QUEUE THE DM (Safety First - Human Delay)
+        // Instead of sending instantly, we ALWAYS queue the initial greeting/DM.
+        // This ensures every lead gets a random delay, which is safer than ManyChat.
 
-        const rateLimitResult = await smartRateLimit(user.id, {
-            hourlyLimit: planLimits.dmsPerHour,
-            monthlyLimit: planLimits.dmsPerMonth || 1000,
-            spreadDelay: false,
-        });
+        let dmMessage = getUniqueMessage(automation.reply_message, commenterUsername);
+        let buttonText = automation.button_text || "Get Link";
+        let directLink = undefined;
 
-        if (!rateLimitResult.allowed) {
-            logger.info("Rate limit hit, queuing DM", { userId: user.id, planType: user.plan_type, remaining: rateLimitResult.remaining });
-
-            // Determine Priority
-            let priority = 5; // Default/Free
-            if (user.plan_type === 'pro' || user.plan_type === 'starter') priority = 10;
-
-            // Queue the DM for later
-            await queueDM(
-                user.id,
-                {
-                    commentId,
-                    commenterId,
-                    message: getUniqueMessage(automation.reply_message, commenterUsername), // Use mapped message
-                    automation_id: automation.id
-                },
-                rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000), // Default to 1 min later
-                priority
-            );
-
-            return;
-        }
-
-        // 10. FOLLOW-GATE CHECK (if enabled) - ManyChat style
+        // Follow-Gate Logic Decision
         if (automation.require_follow) {
-            // First check: Has user already received a follow-gate message for this automation?
-            // If yes, they've likely followed since then - send the content!
-            const alreadyReceivedGate = await hasReceivedFollowGate(
-                supabase,
-                user.id,
-                automation.id,
-                commenterId
-            );
+            // Check if user is already following (real-time check)
+            const isFollowing = await checkIsFollowing(user.instagram_access_token, commenterId);
 
-            if (alreadyReceivedGate) {
-                // They commented again after receiving follow-gate
-                // Do a REAL-TIME check via Instagram API to verify they followed
-                const isFollowingNow = await checkIsFollowing(
-                    user.instagram_access_token,
-                    commenterId
-                );
-
-                if (isFollowingNow) {
-                    logger.info("User is now following, sending direct link", { commenterUsername });
-                    // User is now following - send direct link (single Open Link button)
-                    const greetingSent = await sendInstagramDM(
-                        user.instagram_access_token,
-                        instagramUserId,
-                        commentId,
-                        commenterId,
-                        getUniqueMessage(automation.final_message || automation.reply_message, commenterUsername),
-                        automation.id,
-                        automation.final_button_text || "Open Link",
-                        automation.link_url, // Direct link - single button experience for followers
-                        automation.media_thumbnail_url,
-                        supabase,
-                        user.id
-                    );
-
-                    // Update placeholder record
-                    await supabase.from("dm_logs")
-                        .update({
-                            reply_sent: greetingSent,
-                            reply_sent_at: greetingSent ? new Date().toISOString() : null,
-                            user_is_following: true,
-                        })
-                        .eq("instagram_comment_id", commentId);
-
-                    if (greetingSent) {
-                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-                    } else {
-                        await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
-                        // [FIX] Rollback atomic increment on hard block
-                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
-                    }
-                    return;
-                } else {
-                    // Still not following - send gate again
-                    logger.info("User still not following after gate", { commenterUsername });
-                    const cardSent = await sendFollowGateCard(
-                        user.instagram_access_token,
-                        instagramUserId,
-                        commentId,
-                        commenterId,
-                        automation.id,
-                        user.instagram_username || '',
-                        undefined, // No thumbnail for follow-gate card
-                        `Hey ${commenterUsername}! 👀 Hmm, looks like you haven't followed yet. Please follow us first to unlock this!`,
-                        supabase,
-                        user.id
-                    );
-                    if (cardSent) {
-                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-
-                        // [FIX] Log the re-sent gate card as a sent message
-                        await supabase.from("dm_logs")
-                            .update({
-                                reply_sent: true,
-                                reply_sent_at: new Date().toISOString(),
-                                is_follow_gate: true
-                            })
-                            .eq("instagram_comment_id", commentId);
-                    } else {
-                        // [FIX] Rollback atomic increment on hard block
-                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
-                    }
-                    return;
-                }
+            if (isFollowing) {
+                logger.info("User already following, queuing greeting with button", { commenterUsername });
+                // We still send the greeting with button (ManyChat pattern 1)
+                // but we mark it as follow-verified in our placeholder if we wanted to.
             } else {
-                // First time - use REAL-TIME Instagram API to check if following
-                // This uses the is_user_follow_business API field (like ManyChat/SuperProfile)
-                const isFollowing = await checkIsFollowing(
-                    user.instagram_access_token,
-                    commenterId
-                );
-
-                if (!isFollowing) {
-                    // Non-follower gets greeting message first (same as followers)
-                    // Follow-gate check happens when they click the button
-                    logger.info("User not following, sending greeting with button", { commenterUsername });
-
-                    const greetingSent = await sendInstagramDM(
-                        user.instagram_access_token,
-                        instagramUserId,
-                        commentId,
-                        commenterId,
-                        getUniqueMessage(automation.reply_message, commenterUsername),
-                        automation.id,
-                        automation.button_text || "Get Link",
-                        undefined, // No direct link - follow check happens on button click
-                        undefined, // No thumbnail for initial greeting
-                        supabase,
-                        user.id
-                    );
-
-                    // Log as non-follower greeting (placeholder was already created in step 8b)
-                    await supabase.from("dm_logs")
-                        .update({
-                            reply_sent: greetingSent,
-                            reply_sent_at: greetingSent ? new Date().toISOString() : null,
-                            user_is_following: false,
-                        })
-                        .eq("instagram_comment_id", commentId);
-
-                    if (greetingSent) {
-                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-                    } else {
-                        // [FIX] Rollback atomic increment on hard block
-                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
-                    }
-
-                    return; // Stop here, follow-gate check happens on button click
-                } else {
-                    // User IS following on first comment - send greeting message with button
-                    // Same experience as non-followers but without follow-gate
-                    logger.info("User already following, sending greeting with button", { commenterUsername });
-
-                    const greetingSent = await sendInstagramDM(
-                        user.instagram_access_token,
-                        instagramUserId,
-                        commentId,
-                        commenterId,
-                        getUniqueMessage(automation.reply_message, commenterUsername),
-                        automation.id,
-                        automation.button_text || "Get Link",
-                        undefined, // No direct link - user must click button to get link (for click tracking)
-                        undefined, // No thumbnail for initial greeting
-                        supabase,
-                        user.id
-                    );
-
-                    // Update placeholder record
-                    await supabase.from("dm_logs")
-                        .update({
-                            reply_sent: greetingSent,
-                            reply_sent_at: greetingSent ? new Date().toISOString() : null,
-                            user_is_following: true,
-                        })
-                        .eq("instagram_comment_id", commentId);
-
-                    if (greetingSent) {
-                        await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-                    } else {
-                        await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
-                        // [FIX] Rollback atomic increment on hard block
-                        await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
-                    }
-                    return;
-                }
-            }
-        }
-
-        // 11. Send DM
-        const dmSent = await sendInstagramDM(
-            user.instagram_access_token,
-            instagramUserId,
-            commentId,
-            commenterId,
-            getUniqueMessage(automation.reply_message, commenterUsername),
-            automation.id,
-            automation.button_text,
-            automation.link_url,
-            automation.media_thumbnail_url,
-            supabase,
-            user.id
-        );
-
-        // 12. Update placeholder record with result (placeholder was inserted in step 8b)
-        await supabase.from("dm_logs")
-            .update({
-                reply_sent: dmSent,
-                reply_sent_at: dmSent ? new Date().toISOString() : null,
-            })
-            .eq("instagram_comment_id", commentId);
-
-        if (dmSent) {
-            await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-
-            // Notify User of DM Sent
-            try {
-                const { notifyUser } = await import("@/lib/notifications/push");
-                await notifyUser(user.id, 'dm_sent', {
-                    title: "DM Sent! ✨",
-                    body: `Automated reply sent to @${commenterUsername} on your post.`
-                });
-            } catch (notifyError) {
-                logger.error("Error triggering DM notification", { userId: user.id }, notifyError as Error);
+                logger.info("User not following, queuing greeting with button", { commenterUsername });
+                // Same gift as followers, but the button will trigger follow-gate later
             }
         } else {
-            await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
-            // [FIX] Rollback atomic increment on hard block
-            await supabase.rpc("decrement_rate_limit", { p_user_id: user.id });
+            // No follow-gate, we could technically send direct link,
+            // but the current UX is Greeting -> Click -> Link.
+            // We'll stick to queuing the Greeting message.
         }
+
+        await queueDM(
+            user.id,
+            {
+                commentId,
+                commenterId,
+                message: dmMessage,
+                automation_id: automation.id
+            },
+            undefined, // Use default random delay (30-120s)
+            user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
+        );
+
+        logger.info("Lead interaction moved to Safety Queue", { commenterUsername, automationId: automation.id });
 
     } catch (error) {
         logger.error("Error in handleCommentEvent", { instagramUserId }, error as Error);
@@ -588,87 +409,39 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 return;
             }
 
-            // ENFORCE FREQUENCY CAPPING (1 message per user per 24 hours)
+            // ENFORCE FREQUENCY CAPPING (1 message per user per 24 hours PER AUTOMATION)
             const twentyFourHoursAgoISO = new Date(twentyFourHoursAgo).toISOString();
-            const { data: recentDms } = await supabase
+            const { data: recentDms, error: recentDmError } = await supabase
                 .from("dm_logs")
                 .select("id")
-                .eq("user_id", user.id)
-                .eq("instagram_user_id", senderIgsid)
+                .eq("user_id", user.id) // From this Creator
+                .eq("instagram_user_id", senderIgsid) // To this specific commenter
+                .eq("automation_id", automation.id) // Scoped to THIS automation
                 .gte("created_at", twentyFourHoursAgoISO)
                 .limit(1);
 
-            if (recentDms && recentDms.length > 0) {
-                logger.info("Frequency cap hit: User already received a DM in the last 24h", { senderIgsid, userId: user.id });
+            if (recentDmError && recentDmError.code !== 'PGRST116') {
+                logger.warn("Error checking recent story DMs", { error: recentDmError });
+            } else if (recentDms && recentDms.length > 0) {
+                logger.info("Frequency cap hit: User already received a Story DM from this automation in the last 24h", { senderIgsid, userId: user.id, automationId: automation.id });
                 return;
             }
 
-            // Rate limit check
-            const planLimits = getPlanLimits(user.plan_type || 'free');
-            const rateLimitResult = await smartRateLimit(user.id, {
-                hourlyLimit: planLimits.dmsPerHour,
-                monthlyLimit: planLimits.dmsPerMonth || 1000,
-                spreadDelay: false,
-            });
-
-            if (!rateLimitResult.allowed) {
-                logger.info("Rate limit hit for story DM, queuing", {
-                    userId: user.id,
-                    remaining: rateLimitResult.remaining
-                });
-                await queueDM(
-                    user.id,
-                    {
-                        commentId: storyInteractionId,
-                        commenterId: senderIgsid,
-                        message: getUniqueMessage(automation.reply_message, messaging.sender?.username),
-                        automation_id: automation.id
-                    },
-                    rateLimitResult.estimatedSendTime || new Date(Date.now() + 60000),
-                    user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
-                );
-                return;
-            }
-
-            // Send the DM
-            logger.info("Sending story DM...", { automationId: automation.id, recipient: senderIgsid });
-            const dmSent = await sendInstagramDM(
-                user.instagram_access_token,
-                instagramUserId,
-                null,
-                senderIgsid,
-                getUniqueMessage(automation.reply_message, messaging.sender?.username),
-                automation.id,
-                automation.button_text,
-                undefined, // Force 2-step flow (Postback) so we can handle follow-gate logic
-                undefined,
-                supabase,
-                user.id
+            // 9. QUEUE THE STORY DM (Safety First - Human Delay)
+            // Even for story replies, we use the safety queue to avoid "instant bot" signals.
+            await queueDM(
+                user.id,
+                {
+                    commentId: storyInteractionId,
+                    commenterId: senderIgsid,
+                    message: getUniqueMessage(automation.reply_message, messaging.sender?.username),
+                    automation_id: automation.id
+                },
+                undefined, // Use default random delay (30-120s)
+                user.plan_type === 'pro' || user.plan_type === 'starter' ? 10 : 5
             );
 
-            if (dmSent) {
-                await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
-                logger.info("Story DM sent successfully", { automationId: automation.id });
-            } else {
-                await incrementAutomationCount(supabase, automation.id, "dm_failed_count");
-                logger.error("Failed to send story DM", { automationId: automation.id });
-            }
-
-            // Log the DM so it appears in Analytics
-            await supabase.from("dm_logs").insert({
-                user_id: user.id,
-                automation_id: automation.id,
-                instagram_comment_id: storyInteractionId,
-                instagram_user_id: senderIgsid,
-                instagram_username: messaging.sender?.username || "Instagram User",
-                keyword_matched: isStoryMention ? "STORY_MENTION" : "STORY_REPLY",
-                comment_text: message?.text || (isStoryMention ? "Story Mention" : "Story Reply"),
-                reply_sent: dmSent,
-                reply_sent_at: dmSent ? new Date().toISOString() : null,
-                is_follow_gate: false,
-                user_is_following: true
-            });
-
+            logger.info("Story interaction moved to Safety Queue", { senderIgsid, automationId: automation.id });
             return;
         }
 

@@ -40,7 +40,8 @@ export async function smartRateLimit(
         hourlyLimit: 190,
         monthlyLimit: 1000,
         spreadDelay: true,
-    }
+    },
+    userCreatedDate?: string | Date // New: For Layer 6 Warm-up
 ): Promise<{
     allowed: boolean;
     queuePosition?: number;
@@ -50,8 +51,55 @@ export async function smartRateLimit(
     const supabase = getSupabaseAdmin();
     const now = new Date();
 
-    // 1. Monthly Check (Read-Only Sum)
-    // We check this first to avoid incrementing hourly if monthly is already blocked
+    // ==========================================
+    // ANTI-BAN ENGINE V2 (SaaS LEVEL)
+    // ==========================================
+    let effectiveHourlyLimit = config.hourlyLimit;
+
+    // LAYER 6: Account Warm-up (Tenure Ramp)
+    if (userCreatedDate) {
+        const created = new Date(userCreatedDate);
+        const daysOld = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (daysOld < 3) {
+            effectiveHourlyLimit *= 0.15; // 15% speed for newborns
+        } else if (daysOld < 7) {
+            effectiveHourlyLimit *= 0.40; // 40% speed for week 1
+        } else if (daysOld < 14) {
+            effectiveHourlyLimit *= 0.70; // 70% speed for week 2
+        }
+    }
+
+    // LAYER 7: Behavior Mimicry (Circadian Diurnal Cycles)
+    const hour = now.getUTCHours();
+    let mimicryMultiplier = 1.0;
+
+    if (hour >= 0 && hour <= 4) {
+        mimicryMultiplier = 0.40; // Deep night: 40% speed
+    } else if (hour === 5 || hour === 23) {
+        mimicryMultiplier = 0.70; // Transition: 70% speed
+    } else if (hour >= 17 && hour <= 21) {
+        mimicryMultiplier = 1.10; // Peak hours: 10% boost (Meta allows slightly more session burst in evening)
+    }
+
+    effectiveHourlyLimit *= mimicryMultiplier;
+
+    // LAYER 5: Trust Factor Placeholder
+    // TODO: In future, multiply effectiveHourlyLimit by trustScore/100
+
+    // Final safety floor (cannot be less than 1/hr if plan allows any)
+    effectiveHourlyLimit = Math.max(1, Math.floor(effectiveHourlyLimit));
+
+    if (effectiveHourlyLimit < config.hourlyLimit) {
+        logger.debug("[Anti-Ban] Effective limit adjusted", {
+            userId,
+            original: config.hourlyLimit,
+            effective: effectiveHourlyLimit,
+            reason: mimicryMultiplier < 1 ? "Slow Period Active" : "Warm-up Active"
+        });
+    }
+
+    // 1. Monthly Check... (remaining logic uses effectiveHourlyLimit)
     const monthStart = new Date(now);
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
@@ -74,14 +122,11 @@ export async function smartRateLimit(
     }
 
     // 2. Hourly Check (Atomic Increment)
-    // We use the RPC to atomically increment and check the result
-    // This prevents race conditions where 2 requests see "199" and both send
     const { data: newHourlyCount, error: rpcError } = await (supabase as any)
         .rpc("increment_rate_limit", { p_user_id: userId });
 
     if (rpcError) {
         logger.error("Rate limit RPC failed", { userId, error: rpcError, category: "rate-limiter" });
-        // Fail open or closed? Closed (queue it) is safer for rate limits.
         return {
             allowed: false,
             remaining: { hourly: 0, monthly: monthlyRemaining }
@@ -89,18 +134,12 @@ export async function smartRateLimit(
     }
 
     const hourlyUsed = newHourlyCount as number;
-    const hourlyRemaining = Math.max(0, config.hourlyLimit - hourlyUsed);
+    const hourlyRemaining = Math.max(0, effectiveHourlyLimit - hourlyUsed);
 
     // 3. Logic Check
-    if (hourlyUsed > config.hourlyLimit) {
-        // The increment pushed us over the limit (Phantom Increment).
-        // Rollback the increment to keep counts accurate.
-        const { error: decrementError } = await (supabase as any)
-            .rpc("decrement_rate_limit", { p_user_id: userId });
-
-        if (decrementError) {
-            logger.error("Decrement rollback failed", { userId, error: decrementError, category: "rate-limiter" });
-        }
+    if (hourlyUsed > effectiveHourlyLimit) {
+        // Rollback
+        await (supabase as any).rpc("decrement_rate_limit", { p_user_id: userId });
 
         const hourStart = new Date(now);
         hourStart.setMinutes(0, 0, 0);
@@ -112,9 +151,9 @@ export async function smartRateLimit(
         };
     }
 
-    // 4. Spread Delay (optional)
+    // 4. Spread Delay
     if (config.spreadDelay && hourlyUsed > 1) {
-        const delaySeconds = Math.floor((60 * 60) / config.hourlyLimit);
+        const delaySeconds = Math.floor((60 * 60) / effectiveHourlyLimit);
         const estimatedSendTime = new Date(now.getTime() + delaySeconds * 1000);
 
         return {
@@ -132,7 +171,24 @@ export async function smartRateLimit(
 }
 
 /**
- * Queue a DM for later sending
+ * Helper to generate a non-uniform random delay (mimicking human memory/busy-ness)
+ * 60% chance: 30-90s (Normal response)
+ * 30% chance: 90-300s (Delayed/Distracted response)
+ * 10% chance: 300-600s (Slow response)
+ */
+function getNonUniformDelay(): number {
+    const roll = Math.random();
+    if (roll < 0.6) return Math.floor(Math.random() * 60) + 30; // 30-90s
+    if (roll < 0.9) return Math.floor(Math.random() * 210) + 90; // 90-300s
+    return Math.floor(Math.random() * 300) + 300; // 300-600s
+}
+
+/**
+ * Queue a DM for later sending with a mandatory human-like delay
+ * 
+ * PRO SAAS SAFETY (Level 9.5/10):
+ * - Non-uniform randomness (60/30/10 model)
+ * - Micro-staggering: Staggers multiple actions for the same lead
  */
 export async function queueDM(
     userId: string,
@@ -142,10 +198,46 @@ export async function queueDM(
         message: string;
         automation_id: string;
     },
-    sendAt: Date,
+    sendAt?: Date,
     priority: number = 5
 ) {
     const supabase = getSupabaseAdmin();
+
+    // If no specific time, calculate a safe human-like scheduled time
+    let scheduledTime: Date;
+    if (sendAt) {
+        scheduledTime = sendAt;
+    } else {
+        const delaySeconds = getNonUniformDelay();
+        scheduledTime = new Date(Date.now() + delaySeconds * 1000);
+
+        // MICRO-STAGGERING: Check if there's already something queued for this lead
+        // If yes, push this item further to avoid "instant burst" of Public Reply + DM
+        try {
+            const { data: existing } = await (supabase as any)
+                .from("dm_queue")
+                .select("scheduled_send_at")
+                .eq("user_id", userId)
+                .eq("instagram_comment_id", dmData.commentId)
+                .eq("status", "pending")
+                .order("scheduled_send_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (existing && (existing as any).scheduled_send_at) {
+                const existingTime = new Date((existing as any).scheduled_send_at).getTime();
+                // If it's scheduled within 120s of this, push this one 30-90s further
+                if (Math.abs(existingTime - scheduledTime.getTime()) < 120000) {
+                    const staggerDelay = Math.floor(Math.random() * 60) + 30;
+                    scheduledTime = new Date(existingTime + staggerDelay * 1000);
+                    logger.debug("[Anti-Ban] Micro-staggering applied to lead interaction", { userId, commentId: dmData.commentId });
+                }
+            }
+        } catch (err) {
+            // Fail open (default delay) if check fails
+            logger.warn("Micro-staggering check failed, using default delay", { userId, commentId: dmData.commentId, error: err });
+        }
+    }
 
     const { error } = await (supabase as any).from("dm_queue").insert({
         user_id: userId,
@@ -153,7 +245,7 @@ export async function queueDM(
         instagram_user_id: dmData.commenterId,
         message: dmData.message,
         automation_id: dmData.automation_id,
-        scheduled_send_at: sendAt.toISOString(),
+        scheduled_send_at: scheduledTime.toISOString(),
         status: "pending",
         priority: priority,
     });
@@ -163,7 +255,10 @@ export async function queueDM(
         throw error;
     }
 
-    logger.info("DM queued", { sendAt: sendAt.toISOString(), category: "rate-limiter" });
+    logger.info("DM queued with human-like safety delay", {
+        scheduledFor: scheduledTime.toISOString(),
+        category: "rate-limiter"
+    });
 }
 
 /**
@@ -318,63 +413,67 @@ export async function processQueuedDMs() {
 
             await Promise.allSettled(dmsToSend.map(async (dm: any) => {
                 try {
-                    const dmSent = await sendInstagramDM(
-                        dm.users.instagram_access_token,
-                        dm.users.instagram_user_id,
-                        dm.instagram_comment_id,
-                        dm.instagram_user_id,
-                        dm.message,
-                        dm.automation_id,
-                        dm.automations.button_text,
-                        dm.automations.link_url,
-                        dm.automations.link_url ? dm.automations.media_thumbnail_url : undefined
-                    );
+                    const isPublicReply = dm.message.startsWith("__PUBLIC_REPLY__:");
+                    const actualMessage = isPublicReply ? dm.message.replace("__PUBLIC_REPLY__:", "") : dm.message;
+                    let actionSent = false;
 
-                    if (dmSent) {
+                    if (isPublicReply) {
+                        // Handle Public Reply
+                        // Note: replyToComment will handle its own logging/incrementing internally
+                        // but we need to ensure the queue status is updated.
+                        const { replyToComment } = await import("./instagram/service");
+                        actionSent = await replyToComment(
+                            dm.users.instagram_access_token,
+                            dm.instagram_comment_id,
+                            actualMessage,
+                            supabase,
+                            dm.user_id
+                        );
+                    } else {
+                        // Handle Private DM
+                        actionSent = await sendInstagramDM(
+                            dm.users.instagram_access_token,
+                            dm.users.instagram_user_id,
+                            dm.instagram_comment_id,
+                            dm.instagram_user_id,
+                            actualMessage,
+                            dm.automation_id,
+                            dm.automations.button_text,
+                            dm.automations.link_url,
+                            dm.automations.link_url ? dm.automations.media_thumbnail_url : undefined
+                        );
+                    }
+
+                    if (actionSent) {
                         // CRITICAL: Atomically increment rate limit after successful send
-                        // This ensures the rate_limits table stays in sync with actual sends
                         await (supabase as any).rpc("increment_rate_limit", { p_user_id: dm.user_id });
 
-                        await incrementAutomationCount(supabase, dm.automation_id, "dm_sent_count");
-
-                        // ATOMIC CLAIM FIX: Check placeholder logs
-                        let existingLog = null;
-                        if (dm.instagram_comment_id) {
-                            const { data } = await (supabase as any)
-                                .from("dm_logs")
-                                .select("id")
-                                .eq("user_id", dm.user_id)
-                                .eq("instagram_comment_id", dm.instagram_comment_id)
-                                .maybeSingle();
-                            existingLog = data;
+                        if (!isPublicReply) {
+                            await incrementAutomationCount(supabase, dm.automation_id, "dm_sent_count");
+                        } else {
+                            // Public replies use comment_count in automation stats
+                            await incrementAutomationCount(supabase, dm.automation_id, "comment_count");
                         }
 
-                        if (existingLog) {
+                        // Update or Create logs
+                        await (supabase as any).from("dm_queue").update({
+                            status: "sent",
+                            sent_at: new Date().toISOString()
+                        }).eq("id", dm.id);
+
+                        if (!isPublicReply) {
+                            // Update DM Log only for DM actions
                             await (supabase as any).from("dm_logs").update({
                                 reply_sent: true,
                                 reply_sent_at: new Date().toISOString(),
                                 keyword_matched: "QUEUED",
-                                comment_text: "Processed from queue",
-                            }).eq("id", existingLog.id);
-                        } else {
-                            await (supabase as any).from("dm_logs").insert({
-                                user_id: dm.user_id,
-                                instagram_comment_id: dm.instagram_comment_id,
-                                instagram_user_id: dm.instagram_user_id,
-                                instagram_username: dm.instagram_username || null,
-                                automation_id: dm.automation_id,
-                                keyword_matched: "QUEUED",
-                                comment_text: "Processed from queue",
-                                reply_sent: true,
-                                reply_sent_at: new Date().toISOString(),
-                            });
+                            }).eq("instagram_comment_id", dm.instagram_comment_id);
                         }
-                        await (supabase as any).from("dm_queue").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", dm.id);
                     } else {
-                        throw new Error("DM delivery failed");
+                        throw new Error("Action delivery failed");
                     }
                 } catch (error) {
-                    logger.error("Failed to send queued DM", { dmId: dm.id, category: "rate-limiter" }, error as Error);
+                    logger.error(`Failed to process queued ${dm.message.startsWith("__PUBLIC_REPLY__:") ? 'Reply' : 'DM'}`, { dmId: dm.id, category: "rate-limiter" }, error as Error);
                     await (supabase as any).from("dm_queue").update({ status: "failed", error_message: (error as Error).message }).eq("id", dm.id);
                     await incrementAutomationCount(supabase, dm.automation_id, "dm_failed_count");
                 }
