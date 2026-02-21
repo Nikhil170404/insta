@@ -315,11 +315,6 @@ export async function handleCommentEvent(instagramUserId: string, eventData: any
             );
 
             if (dmSent) {
-                await supabase.from("dm_logs").update({
-                    reply_sent: true,
-                    reply_sent_at: new Date().toISOString()
-                }).eq("instagram_comment_id", commentId).eq("automation_id", automation.id);
-
                 await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
                 logger.info("Direct DM sent instantly (Wizard Matched Card)", { commenterUsername, automationId: automation.id });
             }
@@ -464,25 +459,6 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 user.created_at
             );
 
-            // 9b. ATOMIC CLAIM - Insert placeholder to prevent race conditions & track queue
-            const { error: claimError } = await supabase
-                .from("dm_logs")
-                .insert({
-                    user_id: user.id,
-                    automation_id: automation.id,
-                    instagram_comment_id: storyInteractionId,
-                    instagram_user_id: senderIgsid,
-                    instagram_username: messaging.sender?.username || 'unknown',
-                    keyword_matched: automation.trigger_keyword || "ANY",
-                    comment_text: message?.text || "Story Reply",
-                    reply_sent: false,
-                    is_follow_gate: false,
-                });
-
-            if (claimError && claimError.code !== '23505') {
-                logger.error("Claim insert warning for story", { senderIgsid }, new Error(claimError.message));
-            }
-
             if (rateLimit.allowed) {
                 const dmMessage = getUniqueMessage(automation.reply_message, messaging.sender?.username);
                 const buttonText = automation.button_text || "View Link";
@@ -504,11 +480,6 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 );
 
                 if (dmSent) {
-                    await supabase.from("dm_logs").update({
-                        reply_sent: true,
-                        reply_sent_at: new Date().toISOString()
-                    }).eq("instagram_comment_id", storyInteractionId).eq("automation_id", automation.id);
-
                     await incrementAutomationCount(supabase, automation.id, "dm_sent_count");
                     logger.info("Story interaction completed instantly (Wizard Matched Card)", { senderIgsid, automationId: automation.id });
                 }
