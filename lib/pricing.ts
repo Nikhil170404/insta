@@ -19,7 +19,7 @@ export const PRICING_PLANS = {
             accounts: 1,
             automations: 3,
             dmsPerMonth: 1000,
-            dmsPerHour: 200, // Max Speed for all
+            dmsPerHour: 190, // Max Speed for all (below Meta's 200 limit)
             queueEnabled: true,
             priorityQueue: false,
         },
@@ -54,7 +54,7 @@ export const PRICING_PLANS = {
             accounts: 1,
             automations: 10,
             dmsPerMonth: 50000,
-            dmsPerHour: 200, // Max Speed
+            dmsPerHour: 190, // Max Speed
             queueEnabled: true,
             priorityQueue: false,
         },
@@ -90,7 +90,7 @@ export const PRICING_PLANS = {
             accounts: 1,
             automations: 999,
             dmsPerMonth: 1000000,
-            dmsPerHour: 200,
+            dmsPerHour: 190,
             queueEnabled: true,
             priorityQueue: true,
         },

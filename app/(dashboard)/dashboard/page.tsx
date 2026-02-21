@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import ReelsGrid from "@/components/dashboard/reels-grid";
 import { Badge } from "@/components/ui/badge";
 import { QueueStatus } from "@/components/dashboard/QueueStatus";
+import { AccountHealthScore } from "@/components/dashboard/AccountHealthScore";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -71,6 +72,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Account Safety Score */}
+      <AccountHealthScore />
 
       {/* Live Queue Status */}
       <QueueStatus />

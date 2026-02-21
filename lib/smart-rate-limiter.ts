@@ -37,7 +37,7 @@ export interface RateLimitConfig {
 export async function smartRateLimit(
     userId: string,
     config: RateLimitConfig = {
-        hourlyLimit: 200,
+        hourlyLimit: 190,
         monthlyLimit: 1000,
         spreadDelay: true,
     }
